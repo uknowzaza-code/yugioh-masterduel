@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: yugioh-masterduel
+    runtime: node
+    plan: free
+    buildCommand: >-
+      npm install &&
+      mkdir -p data/ygopro &&
+      ([ -d data/ygopro/cdb ] || git clone --depth 1 https://github.com/ProjectIgnis/BabelCDB.git data/ygopro/cdb) &&
+      ([ -d data/ygopro/scripts ] || git clone --depth 1 https://github.com/ProjectIgnis/CardScripts.git data/ygopro/scripts)
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Yu-Gi-Oh! Master Duel Web — 55 Top Meta Decks & Multiplayer</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <!-- Top Header Bar -->
+  <header class="app-header">
+    <div class="brand-logo" id="btn-home-logo" role="button" tabindex="0">
+      <span class="logo-emblem">千年</span>
+      <div>
+        <div class="logo-title">YU-GI-OH! <span class="gold-text">MASTER DUEL</span></div>
+        <div class="logo-subtitle" data-i18n="subtitle">55 เด็คท็อป Master Duel Meta • ระบบเชนเอฟเฟคจริง • เล่นกับเพื่อนข้ามมือถือ/คอม</div>
+      </div>
+    </div>
+
+    <nav class="header-nav">
+      <button type="button" class="nav-btn" id="btn-open-deck-viewer" data-i18n="navDecks">📚 คลังการ์ด & คอมโบ 55 เด็ค</button>
+      <button type="button" class="nav-btn accent-ai" id="btn-open-ai-studio" data-i18n="navStudio">🤖 AI Card Studio (เพิ่มการ์ด)</button>
+      <button type="button" class="nav-btn" id="btn-open-howto" data-i18n="navHowto">📖 วิธีเล่นเข้าใจง่าย</button>
+      <button type="button" class="nav-btn lang-toggle-btn" id="btn-toggle-lang" title="Switch Language (EN / TH)">🌐 Lang: EN</button>
+    </nav>
+  </header>
+
+  <!-- ==================== SCREEN 1: LOBBY & DECK SELECT ==================== -->
+  <main id="screen-lobby" class="screen active">
+    <div class="lobby-grid">
+      <!-- Left Column: Player Profile & 55 Top Decks -->
+      <section class="lobby-panel deck-select-panel">
+        <div class="panel-header-row">
+          <div>
+            <h2 class="panel-title" data-i18n="lobbyDeckTitle">1. เลือกเด็คประจำตัวของคุณ (55 Top Master Duel Meta Decks)</h2>
+            <p class="panel-desc" data-i18n="lobbyDeckDesc">รวม 5 เด็คเริ่มต้น + 50 เด็คท็อปจริงจากเว็บ Master Duel Meta พร้อมภาพการ์ดแท้ & เอฟเฟคครบ</p>
+          </div>
+          <div class="player-name-box">
+            <label for="input-player-name" data-i18n="playerNameLabel">ชื่อดูเอลลิสต์:</label>
+            <input type="text" id="input-player-name" value="Duelist 1" maxlength="20" />
+          </div>
+        </div>
+
+        <!-- Deck Search & Style Filter Toolbar -->
+        <div class="deck-browser-toolbar">
+          <div class="deck-search-row">
+            <input type="search" id="input-deck-search" class="deck-search-input" data-i18n-placeholder="deckSearchPlaceholder" placeholder="🔍 ค้นหาชื่อเด็ค / แอคไทป์ (เช่น Dracotail, Tearlaments, Ryzeal)..." autocomplete="off" />
+            <button type="button" class="btn-gold btn-sm" id="btn-open-ydk-import" title="นำเข้าเด็คจาก YDK / YDKE Clipboard หรือไฟล์ .ydk">📋 Import YDK / YDKE</button>
+            <span id="deck-showing-count" class="deck-count-pill">55 / 55</span>
+          </div>
+          <div id="deck-filter-tabs" class="deck-filter-tabs">
+            <button type="button" class="deck-filter-chip active" data-deck-filter="all" data-i18n="filterAll">ทั้งหมด (55)</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="meta" data-i18n="filterMeta">🔥 เมต้า Tier</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="FUSION" data-i18n="filterFusion">🟣 ฟิวชั่น</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="SYNCHRO" data-i18n="filterSynchro">⚪ ซิงโคร</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="XYZ" data-i18n="filterXyz">⚫ เอ็กซีส</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="LINK" data-i18n="filterLink">🔵 ลิงก์</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="CONTROL" data-i18n="filterControl">🛡️ คอนโทรล</button>
+          </div>
+        </div>
+
+        <!-- 55 Deck Cards Grid -->
+        <div id="deck-cards-container" class="deck-cards-grid"></div>
+
+        <!-- Selected Deck Combo Guide & Preview -->
+        <div id="selected-deck-summary" class="selected-deck-summary"></div>
+      </section>
+
+      <!-- Right Column: Game Modes & Multiplayer -->
+      <section class="lobby-panel mode-select-panel">
+        <h2 class="panel-title" data-i18n="lobbyModeTitle">2. เลือกโหมดการดูเอล</h2>
+
+        <!-- Playmat Theme Picker -->
+        <div class="lobby-playmat-box">
+          <div class="playmat-picker-label" data-i18n="playmatTitle">🎨 ธีมสนามดวล (Playmat Theme):</div>
+          <div id="lobby-playmat-picker" class="playmat-picker-row"></div>
+        </div>
+
+        <!-- Solo vs AI Mode -->
+        <div class="mode-card featured-solo">
+          <div class="mode-card-header">
+            <span class="mode-icon">🤖</span>
+            <div>
+              <h3 data-i18n="soloTitle">ดวลกับบอท AI (Solo Master Duel Mode)</h3>
+              <p data-i18n="soloDesc">ฝึกฝนคอมโบและทดสอบเด็คกับ AI ที่สามารถซิงโคร, ฟิวชั่น, ลิงก์ และเชนเอฟเฟคได้</p>
+            </div>
+          </div>
+          <div class="solo-controls">
+            <label for="select-ai-deck" data-i18n="soloAiLabel">เด็คของ AI คู่ต่อสู้:</label>
+            <select id="select-ai-deck"></select>
+            <button type="button" class="btn-primary btn-large" id="btn-start-solo" data-i18n="startSoloBtn">⚔️ เริ่มดูเอลกับ AI ทันที</button>
+          </div>
+        </div>
+
+        <!-- Multiplayer Mode (Phone / Other PC) -->
+        <div class="mode-card featured-multiplayer">
+          <div class="mode-card-header">
+            <span class="mode-icon">📱💻</span>
+            <div>
+              <h3 data-i18n="mpTitle">เล่นกับเพื่อน (มือถือ / คอมพิวเตอร์เครื่องอื่น)</h3>
+              <p data-i18n="mpDesc">รองรับทั้งการเล่นผ่าน Wi-Fi เดียวกัน (สแกน QR เข้าห้องทันที) และออนไลน์ข้ามเครือข่าย 4G/5G</p>
+            </div>
+          </div>
+
+          <!-- Connection Type Tabs -->
+          <div class="mp-tabs">
+            <button type="button" class="mp-tab active" data-mp-tab="ws" id="tab-mp-ws" data-i18n="mpTabWs">
+              🌐 โหมด Wi-Fi / เซิร์ฟเวอร์เดียวกัน (แนะนำ)
+            </button>
+            <button type="button" class="mp-tab" data-mp-tab="p2p" id="tab-mp-p2p" data-i18n="mpTabP2p">
+              ⚡ โหมดออนไลน์ข้ามเน็ต (4G/5G P2P)
+            </button>
+          </div>
+
+          <!-- LAN / Server Info Banner (Tab 1: WS) -->
+          <div id="lan-info-box" class="lan-info-box">
+            <div class="lan-url-col">
+              <div class="lan-label" id="lan-box-label">📲 ลิงก์สำหรับให้เพื่อนเปิดบนมือถือ/คอมอีกเครื่อง:</div>
+              <div id="lan-urls-list" class="lan-urls-list">กำลังตรวจสอบ IP...</div>
+              <div id="lan-scope-hint" class="lan-scope-hint"></div>
+            </div>
+            <div class="qr-box" id="lan-qr-container" title="สแกนด้วยกล้องมือถือเพื่อเข้าเกม"></div>
+          </div>
+
+          <!-- Cross-Network P2P Info & NAT/TURN Settings (Tab 2: P2P) -->
+          <div id="p2p-info-box" class="p2p-info-box hidden">
+            <div id="p2p-guidance-text" class="p2p-guidance-text"></div>
+            <div id="p2p-live-status" class="p2p-live-status hidden"></div>
+            <details id="p2p-turn-details" class="p2p-nat-details">
+              <summary id="p2p-nat-summary">⚙️ ตั้งค่า Cross-Wi-Fi NAT &amp; TURN Relay (เมื่ออยู่คนละ Wi-Fi / 4G บล็อก P2P)</summary>
+              <div class="p2p-turn-grid">
+                <input type="text" id="input-turn-url" placeholder="turn:your-turn-host:3478?transport=tcp" autocomplete="off" />
+                <input type="text" id="input-turn-user" placeholder="TURN Username" autocomplete="off" />
+                <input type="password" id="input-turn-cred" placeholder="TURN Credential / Password" autocomplete="off" />
+              </div>
+              <div class="p2p-turn-actions">
+                <label class="p2p-relay-check">
+                  <input type="checkbox" id="chk-turn-force-relay" />
+                  <span id="p2p-force-relay-label">บังคับผ่าน TURN Relay (Force Relay)</span>
+                </label>
+                <div class="p2p-turn-btns">
+                  <button type="button" class="btn-mini" id="btn-save-turn">💾 บันทึก</button>
+                  <button type="button" class="btn-mini" id="btn-clear-turn">🗑️ ล้างค่า</button>
+                  <button type="button" class="btn-mini" id="btn-test-ice">🔍 ทดสอบ NAT / STUN-TURN</button>
+                </div>
+              </div>
+              <div id="p2p-ice-test-result" class="p2p-ice-test-result"></div>
+            </details>
+          </div>
+
+          <div class="mp-actions-row">
+            <button type="button" class="btn-gold" id="btn-create-room" data-i18n="createRoomBtn">➕ สร้างห้องดวลใหม่</button>
+            <div class="join-code-group">
+              <input type="text" id="input-room-code" placeholder="รหัสห้อง" maxlength="12" />
+              <button type="button" class="btn-secondary" id="btn-join-room" data-i18n="joinRoomBtn">เข้าร่วมห้อง</button>
+            </div>
+          </div>
+
+          <!-- Waiting Room Status -->
+          <div id="waiting-room-banner" class="waiting-room-banner hidden">
+            <div class="waiting-spinner"></div>
+            <div class="waiting-content-col">
+              <div class="waiting-title">
+                สร้างห้องสำเร็จ! รหัสห้องของคุณคือ:
+                <span id="display-room-code" class="room-code-pill">----</span>
+                <button type="button" class="btn-mini" id="btn-copy-room-code">📋 คัดลอกรหัส</button>
+                <button type="button" class="btn-mini" id="btn-copy-invite-link">🔗 คัดลอกลิงก์เชิญ</button>
+                <button type="button" class="btn-mini" id="btn-cancel-waiting-room">✕ ปิดห้อง</button>
+              </div>
+              <div class="waiting-sub" id="waiting-room-sub">บอกรหัสนี้ให้เพื่อนกรอก หรือกดเข้าร่วมจากรายการห้องที่เปิดอยู่ด้านล่าง</div>
+            </div>
+          </div>
+
+          <!-- Open Rooms List -->
+          <div class="open-rooms-section" id="open-rooms-section">
+            <div class="open-rooms-header">
+              <span>🟢 ห้องที่กำลังเปิดรอผู้เล่น:</span>
+              <button type="button" class="btn-mini" id="btn-refresh-rooms">🔄 รีเฟรช</button>
+            </div>
+            <div id="open-rooms-list" class="open-rooms-list">
+              <div class="empty-rooms-text">ยังไม่มีห้องที่เปิดรอ — กด "สร้างห้องดวลใหม่" ได้เลย!</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sandbox 2-Player Local Mode -->
+        <div class="mode-card sandbox-card">
+          <div class="sandbox-row">
+            <div>
+              <h4 data-i18n="sandboxTitle">🧪 โหมดทดสอบ 2 ฝั่งในจอเดียว (Sandbox / Pass & Play)</h4>
+              <p data-i18n="sandboxDesc">สลับมุมมองบังคับได้ทั้งผู้เล่น 1 และผู้เล่น 2 เหมาะสำหรับทดสอบการ์ดใหม่ที่ AI เพิ่มเข้ามา</p>
+            </div>
+            <button type="button" class="btn-outline" id="btn-start-sandbox" data-i18n="startSandboxBtn">เปิดโหมดทดสอบ 2 ฝั่ง</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ==================== SCREEN 2: MASTER DUEL BATTLEFIELD ==================== -->
+  <main id="screen-duel" class="screen">
+    <div class="duel-layout">
+      <!-- Left Sidebar: Card Inspector & Combo Helper -->
+      <aside class="inspector-sidebar" id="inspector-sidebar">
+        <div class="inspector-tabs">
+          <button type="button" class="insp-tab active" data-insp="card" id="tab-insp-card" data-i18n="inspTabCard">🔍 ข้อมูลการ์ด</button>
+          <button type="button" class="insp-tab" data-insp="log" id="tab-insp-log" data-i18n="inspTabLog">📜 ประวัติการดูเอล</button>
+        </div>
+
+        <div id="inspector-card-pane" class="inspector-pane active">
+          <div id="inspector-content" class="inspector-content">
+            <div class="inspector-placeholder" data-i18n="inspPlaceholder">แตะหรือชี้ที่การ์ดใบใดก็ได้เพื่ออ่านชื่อภาษาไทย ค่าพลัง และรายละเอียดเอฟเฟค</div>
+          </div>
+        </div>
+
+        <div id="inspector-log-pane" class="inspector-pane">
+          <div id="duel-log-list" class="duel-log-list"></div>
+        </div>
+      </aside>
+
+      <!-- Center & Right: Duel Field -->
+      <section class="battlefield-area">
+        <aside id="chain-stack-overlay" class="chain-stack-overlay hidden" aria-label="Chain Link Order"></aside>
+        <!-- Opponent Top Status HUD -->
+        <div class="player-hud opponent-hud">
+          <div class="hud-left">
+            <div class="avatar-circle opp-avatar">對手</div>
+            <div>
+              <div class="hud-player-name" id="opp-name">ผู้เล่น 2</div>
+            </div>
+            <div class="lp-wrapper">
+              <div class="lp-label">LP <span id="opp-lp-value">8000</span></div>
+            </div>
+            <div class="turn-elapsed-pill" id="turn-elapsed-pill" title="จำนวนเทิร์นของการดูเอล">⏳ เทิร์น 1 (ผ่านมา 0 เทิร์น)</div>
+          </div>
+
+          <!-- Opponent Hand Preview -->
+          <div class="opp-hand-bar" id="opp-hand-bar" title="การ์ดบนมือของฝ่ายตรงข้าม"></div>
+
+          <div class="hud-right-zones">
+            <button type="button" class="zone-pill-btn" id="btn-opp-gy" title="ดูสุสานฝ่ายตรงข้าม">
+              🪦 สุสานคู่ต่อสู้: <span id="opp-gy-count">0</span>
+            </button>
+            <button type="button" class="zone-pill-btn" id="btn-opp-banished" title="ดูการ์ดนอกเกมฝ่ายตรงข้าม">
+              🌌 นอกเกม: <span id="opp-banished-count">0</span>
+            </button>
+            <div class="zone-pill-static">📚 เด็ค: <span id="opp-deck-count">35</span> | Extra: <span id="opp-extra-count">10</span></div>
+          </div>
+        </div>
+
+        <!-- The Master Duel Playmat (Authentic Master Duel Layout) -->
+        <div class="playmat-container playmat-ruins" id="playmat-container">
+          <!-- Opponent Spell/Trap Row: [Deck (8-opp)] [STZ x5] [Extra Deck (7-opp)] -->
+          <div class="field-row opp-stz-row">
+            <div class="side-col left-side-col">
+              <div class="deck-pile-slot opp-deck-pile" title="เด็คคู่ต่อสู้">
+                <span class="pile-label">DECK</span>
+                <span class="zone-count" id="opp-deck-mat-count">35</span>
+              </div>
+            </div>
+            <div class="five-zones-grid" id="opp-stz-grid"></div>
+            <div class="side-col right-side-col">
+              <div class="deck-pile-slot opp-extra-pile" title="Extra Deck คู่ต่อสู้">
+                <span class="pile-label">EXTRA</span>
+                <span class="zone-count" id="opp-extra-mat-count">10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opponent Main Monster Row: [Banished(9-opp) + GY(6-opp)] [MMZ x5] [Field Spell(5-opp)] -->
+          <div class="field-row opp-mmz-row">
+            <div class="side-col left-side-col dual-oct-col">
+              <button type="button" class="oct-zone-btn" id="btn-opp-banished-mat" title="ดูการ์ดนอกเกมคู่ต่อสู้">
+                <span class="oct-label" data-i18n="zoneBanished">นอกเกม</span>
+                <span class="oct-count" id="opp-banished-mat-count">0</span>
+              </button>
+              <button type="button" class="oct-zone-btn" id="btn-opp-gy-mat" title="ดูสุสานคู่ต่อสู้">
+                <span class="oct-label" data-i18n="zoneGy">สุสาน</span>
+                <span class="oct-count" id="opp-gy-mat-count">0</span>
+              </button>
+            </div>
+            <div class="five-zones-grid" id="opp-mmz-grid"></div>
+            <div class="side-col right-side-col">
+              <div class="card-zone-box" id="opp-field-spell-slot" data-zone-label="เวทสนามอีกฝ่าย"></div>
+            </div>
+          </div>
+
+          <!-- Center Row: [Utility] [EMZ aligned to Col 2 & Col 4] [Master Duel Circular Turn/Phase Orb] -->
+          <div class="field-row center-emz-row">
+            <div class="side-col left-side-col center-utils-col">
+              <button type="button" class="btn-chain-toggle chain-auto" id="btn-chain-toggle" title="สลับโหมดถามเชนเอฟเฟค (AUTO / ON / OFF)">
+                ⛓️ Chain: <strong id="chain-mode-text">AUTO</strong>
+              </button>
+              <button type="button" class="btn-surrender" id="btn-leave-duel" data-i18n="btnLeave">🏳️ ออก</button>
+              <button type="button" class="btn-mobile-zoom" id="btn-mobile-field-zoom" title="ปรับขนาดสนามให้พอดีจอ / ซูมออก">🔍 Auto</button>
+            </div>
+
+            <!-- 5-column alignment track so EMZs sit directly above Col 2 and Col 4 -->
+            <div class="five-zones-grid emz-track-grid">
+              <div class="emz-spacer"></div>
+              <div class="emz-slot" id="self-emz-slot" data-zone-label="EMZ ซ้าย"></div>
+              <div class="emz-connector-bar"></div>
+              <div class="emz-slot" id="opp-emz-slot" data-zone-label="EMZ ขวา"></div>
+              <div class="emz-spacer"></div>
+            </div>
+
+            <!-- Master Duel Circular Phase Orb & Vertical Side Phase Bar -->
+            <div class="side-col right-side-col phase-orb-col">
+              <div class="phase-orb-stack">
+                <div class="phase-orb" id="turn-indicator-pill">Turn 1</div>
+                <div class="phase-action-buttons">
+                  <button type="button" class="btn-phase btn-battle" id="btn-go-battle" data-i18n="btnBattle">⚔️ Battle</button>
+                  <button type="button" class="btn-phase btn-mp2 hidden" id="btn-go-mp2" data-i18n="btnMp2">🔮 MP2</button>
+                  <button type="button" class="btn-phase btn-end-turn" id="btn-end-turn" data-i18n="btnEndTurn">⏭️ จบเทิร์น</button>
+                </div>
+              </div>
+              <div class="phase-steps" id="phase-steps-bar">
+                <span class="phase-turn-header" id="phase-turn-header">T1</span>
+                <span class="phase-badge" data-phase="DP">DP</span>
+                <span class="phase-badge" data-phase="SP">SP</span>
+                <span class="phase-badge active" data-phase="MP1">MP1</span>
+                <span class="phase-badge" data-phase="BP">BP</span>
+                <span class="phase-badge" data-phase="MP2">MP2</span>
+                <span class="phase-badge" data-phase="EP">EP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Player Main Monster Row: [Field Spell (5)] [MMZ x5 (1)] [Banished (9) + GY (6)] -->
+          <div class="field-row self-mmz-row">
+            <div class="side-col left-side-col">
+              <div class="card-zone-box" id="self-field-spell-slot" data-zone-label="เวทสนาม (5)"></div>
+            </div>
+            <div class="five-zones-grid" id="self-mmz-grid"></div>
+            <div class="side-col right-side-col dual-oct-col">
+              <button type="button" class="oct-zone-btn" id="btn-self-banished" title="การ์ดนอกเกมของคุณ (9)">
+                <span class="oct-label" data-i18n="zoneBanished">นอกเกม</span>
+                <span class="oct-count" id="self-banished-count">0</span>
+                <span class="activate-circle-ring" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="oct-zone-btn gy-oct" id="btn-self-gy" title="สุสานของคุณ (6)">
+                <span class="oct-label" data-i18n="zoneGy">สุสาน (GY)</span>
+                <span class="oct-count" id="self-gy-count">0</span>
+                <span class="activate-circle-ring" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Player Spell/Trap Row: [Extra Deck (7)] [STZ x5 (3)] [Main Deck (8)] -->
+          <div class="field-row self-stz-row">
+            <div class="side-col left-side-col">
+              <button type="button" class="deck-pile-slot clickable-zone extra-deck-slot" id="btn-self-extra" title="Extra Deck (7)">
+                <span class="pile-label">EXTRA</span>
+                <span class="zone-count" id="self-extra-count">0</span>
+              </button>
+            </div>
+            <div class="five-zones-grid" id="self-stz-grid"></div>
+            <div class="side-col right-side-col">
+              <div class="deck-pile-slot self-deck-pile" title="Main Deck (8)">
+                <span class="pile-label">DECK</span>
+                <span class="zone-count" id="self-deck-count">35</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Non-blocking YGOPro Horizontal Card Selector / Zone Strip -->
+        <div id="ygopro-card-strip" class="ygopro-card-strip hidden" role="region" aria-label="ตัวเลือกการ์ดแบบ YGOPro"></div>
+
+        <!-- Non-blocking Direct Field Zone Selection Banner -->
+        <div id="field-pick-banner" class="chain-prompt-bar hidden" role="region" aria-label="เลือกช่องบนสนาม"></div>
+
+        <!-- Bottom Non-Blurring Master Duel Chain Selection Bar -->
+        <div id="chain-prompt-bar" class="chain-prompt-bar hidden" role="region" aria-label="จังหวะเชนเอฟเฟค">
+          <div class="chain-bar-header">
+            <span class="chain-spark">⚡</span>
+            <div id="chain-trigger-desc" class="chain-trigger-desc"></div>
+            <button type="button" class="btn-secondary btn-chain-pass" id="btn-chain-pass" data-i18n="btnPassChain">⏭️ ไม่ใช้เอฟเฟค (Pass)</button>
+          </div>
+          <div id="chain-options-list" class="chain-options-list"></div>
+        </div>
+
+        <!-- Player Bottom HUD & Hand Dock -->
+        <div class="player-bottom-dock">
+          <div class="self-hud-summary">
+            <span class="self-name-badge" id="self-name">คุณ (Player 1)</span>
+            <div class="lp-label">LP <span id="self-lp-value">8000</span></div>
+          </div>
+
+          <!-- Player Hand Cards -->
+          <div class="self-hand-container" id="self-hand-container"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Floating Card Action Menu Popup -->
+    <div id="card-action-popup" class="card-action-popup hidden"></div>
+    <div id="duel-live-region" class="visually-hidden" aria-live="polite"></div>
+    <div id="turn-change-banner" class="turn-change-banner" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <!-- ==================== MODAL 2: ZONE / EXTRA DECK / CARD BROWSER ==================== -->
+  <dialog id="dialog-zone-browser" closedby="any" aria-labelledby="zone-browser-title" class="md-dialog zone-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h3 id="zone-browser-title">รายการการ์ด</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-zone-browser">✕ ปิด</button>
+      </div>
+      <p id="zone-browser-subtitle" class="dialog-subtitle"></p>
+      <div id="zone-browser-grid" class="zone-browser-grid"></div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 3: AI CARD STUDIO (EXTENSIBLE ARCHITECTURE) ==================== -->
+  <dialog id="dialog-ai-studio" closedby="any" aria-labelledby="ai-studio-title" class="md-dialog studio-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h3 id="ai-studio-title">🤖 AI Card Studio — ระบบเพิ่มการ์ดใหม่เข้าสู่เกม</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ai-studio">✕ ปิด</button>
+      </div>
+      <div class="studio-body">
+        <div class="studio-info-callout">
+          <strong>โครงสร้างเกมนี้ออกแบบให้ AI ตัวอื่นเพิ่มการ์ดได้ทันที 2 ช่องทาง:</strong>
+          <ol>
+            <li><strong>สำหรับ AI Coding Agent:</strong> ให้ AI อ่านไฟล์ <code>AI_CARD_DEVELOPMENT_GUIDE.md</code> ในโปรเจกต์ แล้วเพิ่มไฟล์การ์ดลงใน <code>src/cards/decks/</code> หรือ <code>src/cards/custom_cards.json</code></li>
+            <li><strong>วาง JSON การ์ดตรงนี้:</strong> ให้ ChatGPT / Claude / Gemini สร้าง JSON การ์ดตามเทมเพลตด้านล่าง แล้วกด <strong>"ตรวจสอบและบันทึกเข้าเกม"</strong> ได้ทันที!</li>
+          </ol>
+        </div>
+
+        <div class="studio-toolbar">
+          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-monster">📋 โหลดตัวอย่าง JSON มอนสเตอร์เอฟเฟค</button>
+          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-spell">📋 โหลดตัวอย่าง JSON การ์ดเวทมนตร์</button>
+          <button type="button" class="btn-gold btn-sm" id="btn-validate-and-save-card">✅ ตรวจสอบ Schema & บันทึกการ์ดเข้าเกม</button>
+        </div>
+
+        <textarea id="textarea-custom-card-json" rows="14" spellcheck="false" class="code-textarea"></textarea>
+        <div id="studio-status-msg" class="studio-status-msg"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 3B: YDK CLIPBOARD DECK IMPORTER ==================== -->
+  <dialog id="dialog-ydk-import" closedby="any" aria-labelledby="ydk-import-title" class="md-dialog studio-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h3 id="ydk-import-title">📋 นำเข้าเด็คจาก YDK / YDKE Clipboard (Import YDK / YDKE)</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ydk-import">✕ ปิด</button>
+      </div>
+      <div class="studio-body">
+        <div class="studio-info-callout">
+          <strong>รองรับทั้งโค้ด YDK และลิงก์ YDKE (<code>ydke://...</code>) จาก Master Duel Meta / EDOPro / YGOPro / Omega / YGOPRODeck:</strong>
+          <span>คัดลอก <code>ydke://...</code> หรือโค้ด <code>#main ... #extra ...</code> แล้วกดปุ่ม <strong>"📋 วางจาก Clipboard"</strong> หรือวางลงในช่องด้านล่าง (รองรับการ์ดทุกใบใน <code>cards.cdb</code> กว่า 13,000+ ใบ)</span>
+        </div>
+
+        <div class="studio-toolbar" style="align-items:center;">
+          <input type="text" id="input-ydk-deck-name" placeholder="ตั้งชื่อเด็ค (ไม่ใส่จะตั้งให้อัตโนมัติ)" maxlength="48" style="flex:1;min-width:180px;padding:0.45rem 0.65rem;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(15,23,42,0.85);color:#f8fafc;font-size:0.85rem;" />
+          <button type="button" class="btn-secondary btn-sm" id="btn-paste-ydk-clipboard">📋 วางจาก Clipboard</button>
+          <label class="btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.25rem;">
+            📂 เปิดไฟล์ .ydk
+            <input type="file" id="input-ydk-file" accept=".ydk,.txt" style="display:none;" />
+          </label>
+          <button type="button" class="btn-gold btn-sm" id="btn-confirm-ydk-import">✅ นำเข้าเด็คนี้</button>
+        </div>
+
+        <textarea id="textarea-ydk-input" rows="12" spellcheck="false" class="code-textarea" placeholder="วางลิงก์ ydke://... หรือโค้ด YDK เช่น:&#10;ydke://s6BXBbOgVwWzoFcF!8o5uAQ==!!&#10;&#10;หรือ&#10;#main&#10;89631139&#10;#extra&#10;23995346"></textarea>
+        <div id="ydk-import-status" class="studio-status-msg"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 4: HOW TO PLAY GUIDE ==================== -->
+  <dialog id="dialog-howto" closedby="any" aria-labelledby="howto-title" class="md-dialog howto-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h3 id="howto-title">📖 คู่มือวิธีเล่น Yu-Gi-Oh! Master Duel (ฉบับเข้าใจง่ายใน 1 นาที)</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-howto">✕ ปิด</button>
+      </div>
+      <div class="howto-content">
+        <div class="howto-grid">
+          <div class="howto-box">
+            <h4>1. สังเกตขอบการ์ดเรืองแสง ✨</h4>
+            <p>การ์ดใบไหนบนมือ บนสนาม ในสุสาน หรือใน Extra Deck ที่สามารถทำแอคชั่นได้ จะมี <strong>ขอบสีทอง/ฟ้าเรืองแสง</strong> คลิกที่การ์ดเพื่อเลือกคำสั่งได้ทันที!</p>
+          </div>
+          <div class="howto-box">
+            <h4>2. การอัญเชิญจาก Extra Deck 🌌</h4>
+            <p>เมื่อบนสนามมีวัตถุดิบครบ (เช่น จูนเนอร์ + มอนสเตอร์รวมเลเวลเท่ากับมอนสเตอร์ซิงโคร หรือมอนสเตอร์เลเวลเท่ากัน 2 ตัวสำหรับ Xyz) ปุ่ม <strong>Extra Deck</strong> ซ้ายล่างจะเรืองแสง กดเพื่ออัญเชิญบอสได้เลย!</p>
+          </div>
+          <div class="howto-box">
+            <h4>3. ระบบเชนเอฟเฟค (Chain Link) ⚡</h4>
+            <p>เมื่ออีกฝ่ายใช้การ์ด และคุณมี Hand Trap (เช่น <em>ฮารุ อุราระ / Ash Blossom</em>) หรือการ์ดความเร็วสูง ระบบจะเด้งหน้าต่างถามว่าต้องการ <strong>เชนเอฟเฟคตอบโต้</strong> หรือไม่ เหมือนใน Master Duel!</p>
+          </div>
+          <div class="howto-box">
+            <h4>4. การเล่นกับเพื่อนผ่านมือถือ/คอมอีกเครื่อง 📱</h4>
+            <p>หากใช้ Wi-Fi เดียวกัน ให้เพื่อนสแกน QR Code หรือพิมพ์ IP ที่แสดงในหน้าแรก หากอยู่คนละที่กัน (เช่น มือถือใช้ 4G/5G) ให้เลือกแท็บ <strong>"โหมดออนไลน์ข้ามเน็ต (P2P)"</strong> แล้วส่งรหัสห้อง 4 หลักให้เพื่อน!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 4B: ROCK-PAPER-SCISSORS & TURN ORDER ==================== -->
+  <dialog id="dialog-rps" closedby="none" aria-labelledby="rps-dialog-title" aria-describedby="rps-status-text" class="md-dialog rps-dialog">
+    <div class="dialog-inner rps-dialog-inner">
+      <div class="dialog-header">
+        <div class="rps-title-group">
+          <h3 id="rps-dialog-title" data-i18n="rpsTitle">✊✋✌️ Rock · Paper · Scissors</h3>
+          <span class="rps-round-badge" id="rps-round-badge">Round 1</span>
+        </div>
+        <button type="button" class="btn-close-dialog" id="btn-rps-cancel" data-i18n="rpsCancelBtn">✕ Cancel</button>
+      </div>
+
+      <div class="rps-arena">
+        <div class="rps-fighter is-self" id="rps-p1-card">
+          <div class="rps-fighter-name" id="rps-p1-name">Player 1</div>
+          <div class="rps-hand-orb" id="rps-p1-hand" aria-hidden="true">❔</div>
+          <div class="rps-fighter-tag" id="rps-p1-tag">Choose your move</div>
+        </div>
+
+        <div class="rps-vs-col">
+          <div class="rps-vs-pill" id="rps-vs-badge">VS</div>
+          <div class="rps-round-result" id="rps-round-result"></div>
+        </div>
+
+        <div class="rps-fighter is-opp" id="rps-p2-card">
+          <div class="rps-fighter-name" id="rps-p2-name">Opponent</div>
+          <div class="rps-hand-orb" id="rps-p2-hand" aria-hidden="true">❔</div>
+          <div class="rps-fighter-tag" id="rps-p2-tag">Ready</div>
+        </div>
+      </div>
+
+      <p class="rps-status-text" id="rps-status-text" aria-live="polite">
+        Pick Rock, Paper, or Scissors to decide who chooses First or Second turn!
+      </p>
+
+      <div class="rps-pick-panel" id="rps-pick-panel">
+        <button type="button" class="rps-move-btn" id="btn-rps-rock" data-rps-move="ROCK" autofocus>
+          <span class="rps-move-emoji" aria-hidden="true">✊</span>
+          <span class="rps-move-label" data-i18n="rpsRock">Rock</span>
+        </button>
+        <button type="button" class="rps-move-btn" id="btn-rps-paper" data-rps-move="PAPER">
+          <span class="rps-move-emoji" aria-hidden="true">✋</span>
+          <span class="rps-move-label" data-i18n="rpsPaper">Paper</span>
+        </button>
+        <button type="button" class="rps-move-btn" id="btn-rps-scissors" data-rps-move="SCISSORS">
+          <span class="rps-move-emoji" aria-hidden="true">✌️</span>
+          <span class="rps-move-label" data-i18n="rpsScissors">Scissors</span>
+        </button>
+      </div>
+
+      <div class="rps-turn-panel hidden" id="rps-turn-panel">
+        <div class="rps-turn-prompt" id="rps-turn-prompt">🏆 You won! Choose who starts first:</div>
+        <div class="rps-turn-row">
+          <button type="button" class="btn-gold rps-turn-btn" id="btn-rps-go-first" data-rps-order="FIRST">
+            <span class="rps-turn-title" data-i18n="rpsGoFirst">⚡ Go First</span>
+            <span class="rps-turn-sub" data-i18n="rpsGoFirstSub">You start Turn 1</span>
+          </button>
+          <button type="button" class="btn-secondary rps-turn-btn" id="btn-rps-go-second" data-rps-order="SECOND">
+            <span class="rps-turn-title" data-i18n="rpsGoSecond">🛡️ Go Second</span>
+            <span class="rps-turn-sub" data-i18n="rpsGoSecondSub">Opponent starts Turn 1</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 5: DUEL RESULT BANNER ==================== -->
+  <dialog id="dialog-duel-result" closedby="any" aria-labelledby="duel-result-title" class="md-dialog result-dialog">
+    <div class="dialog-inner result-inner">
+      <div class="result-badge" id="result-badge-icon">🏆</div>
+      <h2 id="duel-result-title" class="result-title">VICTORY</h2>
+      <p id="duel-result-reason" class="result-reason"></p>
+      <div class="result-actions">
+        <button type="button" class="btn-gold btn-large" id="btn-duel-rematch">🔄 ดวลใหม่อีกครั้ง (Rematch)</button>
+        <button type="button" class="btn-secondary btn-large" id="btn-result-back-lobby">🏠 กลับสู่หน้าเลือกเด็ค</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

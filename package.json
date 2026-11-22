@@ -1,0 +1,18 @@
+{
+  "name": "yugioh-masterduel-web",
+  "version": "1.0.0",
+  "description": "Yu-Gi-Oh! Master Duel Web Engine with Modular AI-Extensible Card System & Cross-Device Multiplayer",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "validate-cards": "node scripts/validate-cards.js",
+    "test": "node tests/engine.test.js"
+  },
+  "dependencies": {
+    "node-sqlite3-wasm": "^0.8.61",
+    "ocgcore-wasm": "^0.1.6",
+    "ws": "^8.18.0"
+  }
+}

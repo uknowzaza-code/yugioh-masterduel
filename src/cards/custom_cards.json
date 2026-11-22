@@ -1,0 +1,45 @@
+[
+  {
+    "id": "dark_armed_dragon_custom",
+    "passcode": "65192027",
+    "name": "Dark Armed Dragon",
+    "nameTh": "ดาร์ค อาร์ม ดราก้อน (การ์ดตัวอย่างจาก AI)",
+    "kind": "MONSTER",
+    "frame": "EFFECT",
+    "attribute": "DARK",
+    "race": "Dragon",
+    "level": 7,
+    "atk": 2800,
+    "def": 1000,
+    "archetype": "Dark Magician",
+    "specialSummonRule": {
+      "fromZone": "HAND",
+      "labelTh": "อัญเชิญพิเศษ Dark Armed Dragon จากมือ"
+    },
+    "descriptionTh": "(1) อัญเชิญพิเศษจากมือได้ (2) เทิร์นละครั้ง: มูฟการ์ดจากสุสานเรา 1 ใบ; ทำลายการ์ดบนสนามของอีกฝ่าย 1 ใบ!",
+    "effects": [
+      {
+        "id": "dad_pop",
+        "labelTh": "ทำลายการ์ดบนสนามอีกฝ่าย 1 ใบ",
+        "trigger": "IGNITION",
+        "spellSpeed": 1,
+        "zones": [
+          "MMZ",
+          "EMZ"
+        ],
+        "opt": "dad_pop_opt",
+        "condition": {
+          "opponentControlsAnyCard": true
+        },
+        "actions": [
+          {
+            "type": "DESTROY_CARDS",
+            "targetOwner": "OPPONENT",
+            "targetZone": "ANY_FIELD",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  }
+]

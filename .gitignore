@@ -1,0 +1,9 @@
+node_modules/
+data/ygopro/cdb/
+data/ygopro/scripts/
+tools/yugioh_cardlist_scraper/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
