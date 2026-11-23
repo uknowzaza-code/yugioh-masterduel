@@ -70,28 +70,6 @@
       <section class="lobby-panel mode-select-panel">
         <h2 class="panel-title" data-i18n="lobbyModeTitle">2. เลือกโหมดการดูเอล</h2>
 
-        <!-- Playmat Theme Picker -->
-        <div class="lobby-playmat-box">
-          <div class="playmat-picker-label" data-i18n="playmatTitle">🎨 ธีมสนามดวล (Playmat Theme):</div>
-          <div id="lobby-playmat-picker" class="playmat-picker-row"></div>
-        </div>
-
-        <!-- Solo vs AI Mode -->
-        <div class="mode-card featured-solo">
-          <div class="mode-card-header">
-            <span class="mode-icon">🤖</span>
-            <div>
-              <h3 data-i18n="soloTitle">ดวลกับบอท AI (Solo Master Duel Mode)</h3>
-              <p data-i18n="soloDesc">ฝึกฝนคอมโบและทดสอบเด็คกับ AI ที่สามารถซิงโคร, ฟิวชั่น, ลิงก์ และเชนเอฟเฟคได้</p>
-            </div>
-          </div>
-          <div class="solo-controls">
-            <label for="select-ai-deck" data-i18n="soloAiLabel">เด็คของ AI คู่ต่อสู้:</label>
-            <select id="select-ai-deck"></select>
-            <button type="button" class="btn-primary btn-large" id="btn-start-solo" data-i18n="startSoloBtn">⚔️ เริ่มดูเอลกับ AI ทันที</button>
-          </div>
-        </div>
-
         <!-- Multiplayer Mode (Phone / Other PC) -->
         <div class="mode-card featured-multiplayer">
           <div class="mode-card-header">
@@ -175,6 +153,28 @@
               <p data-i18n="sandboxDesc">สลับมุมมองบังคับได้ทั้งผู้เล่น 1 และผู้เล่น 2 เหมาะสำหรับทดสอบการ์ดใหม่ที่ AI เพิ่มเข้ามา</p>
             </div>
             <button type="button" class="btn-outline" id="btn-start-sandbox" data-i18n="startSandboxBtn">เปิดโหมดทดสอบ 2 ฝั่ง</button>
+          </div>
+        </div>
+
+        <!-- Playmat Theme Picker -->
+        <div class="lobby-playmat-box">
+          <div class="playmat-picker-label" data-i18n="playmatTitle">🎨 ธีมสนามดวล (Playmat Theme):</div>
+          <div id="lobby-playmat-picker" class="playmat-picker-row"></div>
+        </div>
+
+        <!-- Solo vs AI Mode -->
+        <div class="mode-card featured-solo">
+          <div class="mode-card-header">
+            <span class="mode-icon">🤖</span>
+            <div>
+              <h3 data-i18n="soloTitle">ดวลกับบอท AI (Solo Master Duel Mode)</h3>
+              <p data-i18n="soloDesc">ฝึกฝนคอมโบและทดสอบเด็คกับ AI ที่สามารถซิงโคร, ฟิวชั่น, ลิงก์ และเชนเอฟเฟคได้</p>
+            </div>
+          </div>
+          <div class="solo-controls">
+            <label for="select-ai-deck" data-i18n="soloAiLabel">เด็คของ AI คู่ต่อสู้:</label>
+            <select id="select-ai-deck"></select>
+            <button type="button" class="btn-primary btn-large" id="btn-start-solo" data-i18n="startSoloBtn">⚔️ เริ่มดูเอลกับ AI ทันที</button>
           </div>
         </div>
       </section>
