@@ -1139,18 +1139,22 @@ textarea:focus {
     flex: 1 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 6px var(--space-3);
+    padding: 8px var(--space-3);
     gap: 4px;
     justify-content: center;
     overflow: hidden !important;
     scrollbar-width: none;
+    container-type: size;
   }
 
   .playmat-container::-webkit-scrollbar {
     display: none;
   }
 
-  .field-row {
+  /* Compute exact card size from .playmat-container's real rendered height (100cqh) */
+  .playmat-container > .field-row {
+    --card-h: clamp(42px, min(calc((100cqh - 76px) / 5), calc((100cqw - 220px) / 5 * 1.4583)), 96px);
+    --card-w: calc(var(--card-h) / 1.4583);
     gap: var(--space-2);
     flex-shrink: 0;
   }
