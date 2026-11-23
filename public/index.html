@@ -107,9 +107,6 @@
             <button type="button" class="mp-tab active" data-mp-tab="ws" id="tab-mp-ws" data-i18n="mpTabWs">
               🌐 โหมด Wi-Fi / เซิร์ฟเวอร์เดียวกัน (แนะนำ)
             </button>
-            <button type="button" class="mp-tab" data-mp-tab="p2p" id="tab-mp-p2p" data-i18n="mpTabP2p">
-              ⚡ โหมดออนไลน์ข้ามเน็ต (4G/5G P2P)
-            </button>
           </div>
 
           <!-- LAN / Server Info Banner (Tab 1: WS) -->
@@ -120,32 +117,6 @@
               <div id="lan-scope-hint" class="lan-scope-hint"></div>
             </div>
             <div class="qr-box" id="lan-qr-container" title="สแกนด้วยกล้องมือถือเพื่อเข้าเกม"></div>
-          </div>
-
-          <!-- Cross-Network P2P Info & NAT/TURN Settings (Tab 2: P2P) -->
-          <div id="p2p-info-box" class="p2p-info-box hidden">
-            <div id="p2p-guidance-text" class="p2p-guidance-text"></div>
-            <div id="p2p-live-status" class="p2p-live-status hidden"></div>
-            <details id="p2p-turn-details" class="p2p-nat-details">
-              <summary id="p2p-nat-summary">⚙️ ตั้งค่า Cross-Wi-Fi NAT &amp; TURN Relay (เมื่ออยู่คนละ Wi-Fi / 4G บล็อก P2P)</summary>
-              <div class="p2p-turn-grid">
-                <input type="text" id="input-turn-url" placeholder="turn:your-turn-host:3478?transport=tcp" autocomplete="off" />
-                <input type="text" id="input-turn-user" placeholder="TURN Username" autocomplete="off" />
-                <input type="password" id="input-turn-cred" placeholder="TURN Credential / Password" autocomplete="off" />
-              </div>
-              <div class="p2p-turn-actions">
-                <label class="p2p-relay-check">
-                  <input type="checkbox" id="chk-turn-force-relay" />
-                  <span id="p2p-force-relay-label">บังคับผ่าน TURN Relay (Force Relay)</span>
-                </label>
-                <div class="p2p-turn-btns">
-                  <button type="button" class="btn-mini" id="btn-save-turn">💾 บันทึก</button>
-                  <button type="button" class="btn-mini" id="btn-clear-turn">🗑️ ล้างค่า</button>
-                  <button type="button" class="btn-mini" id="btn-test-ice">🔍 ทดสอบ NAT / STUN-TURN</button>
-                </div>
-              </div>
-              <div id="p2p-ice-test-result" class="p2p-ice-test-result"></div>
-            </details>
           </div>
 
           <!-- 1-Click Invite Banner (shown when opening ?room=XXXX or ?p2p=XXXXXX link) -->

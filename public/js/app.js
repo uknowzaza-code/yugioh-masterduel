@@ -562,9 +562,6 @@ function renderSelectedDeckSummary() {
         <button type="button" class="btn-outline" id="btn-delete-selected-deck" style="border-color:#ef4444;color:#fca5a5;">🗑️ ลบเด็ค</button>
       </div>
     </div>
-    <ul class="combo-steps-list">
-      ${guide.map(step => `<li>${step}</li>`).join('')}
-    </ul>
   `;
 
   document.getElementById('btn-copy-selected-ydk')?.addEventListener('click', () => {
