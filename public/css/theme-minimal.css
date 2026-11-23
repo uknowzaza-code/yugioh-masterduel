@@ -1344,6 +1344,136 @@ textarea:focus {
   .lobby-panel {
     padding: var(--space-4);
   }
+
+  /* iPad / Tablet Duel Layout (640px - 1023px) */
+  .duel-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100dvh - 54px);
+    overflow-x: hidden;
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .battlefield-area {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: calc(100dvh - 68px);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .inspector-sidebar {
+    order: 2;
+    height: 260px;
+    overflow-y: auto;
+  }
+
+  .player-hud.opponent-hud,
+  .player-bottom-dock {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 15;
+  }
+
+  .playmat-container {
+    flex: 1 1 auto;
+    --mobile-zoom: 1;
+    --slot-h: calc(clamp(56px, min(calc((100dvh - 250px) / 6.2), calc(11.4dvw * 1.4583)), 88px) * var(--mobile-zoom));
+    --slot-w: calc(var(--slot-h) / 1.4583);
+    --side-w: calc(clamp(62px, 14dvw, 104px) * var(--mobile-zoom));
+    --field-gap: clamp(3px, 0.8dvw, 7px);
+    padding: var(--space-2);
+    gap: 5px;
+    margin: 0;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .playmat-container[data-field-scale="85"] {
+    --mobile-zoom: 0.85;
+  }
+
+  .playmat-container[data-field-scale="75"] {
+    --mobile-zoom: 0.75;
+  }
+
+  .field-row {
+    grid-template-columns: var(--side-w) 1fr var(--side-w);
+    gap: var(--field-gap);
+    flex-shrink: 0;
+  }
+
+  .five-zones-grid {
+    grid-template-columns: repeat(5, var(--slot-w));
+    gap: var(--field-gap);
+    justify-content: center;
+  }
+
+  .zone-slot,
+  .emz-slot,
+  .card-zone-box,
+  .deck-pile-slot {
+    width: var(--slot-w);
+    height: var(--slot-h);
+  }
+
+  .oct-zone-btn {
+    height: calc(var(--slot-h) * 0.45);
+    padding: 2px 6px;
+  }
+
+  .phase-action-buttons {
+    min-width: 78px;
+    min-height: 26px;
+  }
+
+  /* Keep horizontal centered phase bar crisp on iPad & Mobile */
+  .field-center-phase-row {
+    padding: 2px 0;
+    flex-shrink: 0;
+  }
+
+  #phase-steps-bar.phase-steps {
+    width: auto !important;
+    max-width: 100%;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  #phase-steps-bar .phase-turn-header {
+    font-size: 11px;
+    padding: 0 6px 0 2px;
+  }
+
+  #phase-steps-bar .phase-badge {
+    min-width: 34px;
+    height: 24px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  .player-bottom-dock {
+    padding: var(--space-2) var(--space-3);
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px));
+  }
+
+  .self-hand-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    gap: var(--space-2);
+    padding: 2px 2px 4px;
+  }
+
+  .self-hand-container .hand-card-item {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
 }
 
 @media (max-width: 639px) {
@@ -1370,6 +1500,98 @@ textarea:focus {
   .playmat-chip {
     flex-shrink: 0;
     scroll-snap-align: start;
+  }
+
+  /* Phone Portrait Duel Fit */
+  .duel-layout {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .battlefield-area {
+    gap: 4px;
+    min-height: calc(100dvh - 58px);
+  }
+
+  .player-hud.opponent-hud {
+    padding: 4px 8px;
+  }
+
+  .playmat-container {
+    --slot-w: calc(clamp(34px, min(11.6dvw, calc((100dvh - 250px) / 6.4 / 1.4583)), 54px) * var(--mobile-zoom));
+    --slot-h: calc(var(--slot-w) * 1.4583);
+    --side-w: calc(clamp(48px, 14.5dvw, 68px) * var(--mobile-zoom));
+    --field-gap: clamp(2px, 0.7dvw, 4px);
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .phase-action-buttons {
+    min-width: 58px;
+    min-height: 24px;
+  }
+
+  #btn-go-battle.btn-phase,
+  .btn-phase.btn-end-turn,
+  .btn-phase.btn-mp2 {
+    font-size: 10px;
+    padding: 3px 5px;
+    min-height: 26px;
+  }
+
+  #phase-steps-bar.phase-steps {
+    padding: 2px 5px;
+    gap: 2px;
+  }
+
+  #phase-steps-bar .phase-turn-header {
+    font-size: 10px;
+    padding: 0 5px 0 2px;
+  }
+
+  #phase-steps-bar .phase-badge {
+    min-width: 28px;
+    height: 22px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+
+  .player-bottom-dock {
+    padding: 5px 6px max(6px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .self-hand-container .hand-card-item {
+    --hand-w: clamp(46px, 14.5dvw, 62px);
+    width: var(--hand-w);
+    min-width: var(--hand-w);
+    height: calc(var(--hand-w) * 1.4583);
+  }
+}
+
+/* Landscape Phone (short viewport height) */
+@media (max-height: 540px) and (max-width: 980px) {
+  .battlefield-area {
+    min-height: calc(100dvh - 44px);
+    gap: 2px;
+  }
+
+  .playmat-container {
+    --slot-h: calc(clamp(38px, calc((100dvh - 165px) / 6.2), 56px) * var(--mobile-zoom));
+    --slot-w: calc(var(--slot-h) / 1.4583);
+    padding: 3px 6px;
+    gap: 2px;
+  }
+
+  #phase-steps-bar .phase-badge {
+    height: 20px;
+    min-width: 28px;
+    font-size: 9.5px;
+  }
+
+  .self-hand-container .hand-card-item {
+    height: clamp(46px, calc(var(--slot-h) * 0.95), 62px);
+    width: calc(clamp(46px, calc(var(--slot-h) * 0.95), 62px) / 1.4583);
+    min-width: calc(clamp(46px, calc(var(--slot-h) * 0.95), 62px) / 1.4583);
   }
 }
 
