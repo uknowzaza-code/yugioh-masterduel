@@ -4669,7 +4669,7 @@ function openChainPromptBar(chainPrompt) {
       if (items.length === 1) {
         triggerChainItem(items[0]);
       } else {
-        bar?.scrollIntoView({ block: 'nearest' });
+        bar?.classList.remove('hidden');
       }
     };
     el.addEventListener('click', onPick, true);
