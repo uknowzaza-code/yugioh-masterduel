@@ -1100,7 +1100,7 @@ textarea:focus {
 
   .duel-layout {
     --sidebar-w: clamp(250px, 21vw, 320px);
-    --card-h: clamp(48px, min(calc((100dvh - 280px) / 5.9), calc((100vw - var(--sidebar-w) - 200px) / 7 * 1.4583)), 94px);
+    --card-h: clamp(46px, min(calc((100dvh - 235px) / 5.4), calc((100vw - var(--sidebar-w) - 200px) / 7 * 1.4583)), 98px);
     --card-w: calc(var(--card-h) / 1.4583);
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
     height: 100%;
@@ -1125,7 +1125,7 @@ textarea:focus {
     min-height: 0;
     min-width: 0;
     padding: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .player-hud.opponent-hud {
@@ -1139,11 +1139,15 @@ textarea:focus {
     flex: 1 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 8px var(--space-3);
+    padding: 6px var(--space-3);
     gap: 4px;
-    justify-content: safe center;
-    overflow-y: auto;
-    overflow-x: hidden;
+    justify-content: center;
+    overflow: hidden !important;
+    scrollbar-width: none;
+  }
+
+  .playmat-container::-webkit-scrollbar {
+    display: none;
   }
 
   .field-row {
@@ -1194,34 +1198,87 @@ textarea:focus {
     min-width: 36px;
   }
 
+  /* Poker-style Hand Dock: tucked & fanned at rest, expands entire hand on hover */
   .player-bottom-dock {
     flex: 0 0 auto;
     position: relative;
-    z-index: 15;
+    z-index: 30;
     margin-top: 0;
-    padding: 6px var(--space-3);
-    min-height: auto;
+    padding: 4px var(--space-3);
+    height: 76px;
+    min-height: 76px;
     overflow: visible;
+    align-items: flex-end;
   }
 
   .self-hand-container {
     flex-wrap: nowrap;
-    align-items: center;
-    min-height: calc(var(--card-h) * 0.94 + 6px);
-    padding: 4px 4px;
-    overflow-x: auto;
-    overflow-y: visible;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0;
+    padding: 0 12px;
+    overflow: visible;
+    transform-origin: bottom center;
+    transform: translateY(16px) scale(0.74);
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .player-bottom-dock:hover .self-hand-container,
+  .player-bottom-dock:focus-within .self-hand-container {
+    transform: translateY(-22px) scale(1.14);
   }
 
   .self-hand-container .hand-card-item {
-    width: calc(var(--card-w) * 0.94);
-    min-width: calc(var(--card-w) * 0.94);
-    height: calc(var(--card-h) * 0.94);
+    --hand-card-w: clamp(78px, 6.6vw, 96px);
+    width: var(--hand-card-w);
+    min-width: var(--hand-card-w);
+    height: calc(var(--hand-card-w) * 1.4583);
     flex-shrink: 0;
+    transform-origin: bottom center;
+    transition: margin var(--dur) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
 
+  /* Poker-style overlap & subtle fan curve at rest */
   .self-hand-container .hand-card-item + .hand-card-item {
-    margin-left: -6px;
+    margin-left: -26px;
+  }
+
+  .self-hand-container .hand-card-item:nth-child(odd) {
+    transform: rotate(-2.5deg) translateY(2px);
+  }
+
+  .self-hand-container .hand-card-item:nth-child(even) {
+    transform: rotate(2.5deg) translateY(2px);
+  }
+
+  .self-hand-container .hand-card-item:first-child {
+    transform: rotate(-6deg) translateY(5px);
+  }
+
+  .self-hand-container .hand-card-item:last-child {
+    transform: rotate(6deg) translateY(5px);
+  }
+
+  .self-hand-container .hand-card-item:only-child {
+    transform: rotate(0deg) translateY(0);
+  }
+
+  /* Fan out & straighten cleanly when hovering the hand */
+  .player-bottom-dock:hover .self-hand-container .hand-card-item + .hand-card-item,
+  .player-bottom-dock:focus-within .self-hand-container .hand-card-item + .hand-card-item {
+    margin-left: -4px;
+  }
+
+  .player-bottom-dock:hover .self-hand-container .hand-card-item,
+  .player-bottom-dock:focus-within .self-hand-container .hand-card-item {
+    transform: rotate(0deg) translateY(0);
+  }
+
+  /* Highlighted hovered card pops up above neighbours */
+  .player-bottom-dock:hover .self-hand-container .hand-card-item:hover {
+    transform: translateY(-16px) scale(1.1) rotate(0deg);
+    z-index: 50;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
   }
 }
 
