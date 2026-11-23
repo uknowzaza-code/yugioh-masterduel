@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Yu-Gi-Oh! Master Duel Web — 55 Top Meta Decks & Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oxanium:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/theme-minimal.css" />
 </head>
 <body>
   <!-- Top Header Bar -->
@@ -198,7 +202,7 @@
         </div>
 
         <div id="inspector-log-pane" class="inspector-pane">
-          <div id="duel-log-list" class="duel-log-list"></div>
+          <div id="duel-log-list" class="duel-log-list" aria-live="polite"></div>
         </div>
       </aside>
 
@@ -213,7 +217,7 @@
               <div class="hud-player-name" id="opp-name">ผู้เล่น 2</div>
             </div>
             <div class="lp-wrapper">
-              <div class="lp-label">LP <span id="opp-lp-value">8000</span></div>
+              <div class="lp-label">LP <span id="opp-lp-value" aria-live="polite">8000</span></div>
             </div>
             <div class="turn-elapsed-pill" id="turn-elapsed-pill" title="จำนวนเทิร์นของการดูเอล">⏳ เทิร์น 1 (ผ่านมา 0 เทิร์น)</div>
           </div>
@@ -368,7 +372,7 @@
         <div class="player-bottom-dock">
           <div class="self-hud-summary">
             <span class="self-name-badge" id="self-name">คุณ (Player 1)</span>
-            <div class="lp-label">LP <span id="self-lp-value">8000</span></div>
+            <div class="lp-label">LP <span id="self-lp-value" aria-live="polite">8000</span></div>
           </div>
 
           <!-- Player Hand Cards -->

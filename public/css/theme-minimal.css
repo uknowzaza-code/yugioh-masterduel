@@ -1,0 +1,1152 @@
+/**
+ * Yu-Gi-Oh! Master Duel Web — Minimal Dark & Restrained Glassmorphism Design System
+ * Clean visual hierarchy, crisp card readability, single primary accent, and mobile polish.
+ * Preserves 100% of existing JS hooks, state classes, and VFX animations from styles.css.
+ */
+
+/* ==================== 1. TOKENS ==================== */
+:root {
+  /* Surfaces (layered from deepest to highest) */
+  --bg-0: #0b0d12;
+  --bg-1: #12151c;
+  --bg-2: #1a1e27;
+  --bg-3: #232836;
+  --glass: rgba(18, 21, 28, 0.72);
+  --glass-strong: rgba(18, 21, 28, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --divider: rgba(255, 255, 255, 0.06);
+
+  /* Text */
+  --text-1: #e8eaf0;
+  --text-2: #a3a9b8;
+  --text-3: #6b7282;
+
+  /* Single Primary Accent */
+  --accent: #5b8cff;
+  --accent-hover: #7aa2ff;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+  --accent-ring: rgba(91, 140, 255, 0.42);
+
+  /* Semantic */
+  --success: #3ecf8e;
+  --warning: #f5b544;
+  --danger: #ff5c6c;
+  --player: #5b8cff;
+  --opponent: #ff6b7d;
+
+  /* Card Frame Accent Edges */
+  --card-normal: #d9b25f;
+  --card-effect: #d9824a;
+  --card-ritual: #5a8fd6;
+  --card-fusion: #9a62c9;
+  --card-synchro: #e6e6e6;
+  --card-xyz: #475569;
+  --card-link: #2f6fb5;
+  --card-spell: #2fa58f;
+  --card-trap: #b84d8a;
+
+  /* 4px Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radii & Shadows */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 8px 32px rgba(0, 0, 0, 0.35);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+
+  /* Fluid Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-num: 'Oxanium', 'Inter', ui-monospace, monospace;
+  --fs-xs: clamp(11px, 0.7rem + 0.1vw, 12px);
+  --fs-sm: clamp(12px, 0.75rem + 0.15vw, 14px);
+  --fs-md: clamp(14px, 0.85rem + 0.2vw, 16px);
+  --fs-lg: clamp(17px, 1rem + 0.4vw, 20px);
+  --fs-xl: clamp(22px, 1.2rem + 0.8vw, 30px);
+
+  /* Remap legacy variables to Minimal Dark tokens */
+  --bg-deep: var(--bg-0);
+  --bg-panel: var(--bg-1);
+  --bg-panel-solid: var(--bg-1);
+  --bg-card-slot: rgba(255, 255, 255, 0.03);
+  --border-subtle: var(--glass-border);
+  --text-main: var(--text-1);
+  --text-muted: var(--text-2);
+}
+
+/* ==================== 2. RESET & BASE ==================== */
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-0);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(91, 140, 255, 0.09), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 85% 100%, rgba(154, 98, 201, 0.06), transparent 70%);
+  background-attachment: fixed;
+  color: var(--text-1);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Accessible focus rings everywhere */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Clean slim scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ==================== 3. HEADER ==================== */
+.app-header {
+  padding: var(--space-3) var(--space-5);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--divider);
+  box-shadow: none;
+}
+
+.logo-emblem {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  border: 1px solid rgba(91, 140, 255, 0.3);
+  color: var(--accent-hover);
+  box-shadow: none;
+  font-size: 0.85rem;
+}
+
+.logo-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-1);
+}
+
+.gold-text {
+  color: var(--accent-hover);
+  text-shadow: none;
+}
+
+.logo-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.header-nav {
+  gap: var(--space-2);
+}
+
+.nav-btn {
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.nav-btn:hover {
+  background: var(--bg-2);
+  border-color: var(--glass-border);
+  color: var(--text-1);
+  transform: none;
+}
+
+.nav-btn:active {
+  transform: scale(0.97);
+}
+
+.nav-btn.accent-ai {
+  background: var(--bg-2);
+  border-color: var(--glass-border);
+  color: var(--text-1);
+}
+
+.nav-btn.accent-ai:hover {
+  background: var(--bg-3);
+}
+
+.nav-btn.lang-toggle-btn {
+  background: var(--bg-2);
+  border-color: var(--glass-border);
+  color: var(--text-1);
+}
+
+/* ==================== 4. SHARED BUTTONS & INPUTS ==================== */
+.btn-primary,
+.btn-gold,
+.btn-secondary,
+.btn-outline,
+.btn-mini {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+  box-shadow: none;
+}
+
+.btn-primary:active,
+.btn-gold:active,
+.btn-secondary:active,
+.btn-outline:active,
+.btn-mini:active {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled,
+.btn-gold:disabled,
+.btn-secondary:disabled,
+.btn-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Primary filled accent CTA */
+.btn-gold,
+#btn-create-room,
+#btn-invite-quick-join {
+  background: var(--accent);
+  color: #ffffff;
+  border: 1px solid transparent;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-sm);
+}
+
+.btn-gold:hover,
+#btn-create-room:hover,
+#btn-invite-quick-join:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px rgba(91, 140, 255, 0.28);
+  transform: none;
+}
+
+/* Secondary calm buttons (keep Solo vs AI secondary so Lobby has ONE primary CTA) */
+.btn-secondary,
+.btn-primary,
+#btn-start-solo,
+#btn-open-ydk-import {
+  background: var(--bg-2);
+  color: var(--text-1);
+  border: 1px solid var(--glass-border);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-sm);
+}
+
+.btn-secondary:hover,
+.btn-primary:hover,
+#btn-start-solo:hover,
+#btn-open-ydk-import:hover {
+  background: var(--bg-3);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: none;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--glass-border);
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
+}
+
+.btn-outline:hover {
+  background: var(--bg-2);
+  color: var(--text-1);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.btn-mini {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-mini:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* Unified Inputs & Selects */
+input[type="text"],
+input[type="search"],
+input[type="password"],
+select,
+textarea {
+  background: var(--bg-2) !important;
+  color: var(--text-1) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+input[type="text"],
+input[type="search"],
+input[type="password"],
+select {
+  height: 40px;
+  padding: 0 var(--space-3);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-3);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
+  outline: none;
+}
+
+/* ==================== 5. LOBBY SCREEN ==================== */
+#screen-lobby {
+  padding: var(--space-5);
+}
+
+.lobby-grid {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(340px, 5fr) 7fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.lobby-panel {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-2);
+}
+
+.panel-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: var(--space-1);
+}
+
+.panel-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
+.panel-header-row {
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--divider);
+}
+
+.player-name-box label {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* Deck Browser Toolbar */
+.deck-browser-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.deck-search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.deck-count-pill {
+  background: var(--bg-2);
+  color: var(--text-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.deck-filter-chip {
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--bg-2);
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.deck-filter-chip:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.deck-filter-chip.active {
+  background: var(--accent-soft);
+  border-color: rgba(91, 140, 255, 0.45);
+  color: var(--accent-hover);
+}
+
+/* Deck Grid Tiles */
+.deck-cards-grid {
+  gap: var(--space-3);
+  padding-right: var(--space-1);
+}
+
+.deck-card-tile,
+.deck-tile {
+  background: var(--bg-1);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: none;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.deck-card-tile:hover,
+.deck-tile:hover {
+  background: var(--bg-2);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.deck-card-tile.selected,
+.deck-tile.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Selected Deck Summary */
+.selected-deck-summary {
+  margin-top: var(--space-4);
+  background: var(--bg-1);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.selected-deck-summary h3 {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+/* Right Column Mode Cards */
+.mode-select-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mode-card {
+  background: var(--bg-1);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: none;
+  margin-bottom: 0;
+}
+
+.mode-card.featured-multiplayer {
+  background: var(--bg-1);
+  border-color: rgba(91, 140, 255, 0.24);
+}
+
+.mode-card.featured-solo,
+.mode-card.sandbox-card {
+  background: rgba(18, 21, 28, 0.65);
+  border-color: var(--divider);
+}
+
+.mode-card-header {
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.mode-card-header h3 {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.mode-card-header p,
+.sandbox-card p {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* Connection Tab */
+.mp-tabs {
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.mp-tab {
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+}
+
+.mp-tab.active {
+  background: var(--accent-soft);
+  border-color: rgba(91, 140, 255, 0.4);
+  color: var(--accent-hover);
+}
+
+/* Server / Cloud Share Box */
+.lan-info-box {
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.lan-label {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.lan-urls-list {
+  font-family: var(--font-num);
+  font-size: var(--fs-sm);
+  color: var(--accent-hover);
+}
+
+.lan-scope-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.qr-box {
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  border: none;
+}
+
+/* 1-Click Invite Banner */
+.invite-join-banner {
+  background: var(--accent-soft);
+  border: 1px solid rgba(91, 140, 255, 0.45);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  box-shadow: none;
+}
+
+.invite-join-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+}
+
+/* Waiting Room Banner */
+.waiting-room-banner {
+  background: var(--bg-2);
+  border: 1px solid rgba(91, 140, 255, 0.35);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.room-code-pill {
+  background: var(--bg-0);
+  color: var(--accent-hover);
+  border: 1px solid rgba(91, 140, 255, 0.4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+}
+
+/* Open Rooms List */
+.open-rooms-section {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--divider);
+}
+
+.open-rooms-header {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+}
+
+.open-room-item {
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.empty-rooms-text {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--divider);
+}
+
+/* Playmat Theme Picker */
+.lobby-playmat-box {
+  background: var(--bg-1);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.playmat-picker-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.playmat-chip {
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.playmat-chip:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.playmat-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text-1);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ==================== 6. DUEL BATTLEFIELD SCREEN ==================== */
+.duel-layout {
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-0);
+}
+
+/* Sidebar (Restrained Glass) */
+.inspector-sidebar {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.inspector-tabs {
+  background: var(--bg-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  margin: var(--space-3);
+  border-bottom: none;
+  gap: var(--space-1);
+}
+
+.insp-tab {
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: none;
+  padding: var(--space-2);
+}
+
+.insp-tab.active {
+  background: var(--bg-1);
+  color: var(--text-1);
+  box-shadow: var(--shadow-1);
+}
+
+.inspector-content {
+  padding: 0 var(--space-3) var(--space-3);
+  line-height: 1.55;
+  color: var(--text-1);
+}
+
+.inspector-placeholder {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.duel-log-list {
+  padding: 0 var(--space-3) var(--space-3);
+  font-size: var(--fs-xs);
+}
+
+.duel-log-entry,
+.log-entry {
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-2);
+}
+
+/* Top Opponent HUD & Bottom Player Dock */
+.player-hud.opponent-hud,
+.player-bottom-dock {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.player-hud.opponent-hud {
+  border-top: 2px solid rgba(255, 107, 125, 0.45);
+  padding: var(--space-2) var(--space-4);
+}
+
+.player-bottom-dock {
+  border-bottom: 2px solid rgba(91, 140, 255, 0.45);
+}
+
+.lp-label {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#opp-lp-value {
+  color: var(--opponent);
+  font-size: var(--fs-lg);
+}
+
+#self-lp-value {
+  color: var(--player);
+  font-size: var(--fs-lg);
+}
+
+.turn-elapsed-pill,
+.zone-pill-btn,
+.zone-pill-static {
+  background: var(--bg-2);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.zone-pill-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Playmat Container (Clean, High-Clarity Field — NO glass blur on zones) */
+.playmat-container {
+  position: relative;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  background-color: var(--bg-1);
+}
+
+.playmat-ruins,
+.playmat-cyber,
+.playmat-arcane,
+.playmat-swordsoul,
+.playmat-crimson {
+  border-color: var(--glass-border);
+}
+
+/* Subtle dark readability overlay over playmat art */
+.playmat-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(11, 13, 18, 0.56) 0%, rgba(11, 13, 18, 0.42) 50%, rgba(11, 13, 18, 0.56) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.playmat-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Crisp Minimal Zone Slots */
+.zone-slot,
+.card-zone-box,
+.emz-slot {
+  background: rgba(18, 21, 28, 0.55);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.self-mmz-row .zone-slot,
+.self-stz-row .zone-slot,
+#self-field-spell-slot {
+  background: rgba(91, 140, 255, 0.045);
+  border-color: rgba(91, 140, 255, 0.16);
+}
+
+.opp-mmz-row .zone-slot,
+.opp-stz-row .zone-slot,
+#opp-field-spell-slot {
+  background: rgba(255, 107, 125, 0.045);
+  border-color: rgba(255, 107, 125, 0.16);
+}
+
+.deck-pile-slot,
+.oct-zone-btn {
+  background: rgba(18, 21, 28, 0.78);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+.deck-pile-slot:hover,
+.oct-zone-btn:hover {
+  background: var(--bg-2);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-1);
+}
+
+.zone-count,
+.oct-count {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* Phase Stepper & Controls */
+.phase-orb {
+  background: var(--bg-2);
+  border: 1px solid rgba(91, 140, 255, 0.45);
+  color: var(--text-1);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-1);
+}
+
+.phase-steps {
+  background: rgba(18, 21, 28, 0.82);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.phase-badge {
+  font-family: var(--font-num);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  border-radius: var(--radius-sm);
+}
+
+.phase-badge.active {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.btn-phase {
+  background: var(--bg-2);
+  border: 1px solid var(--glass-border);
+  color: var(--text-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.btn-phase:hover {
+  background: var(--bg-3);
+}
+
+.btn-phase.btn-end-turn {
+  background: var(--accent);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.btn-phase.btn-end-turn:hover {
+  background: var(--accent-hover);
+}
+
+.btn-chain-toggle,
+.btn-surrender,
+.btn-mobile-zoom {
+  background: var(--bg-2);
+  border: 1px solid var(--glass-border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  box-shadow: none;
+}
+
+.btn-chain-toggle:hover,
+.btn-surrender:hover,
+.btn-mobile-zoom:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* ==================== 7. CARD READABILITY & STATES ==================== */
+.duel-card {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.duel-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-2);
+}
+
+.duel-card.def-position:hover {
+  transform: rotate(90deg) translateX(-3px);
+}
+
+/* Subtle 3px type accent bar at top of card */
+.duel-card.frame-normal { border-top: 3px solid var(--card-normal); }
+.duel-card.frame-effect { border-top: 3px solid var(--card-effect); }
+.duel-card.frame-ritual { border-top: 3px solid var(--card-ritual); }
+.duel-card.frame-fusion { border-top: 3px solid var(--card-fusion); }
+.duel-card.frame-synchro { border-top: 3px solid var(--card-synchro); }
+.duel-card.frame-xyz { border-top: 3px solid var(--card-xyz); }
+.duel-card.frame-link { border-top: 3px solid var(--card-link); }
+.duel-card.frame-spell { border-top: 3px solid var(--card-spell); }
+.duel-card.frame-trap { border-top: 3px solid var(--card-trap); }
+
+/* High-contrast ATK/DEF footer strip */
+.card-mini-footer {
+  background: rgba(11, 13, 18, 0.84) !important;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-mini-title {
+  background: rgba(11, 13, 18, 0.78);
+  font-weight: 600;
+}
+
+/* Hand Card Hover Lift */
+.hand-card-item:hover {
+  transform: translateY(-10px) scale(1.1);
+  z-index: 25;
+  box-shadow: var(--shadow-2);
+}
+
+/* Playable / Activatable Glow (replaces clunky thick borders) */
+.duel-card.is-playable,
+.duel-card.playable {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(91, 140, 255, 0.45);
+}
+
+.duel-card.is-activatable {
+  box-shadow: 0 0 0 2px var(--success), 0 0 16px rgba(62, 207, 142, 0.45);
+}
+
+/* Floating Glass Action Menu & Chain Prompt Bar */
+.card-action-popup,
+.chain-prompt-bar,
+.ygopro-card-strip,
+.chain-stack-overlay {
+  background: var(--glass-strong);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+/* Modals / Dialogs */
+.md-dialog {
+  background: var(--bg-1);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  color: var(--text-1);
+}
+
+.md-dialog::backdrop {
+  background: rgba(5, 7, 11, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.dialog-header {
+  border-bottom: 1px solid var(--divider);
+}
+
+.btn-close-dialog {
+  background: var(--bg-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+}
+
+.btn-close-dialog:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* ==================== 8. FALLBACK & MOBILE & REDUCED MOTION ==================== */
+@supports not (backdrop-filter: blur(1px)) {
+  .app-header,
+  .lobby-panel,
+  .inspector-sidebar,
+  .player-hud.opponent-hud,
+  .player-bottom-dock,
+  .card-action-popup,
+  .chain-prompt-bar,
+  .ygopro-card-strip,
+  .chain-stack-overlay {
+    background: var(--bg-1);
+  }
+}
+
+@media (max-width: 1023px) {
+  #screen-lobby {
+    padding: var(--space-3);
+  }
+
+  .lobby-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .mode-select-panel {
+    order: -1;
+  }
+
+  .lobby-panel {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 639px) {
+  .app-header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .btn-gold,
+  .btn-secondary,
+  .btn-primary,
+  #btn-create-room,
+  #btn-join-room,
+  #btn-invite-quick-join {
+    min-height: 44px;
+  }
+
+  .playmat-picker-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-1);
+  }
+
+  .playmat-chip {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
