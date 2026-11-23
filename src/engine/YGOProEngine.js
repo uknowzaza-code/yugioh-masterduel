@@ -152,6 +152,7 @@ export class YGOProEngine {
     this._aiChainKeysThisTurn = new Set();
     this._confirmedCards = new Set();
     this._pendingPreferredPlace = [null, null];
+    this._pendingPreferredAttackTarget = [null, null];
     this.destroyed = false;
 
     const seed = [
@@ -304,6 +305,29 @@ export class YGOProEngine {
           const msgPlayer = this.pendingMessage.player;
           if (msgType === OcgMessageType.SELECT_IDLECMD || msgType === OcgMessageType.SELECT_BATTLECMD) {
             this._pendingPreferredPlace[msgPlayer] = null;
+            this._pendingPreferredAttackTarget[msgPlayer] = null;
+          } else if (msgType === OcgMessageType.SELECT_CARD && this._pendingPreferredAttackTarget[msgPlayer]) {
+            const targetId = this._pendingPreferredAttackTarget[msgPlayer];
+            this._pendingPreferredAttackTarget[msgPlayer] = null;
+            const cards = this.pendingMessage.selects || [];
+            const minSel = this.pendingMessage.min || 1;
+            const maxSel = this.pendingMessage.max || 1;
+            if (minSel === 1 && maxSel === 1) {
+              const matchIdx = cards.findIndex(
+                c => makeInstanceId(c.controller, c.location, c.sequence) === targetId
+              );
+              if (matchIdx >= 0) {
+                const autoAtkResp = {
+                  type: OcgResponseType.SELECT_CARD,
+                  indicies: [matchIdx]
+                };
+                this._lastResponse = autoAtkResp;
+                prevPending = this.pendingMessage;
+                this.pendingMessage = null;
+                this.core.duelSetResponse(this.handle, autoAtkResp);
+                continue;
+              }
+            }
           } else if (msgType === OcgMessageType.SELECT_PLACE && this._pendingPreferredPlace[msgPlayer]) {
             const pref = this._pendingPreferredPlace[msgPlayer];
             this._pendingPreferredPlace[msgPlayer] = null;
@@ -1298,6 +1322,7 @@ export class YGOProEngine {
           c => makeInstanceId(c.controller, c.location, c.sequence) === (action.attackerInstanceId || action.instanceId)
         );
         if (atkIdx >= 0) {
+          this._pendingPreferredAttackTarget[playerIndex] = action.targetInstanceId || null;
           response = { type: OcgResponseType.SELECT_BATTLECMD, action: SelectBattleCMDAction.SELECT_BATTLE, index: atkIdx };
         }
       } else if (typeof action.ocgAction === 'number' && typeof action.ocgIndex === 'number') {

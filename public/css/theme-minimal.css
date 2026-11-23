@@ -1340,6 +1340,40 @@ textarea:focus {
   box-shadow: 0 0 0 2px var(--success), 0 0 16px rgba(62, 207, 142, 0.45);
 }
 
+/* Green Drag-to-Attack Arrow & Return-to-Origin Cancel Feedback */
+.duel-attack-arrow-svg {
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.65));
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.duel-attack-arrow-svg.is-cancel-hover {
+  opacity: 0.28;
+}
+
+.zone-slot.drop-target-attack,
+.emz-slot.drop-target-attack {
+  border: 2px solid #22c55e !important;
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.72) !important;
+}
+
+.zone-slot.drop-target-attack.drop-zone-hovered,
+.emz-slot.drop-target-attack.drop-zone-hovered {
+  box-shadow: 0 0 24px rgba(74, 222, 128, 0.95), inset 0 0 14px rgba(34, 197, 94, 0.55) !important;
+}
+
+.drop-target-attack-direct {
+  box-shadow: inset 0 0 0 2px #22c55e, 0 0 18px rgba(34, 197, 94, 0.55) !important;
+}
+
+.drop-target-attack-cancel {
+  border: 1.5px dashed rgba(148, 163, 184, 0.7) !important;
+}
+
+.drop-target-attack-cancel.drop-zone-hovered {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 16px rgba(255, 92, 108, 0.55) !important;
+}
+
 /* Floating Glass Action Menu & Chain Prompt Bar */
 .card-action-popup,
 .chain-prompt-bar,

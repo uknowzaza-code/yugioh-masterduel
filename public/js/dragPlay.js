@@ -20,14 +20,14 @@ function getSvgArrowOverlay() {
     svg.innerHTML = `
       <defs>
         <linearGradient id="atkArrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#facc15" />
-          <stop offset="100%" stop-color="#ef4444" />
+          <stop offset="0%" stop-color="#86efac" />
+          <stop offset="100%" stop-color="#22c55e" />
         </linearGradient>
         <marker id="atkArrowHead" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="auto">
-          <path d="M1,1 L11,6 L1,11 L3.5,6 Z" fill="#ef4444" stroke="#fef08a" stroke-width="0.9" />
+          <path d="M1,1 L11,6 L1,11 L3.5,6 Z" fill="#22c55e" stroke="#dcfce7" stroke-width="0.9" />
         </marker>
       </defs>
-      <line id="atk-arrow-glow" x1="0" y1="0" x2="0" y2="0" stroke="rgba(239,68,68,0.42)" stroke-width="14" stroke-linecap="round" />
+      <line id="atk-arrow-glow" x1="0" y1="0" x2="0" y2="0" stroke="rgba(34,197,94,0.45)" stroke-width="14" stroke-linecap="round" />
       <line id="atk-arrow-core" x1="0" y1="0" x2="0" y2="0" stroke="url(#atkArrowGrad)" stroke-width="6" stroke-dasharray="10 6" stroke-linecap="round" marker-end="url(#atkArrowHead)" />
     `;
     document.body.appendChild(svg);
@@ -119,6 +119,12 @@ export function enableCardDragToPlay(cardEl, config) {
     const prepareLegalDropTargets = () => {
       if (hasAttack && (!hasHandOrFieldActions || card.zone === 'MMZ' || card.zone === 'EMZ')) {
         dragMode = 'ATTACK';
+        // Mark the attacker's own slot so dragging back to origin clearly cancels the attack
+        const originSlot = cardEl.closest('.zone-slot, .emz-slot') || cardEl;
+        markTarget(originSlot, 'drop-target-attack-cancel', {
+          'data-drop-kind': 'ATTACK_CANCEL',
+          'data-drop-hint': lang === 'en' ? '✕ Drop here to Cancel' : '✕ ลากกลับตรงนี้เพื่อยกเลิก'
+        });
         // Highlight opponent monsters
         for (const targetId of normalizedAttackInfo.targets || []) {
           const oppCard = document.querySelector(`.duel-card[data-instance-id="${targetId}"]`);
@@ -299,6 +305,12 @@ export function enableCardDragToPlay(cardEl, config) {
         target.classList.add('drop-zone-hovered');
       }
       currentHoverEl = target;
+
+      if (dragMode === 'ATTACK') {
+        const svg = document.getElementById('duel-attack-arrow-svg');
+        const isCancelHover = target?.getAttribute('data-drop-kind') === 'ATTACK_CANCEL';
+        svg?.classList.toggle('is-cancel-hover', Boolean(isCancelHover));
+      }
     };
 
     const cleanup = () => {
@@ -329,13 +341,14 @@ export function enableCardDragToPlay(cardEl, config) {
 
       const svg = document.getElementById('duel-attack-arrow-svg');
       svg?.classList.add('hidden');
+      svg?.classList.remove('is-cancel-hover');
       ghostEl = null;
     };
 
     const resolveDrop = (clientX, clientY) => {
       const dropEl = findBestDropElement(clientX, clientY);
-      if (!dropEl) {
-        announceLive(lang === 'en' ? `${card.name} drag cancelled` : `ยกเลิกการลาก ${card.nameTh}`);
+      if (!dropEl || dropEl.getAttribute('data-drop-kind') === 'ATTACK_CANCEL') {
+        announceLive(lang === 'en' ? `${card.name} attack cancelled` : `ยกเลิกการโจมตีของ ${card.nameTh}`);
         return;
       }
 
