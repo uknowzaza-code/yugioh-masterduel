@@ -2114,7 +2114,7 @@ img, video {
   border: 2px solid #f43f5e !important;
 }
 
-/* ==================== BOTTOM CHAIN SELECTION BAR (FLOATING OVERLAY, NO LAYOUT SHIFT) ==================== */
+/* ==================== BOTTOM CHAIN SELECTION BAR (TRANSLUCENT FLOATING OVERLAY) ==================== */
 .chain-prompt-bar {
   position: absolute;
   left: 50%;
@@ -2123,19 +2123,21 @@ img, video {
   width: min(94%, 780px);
   max-width: calc(100% - 16px);
   z-index: 46;
-  background: rgba(9, 13, 24, 0.96);
-  border: 2px solid var(--gold-bright);
+  background: rgba(9, 13, 24, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(250, 204, 21, 0.65);
   border-radius: 12px;
-  padding: 0.5rem 0.8rem;
+  padding: 0.45rem 0.75rem;
   margin-top: 0;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.82);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
 }
 
 .chain-bar-header {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.4rem;
   flex-wrap: wrap;
 }
 
@@ -2143,11 +2145,13 @@ img, video {
   flex: 1;
   font-size: 0.82rem;
   color: #f8fafc;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .btn-chain-pass {
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
+  background: rgba(30, 41, 59, 0.62);
 }
 
 .chain-options-list {
@@ -2161,11 +2165,12 @@ img, video {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1.5px solid var(--cyan-glow);
+  background: rgba(15, 23, 42, 0.58);
+  border: 1.5px solid rgba(56, 189, 248, 0.78);
   border-radius: 8px;
   padding: 0.4rem 0.65rem;
   color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   cursor: pointer;
   min-width: 210px;
   text-align: left;
