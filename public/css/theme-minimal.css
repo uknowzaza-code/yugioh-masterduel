@@ -1085,14 +1085,14 @@ textarea:focus {
   }
 
   #screen-duel.active {
-    height: calc(100vh - 58px);
-    height: calc(100dvh - 58px);
+    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
     overflow: hidden;
   }
 
   .duel-layout {
-    --sidebar-w: clamp(260px, 22vw, 330px);
-    --card-h: clamp(66px, min(calc((100dvh - 208px) / 6.3), calc((100vw - var(--sidebar-w) - 180px) / 7 * 1.4583)), 104px);
+    --sidebar-w: clamp(250px, 21vw, 320px);
+    --card-h: clamp(54px, min(calc((100dvh - 255px) / 6.2), calc((100vw - var(--sidebar-w) - 200px) / 7 * 1.4583)), 98px);
     --card-w: calc(var(--card-h) / 1.4583);
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
     height: 100%;
@@ -1112,7 +1112,7 @@ textarea:focus {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: var(--space-2);
+    gap: var(--space-1);
     height: 100%;
     min-height: 0;
     min-width: 0;
@@ -1120,17 +1120,26 @@ textarea:focus {
     overflow: hidden;
   }
 
+  .player-hud.opponent-hud {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 15;
+    padding: 4px var(--space-3);
+  }
+
   .playmat-container {
     flex: 1 1 auto;
     min-height: 0;
     margin: 0;
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-1);
+    padding: 6px var(--space-3);
+    gap: 4px;
     justify-content: center;
+    overflow: hidden;
   }
 
   .field-row {
     gap: var(--space-2);
+    flex-shrink: 0;
   }
 
   .zone-slot,
@@ -1142,25 +1151,39 @@ textarea:focus {
   }
 
   .oct-zone-btn {
-    height: calc(var(--card-h) * 0.46);
+    height: calc(var(--card-h) * 0.45);
+    padding: 2px 6px;
+  }
+
+  .field-center-phase-row {
+    padding: 1px 0;
+    flex-shrink: 0;
+  }
+
+  #phase-steps-bar .phase-badge {
+    height: 22px;
+    min-width: 36px;
   }
 
   .player-bottom-dock {
-    padding: var(--space-2) var(--space-3);
-    min-height: calc(var(--card-h) * 0.96);
-    max-height: calc(var(--card-h) * 1.15);
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 15;
+    padding: 6px var(--space-3);
+    min-height: calc(var(--card-h) * 0.98 + 12px);
     overflow: visible;
   }
 
   .self-hand-container {
     flex-wrap: nowrap;
     align-items: center;
-    min-height: calc(var(--card-h) * 0.9);
+    min-height: calc(var(--card-h) * 0.96);
+    padding: 2px 0;
   }
 
   .self-hand-container .hand-card-item {
-    width: calc(var(--card-w) * 0.96);
-    height: calc(var(--card-h) * 0.96);
+    width: calc(var(--card-w) * 0.94);
+    height: calc(var(--card-h) * 0.94);
     flex-shrink: 0;
   }
 
