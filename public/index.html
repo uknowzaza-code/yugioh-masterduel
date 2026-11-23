@@ -148,6 +148,18 @@
             </details>
           </div>
 
+          <!-- 1-Click Invite Banner (shown when opening ?room=XXXX or ?p2p=XXXXXX link) -->
+          <div id="invite-join-banner" class="invite-join-banner hidden">
+            <div class="invite-join-info">
+              <strong id="invite-join-title">⚔️ คุณได้รับคำเชิญเข้าห้องดวล!</strong>
+              <div class="invite-join-sub" id="invite-join-sub">เลือกเด็คด้านซ้าย แล้วกดเข้าร่วมได้ทันทีในคลิกเดียว</div>
+            </div>
+            <div class="invite-join-actions">
+              <button type="button" class="btn-gold" id="btn-invite-quick-join">⚔️ เข้าร่วมห้องทันที</button>
+              <button type="button" class="btn-mini" id="btn-invite-dismiss">✕</button>
+            </div>
+          </div>
+
           <div class="mp-actions-row">
             <button type="button" class="btn-gold" id="btn-create-room" data-i18n="createRoomBtn">➕ สร้างห้องดวลใหม่</button>
             <div class="join-code-group">
@@ -165,6 +177,7 @@
                 <span id="display-room-code" class="room-code-pill">----</span>
                 <button type="button" class="btn-mini" id="btn-copy-room-code">📋 คัดลอกรหัส</button>
                 <button type="button" class="btn-mini" id="btn-copy-invite-link">🔗 คัดลอกลิงก์เชิญ</button>
+                <button type="button" class="btn-mini" id="btn-share-invite-link">📤 แชร์ให้เพื่อน</button>
                 <button type="button" class="btn-mini" id="btn-cancel-waiting-room">✕ ปิดห้อง</button>
               </div>
               <div class="waiting-sub" id="waiting-room-sub">บอกรหัสนี้ให้เพื่อนกรอก หรือกดเข้าร่วมจากรายการห้องที่เปิดอยู่ด้านล่าง</div>

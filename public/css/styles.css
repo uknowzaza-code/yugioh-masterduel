@@ -4445,3 +4445,39 @@ dialog.rps-dialog::backdrop {
 .duel-card.is-equipped-target {
   box-shadow: 0 0 14px rgba(250, 204, 21, 0.85), inset 0 0 8px rgba(56, 189, 248, 0.35);
 }
+
+/* 1-Click Cross-Wi-Fi Invite Join Banner */
+.invite-join-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.7rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(250, 204, 21, 0.16));
+  border: 1.5px solid rgba(250, 204, 21, 0.7);
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.22);
+}
+
+.invite-join-banner.hidden {
+  display: none;
+}
+
+.invite-join-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.invite-join-sub {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.invite-join-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}

@@ -871,18 +871,48 @@ function applyInviteQueryParams() {
   const p2pCode = params.get('p2p');
   const wsCode = params.get('room');
   const codeInput = document.getElementById('input-room-code');
+  const banner = document.getElementById('invite-join-banner');
+  const titleEl = document.getElementById('invite-join-title');
+  const subEl = document.getElementById('invite-join-sub');
+  const joinBtn = document.getElementById('btn-invite-quick-join');
+  const dismissBtn = document.getElementById('btn-invite-dismiss');
 
-  if (p2pCode) {
-    appState.mpConnectionType = 'p2p';
-    updateMpTabUI();
-    if (codeInput) codeInput.value = p2pCode.trim().toUpperCase();
-    showToast(`🔗 พร้อมเข้ารหัสห้อง P2P #${p2pCode.trim().toUpperCase()} — กด "เข้าร่วม" ได้เลย`);
-  } else if (wsCode) {
-    appState.mpConnectionType = 'ws';
-    updateMpTabUI();
-    if (codeInput) codeInput.value = wsCode.trim();
-    showToast(`🔗 พร้อมเข้าห้อง #${wsCode.trim()} — กด "เข้าร่วม" ได้เลย`);
+  const inviteCode = p2pCode ? p2pCode.trim().toUpperCase() : (wsCode ? wsCode.trim() : '');
+  if (!inviteCode) return;
+
+  const isP2P = Boolean(p2pCode);
+  appState.mpConnectionType = isP2P ? 'p2p' : 'ws';
+  updateMpTabUI();
+  if (codeInput) codeInput.value = inviteCode;
+
+  if (banner && titleEl && joinBtn) {
+    const isEn = appState.lang === 'en';
+    titleEl.textContent = isEn
+      ? `⚔️ Invited to Duel Room #${inviteCode}`
+      : `⚔️ คุณได้รับคำเชิญเข้าห้องดวล #${inviteCode}`;
+    if (subEl) {
+      subEl.textContent = isEn
+        ? 'Pick your deck on the left, then click Join Now!'
+        : 'เลือกเด็คด้านซ้าย แล้วกดเข้าร่วมได้ทันทีในคลิกเดียว';
+    }
+    joinBtn.textContent = isEn ? `⚔️ Join Room #${inviteCode}` : `⚔️ เข้าร่วมห้อง #${inviteCode}`;
+    banner.classList.remove('hidden');
+
+    joinBtn.onclick = () => {
+      banner.classList.add('hidden');
+      if (codeInput) codeInput.value = inviteCode;
+      document.getElementById('btn-join-room')?.click();
+    };
+    if (dismissBtn) {
+      dismissBtn.onclick = () => banner.classList.add('hidden');
+    }
   }
+
+  showToast(
+    appState.lang === 'en'
+      ? `🔗 Ready to join Room #${inviteCode} — click Join!`
+      : `🔗 พร้อมเข้าห้อง #${inviteCode} — กด "เข้าร่วมห้อง" ได้เลย`
+  );
 }
 
 function setupCrossWifiUiBindings() {
@@ -972,6 +1002,28 @@ function setupCrossWifiUiBindings() {
     copyTextToClipboard(inviteUrl, `🔗 คัดลอกลิงก์ชวนเล่นแล้ว! (${code})`);
   });
 
+  document.getElementById('btn-share-invite-link')?.addEventListener('click', async () => {
+    const code = appState.activeRoomCode || document.getElementById('display-room-code')?.textContent?.trim();
+    if (!code || code === '----') return;
+    const mode = appState.activeRoomMode || appState.mpConnectionType;
+    const inviteUrl = buildRoomInviteUrl(code, mode);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Yu-Gi-Oh! Master Duel',
+          text: appState.lang === 'en'
+            ? `Join my Yu-Gi-Oh! duel room #${code}`
+            : `มาดวล Yu-Gi-Oh! กัน! กดลิงก์เพื่อเข้าห้อง #${code}`,
+          url: inviteUrl
+        });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+    copyTextToClipboard(inviteUrl, `🔗 คัดลอกลิงก์ชวนเล่นแล้ว! (${code})`);
+  });
+
   document.getElementById('btn-cancel-waiting-room')?.addEventListener('click', () => {
     appState.mpManager?.disconnectRoom();
     appState.activeRoomCode = null;
@@ -1026,7 +1078,19 @@ function initMultiplayerManager() {
       if (subEl) {
         subEl.textContent = mode === 'P2P'
           ? 'ส่งรหัส 6 หลักนี้ให้เพื่อนกรอกใน Mode 2 (P2P Online) หรือกดคัดลอกลิงก์'
-          : 'Waiting for opponent to join...';
+          : (appState.lang === 'en'
+              ? 'Send the invite link or room code to your friend (works across any Wi-Fi / 4G)!'
+              : 'ส่งลิงก์เชิญหรือรหัสห้องนี้ให้เพื่อนได้เลย (เล่นข้าม Wi-Fi / 4G ได้ทันที)!');
+      }
+      // Update QR code to point directly to this room's 1-click invite URL
+      const qrBox = document.getElementById('lan-qr-container');
+      if (qrBox && mode !== 'P2P') {
+        const inviteUrl = buildRoomInviteUrl(roomCode, mode);
+        qrBox.innerHTML = '';
+        const qrImg = document.createElement('img');
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(inviteUrl)}`;
+        qrImg.alt = `Room #${roomCode} QR`;
+        qrBox.appendChild(qrImg);
       }
       showToast(`สร้างห้องสำเร็จ! รหัสห้อง: ${roomCode} (${mode})`);
     },
@@ -4927,7 +4991,21 @@ function applyLanguage() {
   updateMpTabUI();
   const lanLabelEl = document.getElementById('lan-box-label');
   const lanHintEl = document.getElementById('lan-scope-hint');
+  const wsTabEl = document.getElementById('tab-mp-ws');
+  const p2pTabEl = document.getElementById('tab-mp-p2p');
   const isLocalOrigin = isPrivateOrLocalHost(window.location.hostname);
+  if (!isLocalOrigin) {
+    if (wsTabEl) {
+      wsTabEl.textContent = lang === 'en'
+        ? '🌍 Cloud Online — Cross-Wi-Fi / 4G (Recommended)'
+        : '🌍 ออนไลน์ข้าม Wi-Fi / 4G (Cloud Server — แนะนำ)';
+    }
+    if (p2pTabEl) {
+      p2pTabEl.textContent = lang === 'en'
+        ? '⚡ Direct P2P (Fallback)'
+        : '⚡ โหมด P2P สำรอง';
+    }
+  }
   if (lanLabelEl && lanHintEl) {
     if (!isLocalOrigin) {
       lanLabelEl.textContent = lang === 'en'
