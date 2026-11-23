@@ -179,6 +179,9 @@ export class DuelEngine {
       positionChangedThisTurn: false,
       effectsNegated: false,
       immuneThisTurn: false,
+      properlySummoned: false,
+      equippedTo: null,
+      equipTargetInstanceId: null,
       overlayUnits: []
     };
   }
@@ -350,9 +353,61 @@ export class DuelEngine {
   }
 
   /**
+   * ตรวจสอบว่าการ์ดในสุสาน/นอกเกมสามารถถูกชุบชีวิตด้วยเอฟเฟคได้หรือไม่ (Proper Special Summon Rule)
+   */
+  canBeRevivedFromGYOrBanished(card) {
+    if (!card) return false;
+    const requiresProperSummon = [
+      MONSTER_FRAMES.FUSION,
+      MONSTER_FRAMES.SYNCHRO,
+      MONSTER_FRAMES.XYZ,
+      MONSTER_FRAMES.LINK,
+      'RITUAL'
+    ].includes(card.frame) || Boolean(card.mustBeSpecialSummoned);
+    if (!requiresProperSummon) return true;
+    return Boolean(card.properlySummoned);
+  }
+
+  /**
+   * ทำลายการ์ด Equip ทั้งหมดที่สวมใส่มอนสเตอร์เป้าหมาย (เมื่อมอนสเตอร์ออกจากสนามหรือถูกคว่ำหน้า)
+   */
+  destroyEquipCardsForMonster(monsterInstanceId) {
+    if (!monsterInstanceId || !this.state) return;
+    const toDestroy = [];
+    for (const pIdx of [0, 1]) {
+      const p = this.state.players[pIdx];
+      for (const st of p.stz) {
+        if (st && (st.equippedTo === monsterInstanceId || st.equipTargetInstanceId === monsterInstanceId)) {
+          toDestroy.push(st);
+        }
+      }
+    }
+    for (const eq of toDestroy) {
+      eq.equippedTo = null;
+      eq.equipTargetInstanceId = null;
+      this.destroyCard(eq.owner, eq.instanceId, 'EQUIP_TARGET_LOST');
+    }
+  }
+
+  /**
+   * พลิกมอนสเตอร์บนสนามเป็นคว่ำหน้าตั้งป้องกัน (ทำลาย Equip ที่สวมอยู่ แต่คง Xyz Materials ไว้)
+   */
+  flipMonsterFaceDown(instanceId) {
+    const loc = this.findCardInstance(instanceId);
+    if (!loc || (loc.zone !== 'MMZ' && loc.zone !== 'EMZ')) return false;
+    const { card } = loc;
+    if (card.frame === MONSTER_FRAMES.LINK || card.frame === MONSTER_FRAMES.TOKEN) {
+      return false;
+    }
+    card.position = POSITIONS.SET_DEF;
+    this.destroyEquipCardsForMonster(card.instanceId);
+    return true;
+  }
+
+  /**
    * นำการ์ดออกจากโซนปัจจุบัน
    */
-  removeFromCurrentZone(instanceId) {
+  removeFromCurrentZone(instanceId, options = {}) {
     const loc = this.findCardInstance(instanceId);
     if (!loc) return null;
     const { card, playerIndex, zone, zoneIndex } = loc;
@@ -368,21 +423,37 @@ export class DuelEngine {
     else if (zone === 'GY') p.gy = p.gy.filter(c => c.instanceId !== instanceId);
     else if (zone === 'BANISHED') p.banished = p.banished.filter(c => c.instanceId !== instanceId);
 
-    // If an Xyz monster leaves the field, send its overlay units to GY
-    if ((zone === 'MMZ' || zone === 'EMZ') && Array.isArray(card.overlayUnits) && card.overlayUnits.length > 0) {
-      const units = card.overlayUnits.splice(0, card.overlayUnits.length);
-      for (const u of units) {
-        const unitOwner = this.state.players[u.owner];
-        u.zone = 'GY';
-        unitOwner.gy.push(u);
+    // Clear equip reference if an Equip card leaves the field
+    if (zone === 'STZ' && !options.isControlChange) {
+      card.equippedTo = null;
+      card.equipTargetInstanceId = null;
+    }
+
+    // If a monster actually leaves the field (not a control change):
+    // 1. Send Xyz overlay units to GY (or Banished under Macro Cosmos)
+    // 2. Destroy any Equip cards equipped to it
+    if ((zone === 'MMZ' || zone === 'EMZ') && !options.isControlChange) {
+      if (Array.isArray(card.overlayUnits) && card.overlayUnits.length > 0) {
+        const units = card.overlayUnits.splice(0, card.overlayUnits.length);
+        for (const u of units) {
+          const unitOwner = this.state.players[u.owner];
+          if (this.state.macroCosmosTurnsRemaining > 0) {
+            u.zone = 'BANISHED';
+            unitOwner.banished.push(u);
+          } else {
+            u.zone = 'GY';
+            unitOwner.gy.push(u);
+          }
+        }
       }
+      this.destroyEquipCardsForMonster(card.instanceId);
     }
 
     return card;
   }
 
-  removeFromFieldZone(playerIndex, instanceId) {
-    return this.removeFromCurrentZone(instanceId);
+  removeFromFieldZone(playerIndex, instanceId, options = {}) {
+    return this.removeFromCurrentZone(instanceId, options);
   }
 
   /**
@@ -417,18 +488,25 @@ export class DuelEngine {
     if (targetZone === 'HAND') {
       if (isExtraMonster) {
         card.zone = 'EXTRA';
+        card.properlySummoned = false;
         ownerPlayer.extra.push(card);
       } else {
         card.zone = 'HAND';
         ownerPlayer.hand.push(card);
       }
     } else if (targetZone === 'GY') {
+      const isPendulumFromField = (card.isPendulum || card.frame === 'PENDULUM') && ['MMZ', 'EMZ', 'STZ'].includes(prevZone);
       if (this.state.macroCosmosTurnsRemaining > 0) {
         card.zone = 'BANISHED';
         ownerPlayer.banished.push(card);
         if (prevZone !== 'BANISHED') {
           this.queueTriggerEffects(card.owner, card, TRIGGERS.ON_BANISHED);
         }
+      } else if (isPendulumFromField) {
+        card.zone = 'EXTRA';
+        card.position = POSITIONS.FACE_UP;
+        card.isFaceUpInExtra = true;
+        ownerPlayer.extra.push(card);
       } else {
         card.zone = 'GY';
         ownerPlayer.gy.push(card);
@@ -445,13 +523,16 @@ export class DuelEngine {
     } else if (targetZone === 'DECK') {
       if (isExtraMonster) {
         card.zone = 'EXTRA';
+        card.properlySummoned = false;
         ownerPlayer.extra.push(card);
       } else {
         card.zone = 'DECK';
+        card.properlySummoned = false;
         ownerPlayer.deck.push(card);
       }
     } else if (targetZone === 'EXTRA') {
       card.zone = 'EXTRA';
+      card.properlySummoned = false;
       ownerPlayer.extra.push(card);
     }
 
@@ -594,7 +675,8 @@ export class DuelEngine {
     const player = this.state.players[playerIndex];
     const token = this.createCardInstance(tokenDef, playerIndex, 'MMZ');
     token.zoneIndex = slot;
-    token.position = position;
+    // Rulebook v10: Tokens can NEVER be face-down (always face-up ATK or face-up DEF)
+    token.position = (position === POSITIONS.SET_DEF || position === POSITIONS.SET) ? POSITIONS.DEF : position;
     token.summonedTurn = this.state.turnCount;
     player.mmz[slot] = token;
     player.summonsThisTurn = (player.summonsThisTurn || 0) + 1;
@@ -650,14 +732,17 @@ export class DuelEngine {
       return this.checkPostSummonResponseWindow();
     }
 
-    // SEGOC ordering: Turn Player's triggers go on Chain first, then Opponent's triggers
+    // SEGOC ordering (Rulebook v10):
+    // 0: Turn Player Mandatory -> 1: Opponent Mandatory -> 2: Turn Player Optional -> 3: Opponent Optional
     const turnPlayer = this.state.turnPlayer;
     const batch = this.triggerQueue.splice(0, this.triggerQueue.length);
-    batch.sort((a, b) => {
-      const aPriority = a.playerIndex === turnPlayer ? 0 : 1;
-      const bPriority = b.playerIndex === turnPlayer ? 0 : 1;
-      return aPriority - bPriority;
-    });
+    const getSegocPriority = (item) => {
+      const isMandatory = Boolean(item.effect?.mandatory);
+      const isTurnP = item.playerIndex === turnPlayer;
+      if (isMandatory) return isTurnP ? 0 : 1;
+      return isTurnP ? 2 : 3;
+    };
+    batch.sort((a, b) => getSegocPriority(a) - getSegocPriority(b));
 
     for (const item of batch) {
       const { playerIndex, card, effect } = item;
@@ -1122,6 +1207,18 @@ export class DuelEngine {
       return false;
     }
 
+    // Rulebook v10: Traps must be Set first (cannot activate directly from hand unless card text allows)
+    if (card.kind === CARD_KINDS.TRAP && card.zone === 'HAND') {
+      if (!card.canActivateFromHandIfEmptyField) return false;
+      const ownFieldCount = this.getPlayerFieldMonsters(playerIndex).length + this.getPlayerFieldSpellsTraps(playerIndex).length;
+      if (ownFieldCount > 0) return false;
+    }
+
+    // Rulebook v10: Quick-Play Spells in hand can only be activated during your own turn
+    if (card.kind === CARD_KINDS.SPELL && card.subType === SPELL_SUBTYPES.QUICK_PLAY && card.zone === 'HAND') {
+      if (this.state.turnPlayer !== playerIndex) return false;
+    }
+
     // Master Rule: Set Traps and Set Quick-Play Spells cannot be activated the same turn they were Set
     if (card.zone === 'STZ' && card.position === POSITIONS.SET) {
       if (card.kind === CARD_KINDS.TRAP && card.setTurn >= this.state.turnCount) {
@@ -1199,8 +1296,8 @@ export class DuelEngine {
       map[instanceId].push(item);
     };
 
-    // 1. Hand Actions (Main Phase 1/2 + Battle Phase Quick Effects / Quick-Play Spells / Hand Traps)
-    if (isMainPhase || isBattlePhase) {
+    // 1. Hand Actions (Main Phase 1/2 + Any phase on own turn for Quick-Play Spells / Quick Effects / Hand Traps)
+    if (isTurnPlayer) {
       for (const card of player.hand) {
         if (card.kind === CARD_KINDS.MONSTER) {
           if (isMainPhase) {
@@ -1230,6 +1327,15 @@ export class DuelEngine {
               pushAction(actions.handActions, card.instanceId, {
                 type: 'INHERENT_SPECIAL_SUMMON',
                 labelTh: card.specialSummonRule?.labelTh || 'อัญเชิญพิเศษจากมือ'
+              });
+            }
+
+            // Pendulum Scale Activation (leftmost STZ 0 or rightmost STZ 4)
+            if ((card.isPendulum || card.frame === 'PENDULUM') && (player.stz[0] === null || player.stz[4] === null)) {
+              pushAction(actions.handActions, card.instanceId, {
+                type: 'ACTIVATE_PENDULUM',
+                isPendulumScale: true,
+                labelTh: 'วางในโซนเพนดูลัม (Pendulum Scale)'
               });
             }
           }
@@ -1269,10 +1375,10 @@ export class DuelEngine {
               }
             }
           }
-          if (isMainPhase && card.subType !== SPELL_SUBTYPES.FIELD && this.getFreeSTZIndex(playerIndex) !== -1) {
+          if (isMainPhase && (card.subType === SPELL_SUBTYPES.FIELD || this.getFreeSTZIndex(playerIndex) !== -1)) {
             pushAction(actions.handActions, card.instanceId, {
               type: 'SET_SPELL_TRAP',
-              labelTh: 'หมอบการ์ดเวทมนตร์'
+              labelTh: card.subType === SPELL_SUBTYPES.FIELD ? 'หมอบการ์ดเวทมนตร์สนาม' : 'หมอบการ์ดเวทมนตร์'
             });
           }
         } else if (card.kind === CARD_KINDS.TRAP) {
@@ -1317,7 +1423,14 @@ export class DuelEngine {
             }
           }
         }
-        if (isMainPhase && mon.frame !== MONSTER_FRAMES.LINK && mon.summonedTurn < this.state.turnCount && !mon.positionChangedThisTurn) {
+        if (
+          isMainPhase &&
+          mon.frame !== MONSTER_FRAMES.LINK &&
+          mon.summonedTurn < this.state.turnCount &&
+          (mon.setTurn || 0) < this.state.turnCount &&
+          !mon.positionChangedThisTurn &&
+          (mon.attacksUsed || 0) === 0
+        ) {
           pushAction(actions.fieldActions, mon.instanceId, {
             type: 'CHANGE_POSITION',
             labelTh: mon.position === POSITIONS.ATK ? 'เปลี่ยนเป็นตั้งป้องกัน (DEF)' : 'เปลี่ยนเป็นตั้งโจมตี (ATK)'
@@ -1485,6 +1598,9 @@ export class DuelEngine {
       case 'SET_SPELL_TRAP':
         return this.handleSetSpellTrap(playerIndex, payload);
 
+      case 'ACTIVATE_PENDULUM':
+        return this.handleActivatePendulum(playerIndex, payload);
+
       case 'ACTIVATE_EFFECT':
         return this.handleActivateEffect(playerIndex, payload);
 
@@ -1513,12 +1629,21 @@ export class DuelEngine {
     const check = SummonManager.canNormalSummon(this, playerIndex, card);
     if (!check.canSummon) return { ok: false, errorTh: check.reasonTh };
 
+    // Rulebook v10: Cannot Normal Summon in face-up Defense Position
+    if (payload.type === 'NORMAL_SUMMON' && (payload.position === POSITIONS.DEF || payload.position === POSITIONS.SET_DEF)) {
+      return { ok: false, errorTh: 'ไม่สามารถอัญเชิญปกติในสภาพตั้งป้องกันได้ (ต้องตั้งโจมตี หรือหมอบตั้งป้องกัน)' };
+    }
+
     if (check.tributesRequired > 0) {
       const fieldMons = SummonManager.getAllFieldMonsters(player);
       const mmzInitiallyFull = this.getFreeMMZIndex(playerIndex) === -1;
       let tributes = [];
       if (Array.isArray(payload.tributeInstanceIds) && payload.tributeInstanceIds.length === check.tributesRequired) {
-        tributes = fieldMons.filter(m => payload.tributeInstanceIds.includes(m.instanceId));
+        const uniqueIds = new Set(payload.tributeInstanceIds);
+        tributes = fieldMons.filter(m => uniqueIds.has(m.instanceId));
+        if (tributes.length !== check.tributesRequired) {
+          return { ok: false, errorTh: `ต้องเลือกมอนสเตอร์บนสนามที่ถูกต้องครบ ${check.tributesRequired} ใบเพื่อสังเวย` };
+        }
       } else {
         // Auto-select lowest ATK monsters as tribute (prefer MMZ first if MMZ is full)
         tributes = [...fieldMons]
@@ -1547,6 +1672,9 @@ export class DuelEngine {
     card.controller = playerIndex;
     card.position = payload.type === 'NORMAL_SET' ? POSITIONS.SET_DEF : POSITIONS.ATK;
     card.summonedTurn = this.state.turnCount;
+    if (payload.type === 'NORMAL_SET') {
+      card.setTurn = this.state.turnCount;
+    }
     card.attacksUsed = 0;
     card.positionChangedThisTurn = false;
     player.normalSummonUsed = true;
@@ -1633,18 +1761,21 @@ export class DuelEngine {
         attached.push(mat, ...subUnits);
       }
       exCard.overlayUnits = attached;
+      exCard.properlySummoned = true;
       this.log(`🌌 ${player.name} โอเวอร์เลย์ ${materials.map(m => `"${m.nameTh}"`).join(' + ')} เพื่ออัญเชิญเอ็กシーズ "${exCard.nameTh}"!`);
       this.specialSummonCard(playerIndex, exCard, POSITIONS.ATK, 'EXTRA', payload.targetZoneIndex ?? null);
     } else if (exCard.frame === MONSTER_FRAMES.SYNCHRO) {
       for (const mat of materials) {
         this.moveCardToZone(playerIndex, mat.instanceId, 'GY', { reason: 'SYNCHRO_MATERIAL' });
       }
+      exCard.properlySummoned = true;
       this.log(`⚡ ${player.name} ซิงโครซัมมอน "${exCard.nameTh}" (ใช้วัตถุดิบ: ${materials.map(m => m.nameTh).join(' + ')})!`);
       this.specialSummonCard(playerIndex, exCard, POSITIONS.ATK, 'EXTRA', payload.targetZoneIndex ?? null);
     } else if (exCard.frame === MONSTER_FRAMES.LINK) {
       for (const mat of materials) {
         this.moveCardToZone(playerIndex, mat.instanceId, 'GY', { reason: 'LINK_MATERIAL' });
       }
+      exCard.properlySummoned = true;
       this.log(`🔗 ${player.name} ลิงก์ซัมมอน "${exCard.nameTh}" (Link-${exCard.linkRating})!`);
       this.specialSummonCard(playerIndex, exCard, POSITIONS.ATK, 'EXTRA', payload.targetZoneIndex ?? null);
     }
@@ -1654,12 +1785,32 @@ export class DuelEngine {
   }
 
   /**
-   * หมอบการ์ดเวทมนตร์หรือกับดักลงบนสนาม
+   * หมอบการ์ดเวทมนตร์หรือกับดักลงบนสนาม (รองรับการหมอบเวทสนามใน Field Zone ตามกฎ Rulebook v10)
    */
   handleSetSpellTrap(playerIndex, payload) {
+    if (this.state.phase !== PHASES.MP1 && this.state.phase !== PHASES.MP2) {
+      return { ok: false, errorTh: 'หมอบการ์ดเวทมนตร์/กับดักได้เฉพาะใน Main Phase เท่านั้น' };
+    }
     const player = this.state.players[playerIndex];
     const card = player.hand.find(c => c.instanceId === payload.instanceId);
     if (!card) return { ok: false, errorTh: 'ไม่พบการ์ดในมือ' };
+    if (card.kind !== CARD_KINDS.SPELL && card.kind !== CARD_KINDS.TRAP) {
+      return { ok: false, errorTh: 'การ์ดใบนี้ไม่ใช่เวทมนตร์หรือกับดัก' };
+    }
+
+    if (card.kind === CARD_KINDS.SPELL && card.subType === SPELL_SUBTYPES.FIELD) {
+      if (player.fieldSpell) {
+        this.moveCardToZone(playerIndex, player.fieldSpell.instanceId, 'GY', { reason: 'REPLACE_FIELD' });
+      }
+      this.removeFromCurrentZone(card.instanceId);
+      player.fieldSpell = card;
+      card.zone = 'FIELD';
+      card.zoneIndex = 0;
+      card.position = POSITIONS.SET;
+      card.setTurn = this.state.turnCount;
+      this.log(`🂠 ${player.name} หมอบการ์ดเวทมนตร์สนาม 1 ใบใน Field Zone`);
+      return { ok: true };
+    }
 
     const slot = this.getFreeSTZIndex(playerIndex, payload.targetZoneIndex ?? null);
     if (slot === -1) return { ok: false, errorTh: 'โซนเวทมนตร์/กับดักเต็มแล้ว' };
@@ -1672,6 +1823,41 @@ export class DuelEngine {
     card.setTurn = this.state.turnCount;
 
     this.log(`🂠 ${player.name} หมอบการ์ด 1 ใบในโซนเวทมนตร์/กับดัก`);
+    return { ok: true };
+  }
+
+  /**
+   * วางมอนสเตอร์เพนดูลัมเป็นเวทมนตร์ในโซนเพนดูลัม (STZ ซ้ายสุด 0 หรือ ขวาสุด 4)
+   */
+  handleActivatePendulum(playerIndex, payload) {
+    if (this.state.phase !== PHASES.MP1 && this.state.phase !== PHASES.MP2) {
+      return { ok: false, errorTh: 'วาง Pendulum Scale ได้เฉพาะใน Main Phase เท่านั้น' };
+    }
+    const player = this.state.players[playerIndex];
+    const card = player.hand.find(c => c.instanceId === payload.instanceId);
+    if (!card || !(card.isPendulum || card.frame === 'PENDULUM')) {
+      return { ok: false, errorTh: 'การ์ดใบนี้ไม่ใช่มอนสเตอร์เพนดูลัมในมือ' };
+    }
+    const preferred = payload.targetZoneIndex;
+    let slot = -1;
+    if ((preferred === 0 || preferred === 4) && player.stz[preferred] === null) {
+      slot = preferred;
+    } else if (player.stz[0] === null) {
+      slot = 0;
+    } else if (player.stz[4] === null) {
+      slot = 4;
+    }
+    if (slot === -1) {
+      return { ok: false, errorTh: 'โซนเพนดูลัม (ช่องซ้ายสุดและขวาสุดของ STZ) เต็มแล้ว' };
+    }
+
+    this.removeFromCurrentZone(card.instanceId);
+    player.stz[slot] = card;
+    card.zone = 'STZ';
+    card.zoneIndex = slot;
+    card.controller = playerIndex;
+    card.position = POSITIONS.FACE_UP;
+    this.log(`🔷 ${player.name} วาง "${card.nameTh}" ในโซนเพนดูลัม (STZ ช่องที่ ${slot + 1})`);
     return { ok: true };
   }
 
@@ -1711,8 +1897,22 @@ export class DuelEngine {
           card.zoneIndex = slot;
           card.position = POSITIONS.FACE_UP;
         }
-      } else if (zone === 'STZ' && card.position === POSITIONS.SET) {
+      } else if ((zone === 'STZ' || zone === 'FIELD') && card.position === POSITIONS.SET) {
         card.position = POSITIONS.FACE_UP;
+      }
+
+      // Attach Equip Spell to target face-up monster on field
+      if (card.kind === CARD_KINDS.SPELL && card.subType === SPELL_SUBTYPES.EQUIP && (card.zone === 'STZ')) {
+        const requestedTargetId = payload.choices?.equipTargetInstanceId || payload.targetInstanceId;
+        const allFaceUpMons = [
+          ...this.getPlayerFieldMonsters(playerIndex),
+          ...this.getPlayerFieldMonsters(1 - playerIndex)
+        ].filter(m => m.position !== POSITIONS.SET_DEF);
+        const eqTarget = (requestedTargetId && allFaceUpMons.find(m => m.instanceId === requestedTargetId)) || allFaceUpMons[0] || null;
+        if (eqTarget) {
+          card.equippedTo = eqTarget.instanceId;
+          card.equipTargetInstanceId = eqTarget.instanceId;
+        }
       }
     }
 
@@ -1794,6 +1994,20 @@ export class DuelEngine {
       return { ok: false, errorTh: 'ไม่พบเอฟเฟคของการ์ดใบนี้' };
     }
 
+    // Rulebook v10: Validate Spell Speed & chainability (SS2 vs SS1/SS2, SS3 only vs SS3, no response to cannotRespond)
+    const topChain = this.state.chainStack[this.state.chainStack.length - 1];
+    if (topChain?.effect?.cannotRespond) {
+      return { ok: false, errorTh: 'ไม่สามารถเชนตอบโต้เอฟเฟคนี้ได้' };
+    }
+    const minSpellSpeed = topChain ? Math.max(SPELL_SPEED.SS2, topChain.spellSpeed || SPELL_SPEED.SS1) : SPELL_SPEED.SS2;
+    const effSpeed = this.getEffectiveSpellSpeed(card, eff);
+    if (effSpeed < minSpellSpeed) {
+      return { ok: false, errorTh: `Spell Speed ไม่เพียงพอ (ต้องใช้ Spell Speed ${minSpellSpeed} ขึ้นไป)` };
+    }
+    if (!this.canActivateEffectNow(playerIndex, card, eff, true, minSpellSpeed)) {
+      return { ok: false, errorTh: 'ไม่สามารถเชนตอบโต้ด้วยการ์ดใบนี้ได้ในขณะนี้' };
+    }
+
     if (card.kind === CARD_KINDS.SPELL || card.kind === CARD_KINDS.TRAP) {
       if (zone === 'HAND') {
         const slot = this.getFreeSTZIndex(playerIndex);
@@ -1813,13 +2027,12 @@ export class DuelEngine {
     EffectResolver.payEffectCost(this, playerIndex, card, eff, payload.choices || {});
 
     const chainLinkNumber = this.state.chainStack.length + 1;
-    const effSpeed = this.getEffectiveSpellSpeed(card, eff);
     this.state.chainStack.push({
       chainLink: chainLinkNumber,
       playerIndex,
       card,
       effect: eff,
-      spellSpeed: effSpeed === SPELL_SPEED.SS1 ? SPELL_SPEED.SS2 : effSpeed,
+      spellSpeed: effSpeed,
       choices: payload.choices || {},
       negated: false
     });
@@ -1898,6 +2111,9 @@ export class DuelEngine {
    * เปลี่ยนรูปแบบการวางของมอนสเตอร์บนสนาม (ATK <-> DEF)
    */
   handleChangePosition(playerIndex, payload) {
+    if (this.state.phase !== PHASES.MP1 && this.state.phase !== PHASES.MP2) {
+      return { ok: false, errorTh: 'เปลี่ยนรูปแบบมอนสเตอร์ได้เฉพาะใน Main Phase 1 หรือ 2 เท่านั้น' };
+    }
     const loc = this.findCardInstance(payload.instanceId);
     if (!loc || loc.playerIndex !== playerIndex || (loc.zone !== 'MMZ' && loc.zone !== 'EMZ')) {
       return { ok: false, errorTh: 'ไม่พบมอนสเตอร์บนสนาม' };
@@ -1906,11 +2122,18 @@ export class DuelEngine {
     if (card.frame === MONSTER_FRAMES.LINK) {
       return { ok: false, errorTh: 'มอนสเตอร์ลิงก์ไม่สามารถตั้งป้องกันได้' };
     }
-    if (card.summonedTurn === this.state.turnCount || card.positionChangedThisTurn) {
-      return { ok: false, errorTh: 'ไม่สามารถเปลี่ยนรูปแบบมอนสเตอร์ที่เพิ่งอัญเชิญหรือเปลี่ยนไปแล้วในเทิร์นนี้' };
+    if (card.summonedTurn >= this.state.turnCount || (card.setTurn || 0) >= this.state.turnCount || card.positionChangedThisTurn) {
+      return { ok: false, errorTh: 'ไม่สามารถเปลี่ยนรูปแบบมอนสเตอร์ที่เพิ่งอัญเชิญ/หมอบ หรือเปลี่ยนไปแล้วในเทิร์นนี้' };
+    }
+    if ((card.attacksUsed || 0) > 0) {
+      return { ok: false, errorTh: 'ไม่สามารถเปลี่ยนรูปแบบมอนสเตอร์ที่ประกาศโจมตีไปแล้วในเทิร์นนี้ (Rulebook v10)' };
     }
 
     const wasSet = card.position === POSITIONS.SET_DEF;
+    if (wasSet && payload.position && payload.position !== POSITIONS.ATK) {
+      return { ok: false, errorTh: 'การ Flip Summon ต้องเปิดเป็นหงายหน้าตั้งโจมตี (Face-up ATK) เท่านั้น' };
+    }
+
     card.position = card.position === POSITIONS.ATK ? POSITIONS.DEF : POSITIONS.ATK;
     card.positionChangedThisTurn = true;
 
@@ -1920,6 +2143,7 @@ export class DuelEngine {
       player.summonsThisTurn = (player.summonsThisTurn || 0) + 1;
       this.queueTriggerEffects(playerIndex, card, TRIGGERS.ON_FLIP);
       this.queueTriggerEffects(playerIndex, card, TRIGGERS.ON_SUMMON_ANY);
+      this._pendingSummonForResponse = { summonerIndex: playerIndex, card };
       const trigRes = this.flushTriggerQueue();
       return { ok: true, pendingChain: trigRes.pendingChain };
     }
@@ -1953,6 +2177,12 @@ export class DuelEngine {
     const player = this.state.players[playerIndex];
     const oppIndex = 1 - playerIndex;
     const opponent = this.state.players[oppIndex];
+
+    // Validate direct attack legality BEFORE consuming attack count or firing ON_ATTACK_DECLARE
+    const initialOppMonsters = this.getPlayerFieldMonsters(oppIndex);
+    if (payload.directAttack && initialOppMonsters.length > 0 && !attacker.canAttackDirectly) {
+      return { ok: false, errorTh: 'อีกฝ่ายยังมีมอนสเตอร์อยู่บนสนาม ไม่สามารถโจมตีผู้เล่นโดยตรงได้' };
+    }
 
     attacker.attacksUsed++;
     if (attacker.frame === MONSTER_FRAMES.XYZ) {
@@ -2044,7 +2274,14 @@ export class DuelEngine {
       this.log(`⚔️ "${attacker.nameTh}" (${atkVal} ATK) โจมตี "${target.nameTh}" (${defVal} DEF)!`);
 
       if (atkVal > defVal) {
-        this.log(`💥 ทำลาย "${target.nameTh}" ที่ตั้งป้องกันอยู่!`);
+        if (attacker.piercing) {
+          const diff = atkVal - defVal;
+          battleDamage = diff;
+          opponent.lp = Math.max(0, opponent.lp - diff);
+          this.log(`💥 ทำลาย "${target.nameTh}" ที่ตั้งป้องกันอยู่ และทะลุเกราะ (Piercing) สร้างความเสียหาย -${diff} LP!`);
+        } else {
+          this.log(`💥 ทำลาย "${target.nameTh}" ที่ตั้งป้องกันอยู่!`);
+        }
         this.destroyCard(oppIndex, target.instanceId, 'BATTLE');
       } else if (atkVal < defVal) {
         const diff = defVal - atkVal;
@@ -2154,6 +2391,13 @@ export class DuelEngine {
         negated: false,
         choices: {}
       });
+    }
+
+    // Re-enforce Hand Size Limit (6 cards max) in case an End Phase trigger added cards to hand
+    while (currentPlayer.hand.length > MAX_HAND_SIZE) {
+      const discarded = currentPlayer.hand[currentPlayer.hand.length - 1];
+      this.moveCardToZone(currentTurnPlayerIdx, discarded.instanceId, 'GY', { reason: 'HAND_SIZE_LIMIT' });
+      this.log(`📏 [Hand Limit 6 ใบ] ${currentPlayer.name} ทิ้ง "${discarded.nameTh}" ลงสุสานช่วงจบเทิร์น`);
     }
 
     // Clear temporary turn statuses on both players' monsters

@@ -4280,7 +4280,7 @@ function enterZonePickMode(card, actionPayload) {
     return;
   }
 
-  const isPendulumScale = Boolean(actionPayload.isPendulumScale);
+  const isPendulumScale = Boolean(actionPayload.isPendulumScale || actionPayload.type === 'ACTIVATE_PENDULUM');
   const isMonsterGrid =
     actionPayload.type === 'NORMAL_SUMMON' ||
     actionPayload.type === 'NORMAL_SET' ||

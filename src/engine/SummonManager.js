@@ -77,6 +77,16 @@ export class SummonManager {
     if (card.kind !== CARD_KINDS.MONSTER) {
       return { canSummon: false, tributesRequired: 0, reasonTh: 'ไม่ใช่การ์ดมอนสเตอร์' };
     }
+    if ([
+      MONSTER_FRAMES.FUSION,
+      MONSTER_FRAMES.SYNCHRO,
+      MONSTER_FRAMES.XYZ,
+      MONSTER_FRAMES.LINK,
+      MONSTER_FRAMES.TOKEN,
+      'RITUAL'
+    ].includes(card.frame)) {
+      return { canSummon: false, tributesRequired: 0, reasonTh: 'มอนสเตอร์ประเภทนี้ไม่สามารถอัญเชิญปกติหรือหมอบได้' };
+    }
     if (player.normalSummonUsed) {
       return { canSummon: false, tributesRequired: 0, reasonTh: 'ใช้อัญเชิญปกติประจำเทิร์นนี้ไปแล้ว (1 ครั้ง/เทิร์น)' };
     }
@@ -368,14 +378,22 @@ export class SummonManager {
       // Alternate Xyz Evolution (e.g., Zeus on an Xyz Monster if an Xyz battled, or Ty-Phon on highest ATK monster)
       const altRule = extraCard.summonMaterials?.altRankUp;
       if (altRule) {
+        const opponent = state.players[1 - playerIndex];
         const optOk = !altRule.opt || !player.optUsed.includes(altRule.opt);
         let condOk = optOk && (!altRule.condition || engine.checkCondition(playerIndex, altRule.condition, extraCard));
-        if (altRule.requiresXyzBattledThisTurn && !(player.xyzBattledThisTurn || player.turnFlags?.xyzBattledThisTurn)) {
+        if (altRule.requiresXyzBattledThisTurn && !(
+          player.xyzBattledThisTurn ||
+          player.turnFlags?.xyzBattledThisTurn ||
+          opponent?.xyzBattledThisTurn ||
+          opponent?.turnFlags?.xyzBattledThisTurn
+        )) {
           condOk = false;
         }
         if (condOk) {
           let altMatches = faceUpMonsters.filter(
-            m => m.id !== extraCard.id && matchesCardFilter(m, altRule.filter || {}, extraCard)
+            m => m.id !== extraCard.id &&
+                 m.frame !== MONSTER_FRAMES.TOKEN &&
+                 matchesCardFilter(m, altRule.filter || {}, extraCard)
           );
           if ((altRule.highestAtkOnly || altRule.onlyOneMonsterWithHighestAtk) && faceUpMonsters.length > 0) {
             const maxAtk = Math.max(...faceUpMonsters.map(m => m.currentAtk ?? m.atk ?? 0));

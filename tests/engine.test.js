@@ -626,6 +626,7 @@ console.log(`✅ Test 13 Passed: จำลอง AI ปะทะ AI ครบท
 
   // Unscripted Field & Continuous Spell fallback activation
   engine.state.phase = PHASES.MP1;
+  p1.hand = [];
   const fieldCard = engine.createCardInstance(getCardById('hideout_in_the_sky_coulomb'), 0, 'HAND');
   const setUnscriptedTrap = engine.createCardInstance(getCardById('gamma_summon'), 0, 'STZ');
   setUnscriptedTrap.position = POSITIONS.SET;

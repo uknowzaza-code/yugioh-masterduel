@@ -117,7 +117,9 @@ export class EffectResolver {
             : action.targetOwner === 'SELF'
               ? player.gy
               : [...player.gy, ...opponent.gy];
-          const matches = targetPool.filter(c => matchesCardFilter(c, action.filter, card));
+          const matches = targetPool.filter(
+            c => engine.canBeRevivedFromGYOrBanished(c) && matchesCardFilter(c, action.filter, card)
+          );
           if (matches.length === 0) return false;
           break;
         }
@@ -130,6 +132,9 @@ export class EffectResolver {
         case ACTION_TYPES.SPECIAL_SUMMON_SELF_FROM_HAND:
         case ACTION_TYPES.SPECIAL_SUMMON_SELF_FROM_GY: {
           if (player.turnRestrictions?.noSpecialSummon) return false;
+          if (action.type === ACTION_TYPES.SPECIAL_SUMMON_SELF_FROM_GY && !engine.canBeRevivedFromGYOrBanished(card)) {
+            return false;
+          }
           if (engine.getFreeMMZIndex(playerIndex) === -1 && !action.tributeAllFieldMonsters && !willFreeMMZ) return false;
           break;
         }
@@ -397,7 +402,9 @@ export class EffectResolver {
           : action.targetOwner === 'SELF'
             ? player.gy
             : [...player.gy, ...opponent.gy];
-        const matches = targetPool.filter(c => matchesCardFilter(c, action.filter, card));
+        const matches = targetPool.filter(
+          c => engine.canBeRevivedFromGYOrBanished(c) && matchesCardFilter(c, action.filter, card)
+        );
         if (matches.length > 1) {
           pushStepUnique({
             key: 'selectedInstanceId',
@@ -861,7 +868,9 @@ export class EffectResolver {
             ? engine.state.players[targetOwnerIdx].gy
             : [...player.gy, ...opponent.gy];
 
-          const matches = pool.filter(c => matchesCardFilter(c, action.filter, sourceCard));
+          const matches = pool.filter(
+            c => engine.canBeRevivedFromGYOrBanished(c) && matchesCardFilter(c, action.filter, sourceCard)
+          );
           if (matches.length === 0) break;
 
           let chosen = null;
@@ -985,6 +994,7 @@ export class EffectResolver {
           engine.moveCardToZone(matOwner, mat.instanceId, destZone, { reason: 'FUSION_MATERIAL' });
         }
         engine.log(`🌀 ใช้วัตถุดิบฟิวชั่น: ${materialsUsed.map(m => m.nameTh).join(' + ')}`);
+        fusionMonster.properlySummoned = true;
         engine.specialSummonCard(playerIndex, fusionMonster, POSITIONS.ATK, 'EXTRA');
         break;
       }
@@ -1165,8 +1175,8 @@ export class EffectResolver {
         if (!target) {
           target = [...oppMonsters].sort((a, b) => (b.currentAtk ?? 0) - (a.currentAtk ?? 0))[0];
         }
-        // Remove from opponent field
-        engine.removeFromFieldZone(oppIndex, target.instanceId);
+        // Remove from opponent field (control change: preserve Xyz Materials and Equip Cards!)
+        engine.removeFromFieldZone(oppIndex, target.instanceId, { isControlChange: true });
         target.controller = playerIndex;
         target.zone = 'MMZ';
         target.zoneIndex = freeSlot;
