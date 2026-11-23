@@ -1092,7 +1092,7 @@ textarea:focus {
 
   .duel-layout {
     --sidebar-w: clamp(250px, 21vw, 320px);
-    --card-h: clamp(54px, min(calc((100dvh - 255px) / 6.2), calc((100vw - var(--sidebar-w) - 200px) / 7 * 1.4583)), 98px);
+    --card-h: clamp(48px, min(calc((100dvh - 280px) / 5.9), calc((100vw - var(--sidebar-w) - 200px) / 7 * 1.4583)), 94px);
     --card-w: calc(var(--card-h) / 1.4583);
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
     height: 100%;
@@ -1131,15 +1131,36 @@ textarea:focus {
     flex: 1 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 6px var(--space-3);
+    padding: 8px var(--space-3);
     gap: 4px;
-    justify-content: center;
-    overflow: hidden;
+    justify-content: safe center;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .field-row {
     gap: var(--space-2);
     flex-shrink: 0;
+  }
+
+  .phase-orb-stack {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .phase-orb {
+    width: clamp(44px, calc(var(--card-h) * 0.72), 58px);
+    height: clamp(44px, calc(var(--card-h) * 0.72), 58px);
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .phase-action-buttons {
+    min-width: 78px;
+    min-height: 26px;
   }
 
   .zone-slot,
