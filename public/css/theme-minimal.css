@@ -859,9 +859,18 @@ textarea:focus {
   z-index: 0;
 }
 
-.playmat-container > * {
+.playmat-container > :not(.equip-arrows-svg) {
   position: relative;
   z-index: 1;
+}
+
+.playmat-container > .equip-arrows-svg {
+  position: absolute !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 18;
 }
 
 /* Crisp Minimal Zone Slots */
@@ -1153,7 +1162,7 @@ textarea:focus {
 
   /* Compute exact card size from .playmat-container's real rendered height (100cqh) */
   .playmat-container > .field-row {
-    --card-h: clamp(40px, min(calc((100cqh - 104px) / 5), calc((100cqw - 220px) / 5 * 1.4583)), 94px);
+    --card-h: clamp(40px, min(calc((100cqh - 76px) / 5), calc((100cqw - 220px) / 5 * 1.4583)), 96px);
     --card-w: calc(var(--card-h) / 1.4583);
     gap: var(--space-2);
     flex-shrink: 0;
@@ -1396,7 +1405,6 @@ textarea:focus {
 
 /* Floating Glass Action Menu & Chain Prompt Bar */
 .card-action-popup,
-.chain-prompt-bar,
 .ygopro-card-strip,
 .chain-stack-overlay {
   background: var(--glass-strong);
@@ -1405,6 +1413,24 @@ textarea:focus {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2);
+}
+
+/* Translucent Floating Chain Response Bar (never resizes playmat / never blocks view of field) */
+.chain-prompt-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 84px;
+  width: min(94%, 760px);
+  max-width: calc(100% - 16px);
+  z-index: 46;
+  margin-top: 0;
+  background: rgba(9, 13, 24, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1.5px solid rgba(250, 204, 21, 0.65);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
 }
 
 /* Distinct, Thumb-Friendly Card Action Buttons (Summon / Activate / Set / Attack) */
