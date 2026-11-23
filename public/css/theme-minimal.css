@@ -1234,33 +1234,14 @@ textarea:focus {
     min-width: var(--hand-card-w);
     height: calc(var(--hand-card-w) * 1.4583);
     flex-shrink: 0;
-    transform-origin: bottom center;
-    transition: margin var(--dur) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+    transform-origin: 50% 130%;
+    transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-angle, 0deg));
+    transition: margin var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
 
-  /* Poker-style overlap & subtle fan curve at rest */
+  /* Smooth continuous Poker-fan overlap at rest */
   .self-hand-container .hand-card-item + .hand-card-item {
-    margin-left: -26px;
-  }
-
-  .self-hand-container .hand-card-item:nth-child(odd) {
-    transform: rotate(-2.5deg) translateY(2px);
-  }
-
-  .self-hand-container .hand-card-item:nth-child(even) {
-    transform: rotate(2.5deg) translateY(2px);
-  }
-
-  .self-hand-container .hand-card-item:first-child {
-    transform: rotate(-6deg) translateY(5px);
-  }
-
-  .self-hand-container .hand-card-item:last-child {
-    transform: rotate(6deg) translateY(5px);
-  }
-
-  .self-hand-container .hand-card-item:only-child {
-    transform: rotate(0deg) translateY(0);
+    margin-left: -34px;
   }
 
   /* Fan out & straighten cleanly when hovering the hand */
@@ -1271,7 +1252,7 @@ textarea:focus {
 
   .player-bottom-dock:hover .self-hand-container .hand-card-item,
   .player-bottom-dock:focus-within .self-hand-container .hand-card-item {
-    transform: rotate(0deg) translateY(0);
+    transform: translateY(0) rotate(0deg);
   }
 
   /* Highlighted hovered card pops up above neighbours */

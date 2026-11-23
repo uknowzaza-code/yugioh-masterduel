@@ -2125,7 +2125,10 @@ function renderDuelScreen() {
   // 4. Render Player Hand
   const handContainer = document.getElementById('self-hand-container');
   handContainer.innerHTML = '';
-  for (const card of me.hand) {
+  const handCount = me.hand.length;
+  const handMid = (handCount - 1) / 2;
+  const maxFanSpread = Math.min(34, Math.max(0, (handCount - 1) * 6));
+  me.hand.forEach((card, idx) => {
     const cardActions = legal.handActions?.[card.instanceId] || [];
     const canActivate = cardActions.some(
       a => a.type === 'ACTIVATE_EFFECT' || a.type === 'ACTIVATE_SPELL' || a.type === 'ACTIVATE_TRAP'
@@ -2136,12 +2139,17 @@ function renderDuelScreen() {
       isActivatable: canActivate,
       extraClass: 'hand-card-item'
     });
+    const norm = handCount > 1 ? (idx - handMid) / (handCount - 1) : 0;
+    const fanAngle = norm * maxFanSpread;
+    const fanY = Math.round(norm * norm * 52);
+    el.style.setProperty('--fan-angle', `${fanAngle.toFixed(2)}deg`);
+    el.style.setProperty('--fan-y', `${fanY}px`);
     attachYgoProCardInteraction(el, card, cardActions, {
       attackInfo: null,
       isFaceDown: false
     });
     handContainer.appendChild(el);
-  }
+  });
 
   // 5. Render Duel Logs & Combo Guide in Sidebar
   renderDuelLogs(state.logs || []);
