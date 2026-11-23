@@ -1353,6 +1353,118 @@ textarea:focus {
   box-shadow: var(--shadow-2);
 }
 
+/* Distinct, Thumb-Friendly Card Action Buttons (Summon / Activate / Set / Attack) */
+#field-pick-banner .chain-options-list,
+#field-pick-banner .inline-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.inline-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  padding: 8px var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.inline-prompt-btn:active {
+  transform: scale(0.97);
+}
+
+/* Activate Effect — Emerald Green */
+.inline-prompt-btn.action-activate {
+  background: rgba(62, 207, 142, 0.18);
+  border-color: rgba(62, 207, 142, 0.65);
+  color: #a7f3d0;
+}
+
+.inline-prompt-btn.action-activate:hover {
+  background: rgba(62, 207, 142, 0.3);
+  color: #ffffff;
+}
+
+/* Summon / Special Summon — Warm Amber Gold */
+.inline-prompt-btn.action-summon {
+  background: rgba(245, 181, 68, 0.2);
+  border-color: rgba(245, 181, 68, 0.72);
+  color: #fde68a;
+}
+
+.inline-prompt-btn.action-summon:hover {
+  background: rgba(245, 181, 68, 0.34);
+  color: #ffffff;
+}
+
+/* Set Monster / Set Spell-Trap — Distinct Calm Slate (clearly separated from Summon/Activate) */
+.inline-prompt-btn.action-set {
+  background: rgba(100, 116, 139, 0.22);
+  border-color: rgba(148, 163, 184, 0.45);
+  border-style: dashed;
+  color: #cbd5e1;
+}
+
+.inline-prompt-btn.action-set:hover {
+  background: rgba(100, 116, 139, 0.36);
+  color: #ffffff;
+}
+
+/* Attack — Crimson Red */
+.inline-prompt-btn.action-attack {
+  background: rgba(255, 92, 108, 0.22);
+  border-color: rgba(255, 92, 108, 0.75);
+  color: #fecdd3;
+}
+
+.inline-prompt-btn.action-attack:hover {
+  background: rgba(255, 92, 108, 0.36);
+  color: #ffffff;
+}
+
+/* Change Position — Cool Blue */
+.inline-prompt-btn.action-position {
+  background: var(--accent-soft);
+  border-color: rgba(91, 140, 255, 0.65);
+  color: #bfdbfe;
+}
+
+.inline-prompt-btn.action-position:hover {
+  background: rgba(91, 140, 255, 0.28);
+  color: #ffffff;
+}
+
+@media (max-width: 1023px) {
+  #field-pick-banner {
+    padding: var(--space-3);
+  }
+
+  #field-pick-banner .chain-options-list,
+  #field-pick-banner .inline-prompt-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .inline-prompt-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px var(--space-4);
+    font-size: 15px;
+    justify-content: flex-start;
+  }
+}
+
 /* Modals / Dialogs */
 .md-dialog {
   background: var(--bg-1);

@@ -4431,13 +4431,38 @@ function showActionPopupForCard(card, actionItems, _anchorEl) {
     clearZonePickMode(true);
   };
 
+  const getActionVisualMeta = (act) => {
+    const t = String(act?.type || '');
+    if (t === 'ACTIVATE_EFFECT' || t === 'ACTIVATE_SPELL' || t === 'ACTIVATE_TRAP') {
+      return { kind: 'activate', icon: '⚡' };
+    }
+    if (t === 'NORMAL_SUMMON' || t === 'SPECIAL_SUMMON' || t === 'INHERENT_SPECIAL_SUMMON') {
+      return { kind: 'summon', icon: '⚔️' };
+    }
+    if (t === 'NORMAL_SET' || t === 'SET_MONSTER' || t === 'SET_SPELL_TRAP') {
+      return { kind: 'set', icon: '🛡️' };
+    }
+    if (t === 'DECLARE_ATTACK') {
+      return { kind: 'attack', icon: '💥' };
+    }
+    if (t === 'CHANGE_POSITION') {
+      return { kind: 'position', icon: '🔄' };
+    }
+    return { kind: 'default', icon: '✦' };
+  };
+
   const btns = actionItems.map((act) => {
     const btn = document.createElement('button');
+    const { kind, icon } = getActionVisualMeta(act);
     btn.type = 'button';
-    btn.className = 'inline-prompt-btn primary';
-    btn.textContent = lang === 'en' ? (act.label || act.labelTh) : (act.labelTh || act.label);
+    btn.className = `inline-prompt-btn action-${kind}`;
+    btn.setAttribute('data-action-kind', kind);
+    const rawLabel = (lang === 'en' ? (act.label || act.labelTh) : (act.labelTh || act.label)) || '';
+    const hasLeadingEmoji = /^[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/u.test(rawLabel.trim());
+    btn.textContent = hasLeadingEmoji ? rawLabel : `${icon} ${rawLabel}`;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
       executeCardAction(card, act);
     });
     return btn;
@@ -5099,10 +5124,10 @@ function setupMobileHandToggle() {
     }
   }, true);
 
-  // Tap anywhere outside the hand dock (and outside card action popup) collapses it back down
+  // Tap anywhere outside the hand dock (and outside card action popup / inline banner) collapses it back down
   document.addEventListener('pointerdown', (ev) => {
     if (!dock.classList.contains('hand-expanded')) return;
-    if (ev.target.closest('.player-bottom-dock, #card-action-popup')) return;
+    if (ev.target.closest('.player-bottom-dock, #card-action-popup, #field-pick-banner')) return;
     dock.classList.remove('hand-expanded');
   }, true);
 }
