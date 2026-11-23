@@ -12,7 +12,8 @@ import { CARD_REGISTRY } from '../cards/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, '..', '..');
-const CDB_PATH = path.join(ROOT_DIR, 'data', 'ygopro', 'cdb', 'cards.cdb');
+const CDB_DIR = path.join(ROOT_DIR, 'data', 'ygopro', 'cdb');
+const CDB_PATH = path.join(CDB_DIR, 'cards.cdb');
 const SCRIPT_DIR = path.join(ROOT_DIR, 'data', 'ygopro', 'scripts');
 
 const RACE_NAMES = {
@@ -44,9 +45,7 @@ const RACE_NAMES = {
   0x2000000: 'Illusion'
 };
 
-let dbInstance = null;
-let dataStmt = null;
-let textStmt = null;
+let dbEntries = null;
 
 const ocgDataCache = new Map();
 const uiMetaCache = new Map();
@@ -61,15 +60,67 @@ for (const card of CARD_REGISTRY.values()) {
 }
 
 function ensureDb() {
-  if (dbInstance) return;
-  dbInstance = new DatabaseSync(CDB_PATH, { readOnly: true });
-  dataStmt = dbInstance.prepare(
-    'SELECT id, alias, setcode, type, level, race, attribute, atk, def FROM datas WHERE id = ?'
-  );
-  dataStmt.setReadBigInts(true);
-  textStmt = dbInstance.prepare(
-    'SELECT id, name, desc, str1, str2, str3, str4, str5, str6, str7, str8, str9, str10, str11, str12, str13, str14, str15, str16 FROM texts WHERE id = ?'
-  );
+  if (dbEntries) return;
+  dbEntries = [];
+
+  const candidatePaths = [];
+  if (fs.existsSync(CDB_PATH)) {
+    candidatePaths.push(CDB_PATH);
+  }
+  if (fs.existsSync(CDB_DIR)) {
+    const extraFiles = fs
+      .readdirSync(CDB_DIR)
+      .filter((name) => {
+        if (!name.endsWith('.cdb') || name === 'cards.cdb') return false;
+        const lower = name.toLowerCase();
+        if (lower.includes('rush') || lower.includes('skill') || lower.includes('unofficial') || lower.includes('goat')) {
+          return false;
+        }
+        return lower.startsWith('release-') || lower.startsWith('prerelease-');
+      })
+      .sort((a, b) => {
+        const aRel = a.startsWith('release-') ? 0 : 1;
+        const bRel = b.startsWith('release-') ? 0 : 1;
+        return aRel - bRel || a.localeCompare(b);
+      });
+    for (const file of extraFiles) {
+      candidatePaths.push(path.join(CDB_DIR, file));
+    }
+  }
+
+  for (const dbPath of candidatePaths) {
+    try {
+      const db = new DatabaseSync(dbPath, { readOnly: true });
+      const dataStmt = db.prepare(
+        'SELECT id, alias, setcode, type, level, race, attribute, atk, def FROM datas WHERE id = ?'
+      );
+      dataStmt.setReadBigInts(true);
+      const textStmt = db.prepare(
+        'SELECT id, name, desc, str1, str2, str3, str4, str5, str6, str7, str8, str9, str10, str11, str12, str13, str14, str15, str16 FROM texts WHERE id = ?'
+      );
+      dbEntries.push({ db, dataStmt, textStmt });
+    } catch (err) {
+      console.warn(`[OcgCardDb] Skipping ${path.basename(dbPath)}:`, err.message);
+    }
+  }
+}
+
+function queryDataRow(numCode) {
+  ensureDb();
+  for (const entry of dbEntries) {
+    const row = entry.dataStmt.get(numCode);
+    if (row) return row;
+  }
+  return null;
+}
+
+function queryTextRow(numCode) {
+  ensureDb();
+  for (const entry of dbEntries) {
+    const row = entry.textStmt.get(numCode);
+    if (row) return row;
+  }
+  return null;
 }
 
 /**
@@ -81,8 +132,7 @@ export function readOcgCardData(code) {
   if (!numCode) return null;
   if (ocgDataCache.has(numCode)) return ocgDataCache.get(numCode);
 
-  ensureDb();
-  const row = dataStmt.get(numCode);
+  const row = queryDataRow(numCode);
   if (!row) {
     ocgDataCache.set(numCode, null);
     return null;
@@ -123,6 +173,7 @@ export function readOcgScript(scriptName) {
 
   const candidates = [
     path.join(SCRIPT_DIR, 'official', scriptName),
+    path.join(SCRIPT_DIR, 'pre-release', scriptName),
     path.join(SCRIPT_DIR, scriptName)
   ];
   for (const p of candidates) {
@@ -192,7 +243,7 @@ export function getUiCardMeta(code) {
 
   ensureDb();
   const data = readOcgCardData(numCode);
-  const textRow = textStmt.get(numCode);
+  const textRow = queryTextRow(numCode);
   const local = localByPasscode.get(numCode);
 
   if (!data && !textRow) {
@@ -360,7 +411,13 @@ export function findAnnounceCardCodes(opcodes, limit = 50) {
   if (found.length === 0) {
     if (!allDbCodes) {
       ensureDb();
-      allDbCodes = dbInstance.prepare('SELECT id FROM datas').all().map(r => Number(r.id));
+      const idSet = new Set();
+      for (const entry of dbEntries) {
+        for (const r of entry.db.prepare('SELECT id FROM datas').all()) {
+          idSet.add(Number(r.id));
+        }
+      }
+      allDbCodes = Array.from(idSet);
     }
     for (const code of allDbCodes) {
       if (tryCode(code)) break;
