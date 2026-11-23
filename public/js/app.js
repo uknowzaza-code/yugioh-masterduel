@@ -2090,9 +2090,12 @@ function renderDuelScreen() {
   const btnGoMp2 = document.getElementById('btn-go-mp2');
   const btnEndTurn = document.getElementById('btn-end-turn');
 
-  btnGoBattle.classList.toggle('hidden', !isMyTurn || !(legal.canBattlePhase ?? (state.phase === PHASES.MP1 && state.turnCount > 1)));
-  btnGoMp2.classList.toggle('hidden', !isMyTurn || !(legal.canMainPhase2 ?? (state.phase === PHASES.BP)));
-  btnEndTurn.disabled = !isMyTurn || legal.canEndTurn === false;
+  const canShowEndTurn = isMyTurn && state.winner === null;
+  btnGoBattle.classList.toggle('hidden', !canShowEndTurn || !(legal.canBattlePhase ?? (state.phase === PHASES.MP1 && state.turnCount > 1)));
+  btnGoMp2.classList.toggle('hidden', !canShowEndTurn || !(legal.canMainPhase2 ?? (state.phase === PHASES.BP)));
+  btnEndTurn.hidden = !canShowEndTurn;
+  btnEndTurn.classList.toggle('hidden', !canShowEndTurn);
+  btnEndTurn.disabled = !canShowEndTurn || legal.canEndTurn === false;
 
   // Chain Mode Button
   const chainToggleBtn = document.getElementById('btn-chain-toggle');

@@ -31,6 +31,8 @@
   --success: #3ecf8e;
   --warning: #f5b544;
   --danger: #ff5c6c;
+  --danger-hover: color-mix(in srgb, var(--danger) 85%, white);
+  --danger-soft: color-mix(in srgb, var(--danger) 18%, transparent);
   --player: #5b8cff;
   --opponent: #ff6b7d;
 
@@ -88,6 +90,10 @@
 }
 
 /* ==================== 2. RESET & BASE ==================== */
+[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--bg-0);
@@ -916,24 +922,100 @@ textarea:focus {
   box-shadow: var(--shadow-1);
 }
 
-.phase-steps {
-  background: rgba(18, 21, 28, 0.82);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
+.phase-action-buttons {
+  min-width: 108px;
+  min-height: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.phase-badge {
+/* Task 4: Centered Horizontal Phase Stepper Pill Bar */
+.field-center-phase-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 2px 0;
+  z-index: 6;
+}
+
+#phase-steps-bar.phase-steps {
+  position: static !important;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-1);
+  width: auto;
+  height: auto;
+}
+
+#phase-steps-bar .phase-turn-header {
   font-family: var(--font-num);
-  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-2);
+  padding: 0 var(--space-2);
+  border-right: 1px solid var(--divider);
+  margin-right: 2px;
+}
+
+#phase-steps-bar .phase-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
-.phase-badge.active {
+/* Future phases (after the active badge) */
+#phase-steps-bar .phase-badge.active ~ .phase-badge {
+  color: var(--text-2);
+}
+
+#phase-steps-bar .phase-badge.phase-clickable {
+  cursor: pointer;
+}
+
+#phase-steps-bar .phase-badge.phase-clickable:hover {
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+
+/* Active phase chip */
+#phase-steps-bar .phase-badge.active {
   background: var(--accent);
   color: #ffffff;
+  border-color: transparent;
   box-shadow: none;
+}
+
+/* Active Battle Phase chip matches red Battle Phase button */
+#phase-steps-bar .phase-badge[data-phase="BP"].active {
+  background: var(--danger);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px var(--danger-soft);
 }
 
 .btn-phase {
@@ -944,10 +1026,44 @@ textarea:focus {
   font-size: var(--fs-xs);
   font-weight: 600;
   box-shadow: none;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
 
 .btn-phase:hover {
   background: var(--bg-3);
+}
+
+.btn-phase:active {
+  transform: scale(0.97);
+}
+
+/* Task 1: Battle Phase button — red (--danger), on-theme */
+#btn-go-battle.btn-phase {
+  background: var(--danger);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 0 0 4px var(--danger-soft);
+}
+
+#btn-go-battle.btn-phase:hover {
+  background: var(--danger-hover);
+}
+
+#btn-go-battle.btn-phase:active {
+  transform: scale(0.97);
+}
+
+#btn-go-battle.btn-phase:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+#btn-go-battle.btn-phase:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .btn-phase.btn-end-turn {
@@ -958,6 +1074,99 @@ textarea:focus {
 
 .btn-phase.btn-end-turn:hover {
   background: var(--accent-hover);
+}
+
+/* Task 3: Fit Duel Screen to Desktop Viewport (1280x720 through 1920x1080) */
+@media (min-width: 1024px) {
+  body:has(#screen-duel.active) {
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  #screen-duel.active {
+    height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
+    overflow: hidden;
+  }
+
+  .duel-layout {
+    --sidebar-w: clamp(260px, 22vw, 330px);
+    --card-h: clamp(66px, min(calc((100dvh - 208px) / 6.3), calc((100vw - var(--sidebar-w) - 180px) / 7 * 1.4583)), 104px);
+    --card-w: calc(var(--card-h) / 1.4583);
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .inspector-sidebar {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .battlefield-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-2);
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .playmat-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+    justify-content: center;
+  }
+
+  .field-row {
+    gap: var(--space-2);
+  }
+
+  .zone-slot,
+  .emz-slot,
+  .card-zone-box,
+  .deck-pile-slot {
+    width: var(--card-w);
+    height: var(--card-h);
+  }
+
+  .oct-zone-btn {
+    height: calc(var(--card-h) * 0.46);
+  }
+
+  .player-bottom-dock {
+    padding: var(--space-2) var(--space-3);
+    min-height: calc(var(--card-h) * 0.96);
+    max-height: calc(var(--card-h) * 1.15);
+    overflow: visible;
+  }
+
+  .self-hand-container {
+    flex-wrap: nowrap;
+    align-items: center;
+    min-height: calc(var(--card-h) * 0.9);
+  }
+
+  .self-hand-container .hand-card-item {
+    width: calc(var(--card-w) * 0.96);
+    height: calc(var(--card-h) * 0.96);
+    flex-shrink: 0;
+  }
+
+  .self-hand-container .hand-card-item + .hand-card-item {
+    margin-left: -6px;
+  }
 }
 
 .btn-chain-toggle,
