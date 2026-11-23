@@ -1079,14 +1079,22 @@ textarea:focus {
 /* Task 3: Fit Duel Screen to Desktop Viewport (1280x720 through 1920x1080) */
 @media (min-width: 1024px) {
   body:has(#screen-duel.active) {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     height: 100vh;
     height: 100dvh;
   }
 
+  body:has(#screen-duel.active) .app-header {
+    flex: 0 0 auto;
+    padding: 6px var(--space-4);
+  }
+
   #screen-duel.active {
-    height: calc(100vh - 56px);
-    height: calc(100dvh - 56px);
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     overflow: hidden;
   }
 
@@ -1190,20 +1198,24 @@ textarea:focus {
     flex: 0 0 auto;
     position: relative;
     z-index: 15;
+    margin-top: 0;
     padding: 6px var(--space-3);
-    min-height: calc(var(--card-h) * 0.98 + 12px);
+    min-height: auto;
     overflow: visible;
   }
 
   .self-hand-container {
     flex-wrap: nowrap;
     align-items: center;
-    min-height: calc(var(--card-h) * 0.96);
-    padding: 2px 0;
+    min-height: calc(var(--card-h) * 0.94 + 6px);
+    padding: 4px 4px;
+    overflow-x: auto;
+    overflow-y: visible;
   }
 
   .self-hand-container .hand-card-item {
     width: calc(var(--card-w) * 0.94);
+    min-width: calc(var(--card-w) * 0.94);
     height: calc(var(--card-h) * 0.94);
     flex-shrink: 0;
   }
