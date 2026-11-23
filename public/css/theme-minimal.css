@@ -1153,10 +1153,20 @@ textarea:focus {
 
   /* Compute exact card size from .playmat-container's real rendered height (100cqh) */
   .playmat-container > .field-row {
-    --card-h: clamp(42px, min(calc((100cqh - 76px) / 5), calc((100cqw - 220px) / 5 * 1.4583)), 96px);
+    --card-h: clamp(40px, min(calc((100cqh - 104px) / 5), calc((100cqw - 220px) / 5 * 1.4583)), 94px);
     --card-w: calc(var(--card-h) / 1.4583);
     gap: var(--space-2);
     flex-shrink: 0;
+    padding: 0;
+  }
+
+  .playmat-container .five-zones-grid {
+    grid-template-columns: repeat(5, var(--card-w));
+  }
+
+  .playmat-container .opp-deck-pile,
+  .playmat-container .opp-extra-pile {
+    transform: none;
   }
 
   .phase-orb-stack {
@@ -1168,27 +1178,33 @@ textarea:focus {
   }
 
   .phase-orb {
-    width: clamp(44px, calc(var(--card-h) * 0.72), 58px);
-    height: clamp(44px, calc(var(--card-h) * 0.72), 58px);
+    width: clamp(38px, calc(var(--card-h) * 0.72), 54px);
+    height: clamp(38px, calc(var(--card-h) * 0.72), 54px);
     font-size: 10px;
     flex-shrink: 0;
   }
 
   .phase-action-buttons {
     min-width: 78px;
-    min-height: 26px;
+    min-height: 0;
   }
 
   .zone-slot,
   .emz-slot,
   .card-zone-box,
-  .deck-pile-slot {
+  .deck-pile-slot,
+  .playmat-container .duel-card {
     width: var(--card-w);
     height: var(--card-h);
   }
 
+  .playmat-container .dual-oct-col {
+    gap: 3px;
+  }
+
   .oct-zone-btn {
-    height: calc(var(--card-h) * 0.45);
+    height: calc((var(--card-h) - 3px) / 2);
+    min-height: 0;
     padding: 2px 6px;
   }
 
@@ -1637,13 +1653,20 @@ textarea:focus {
   .zone-slot,
   .emz-slot,
   .card-zone-box,
-  .deck-pile-slot {
+  .deck-pile-slot,
+  .playmat-container .duel-card {
     width: var(--slot-w);
     height: var(--slot-h);
   }
 
+  .playmat-container .opp-deck-pile,
+  .playmat-container .opp-extra-pile {
+    transform: none;
+  }
+
   .oct-zone-btn {
-    height: calc(var(--slot-h) * 0.45);
+    height: calc((var(--slot-h) - 3px) / 2);
+    min-height: 0;
     padding: 2px 6px;
   }
 
