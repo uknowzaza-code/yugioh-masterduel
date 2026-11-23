@@ -1434,7 +1434,7 @@ textarea:focus {
     gap: var(--space-2);
     min-height: calc(100dvh - 68px);
     padding: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .inspector-sidebar {
@@ -1528,22 +1528,63 @@ textarea:focus {
   }
 
   .player-bottom-dock {
-    padding: var(--space-2) var(--space-3);
-    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px));
+    position: relative;
+    z-index: 30;
+    padding: 4px var(--space-3);
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    height: 70px;
+    min-height: 70px;
+    overflow: visible;
+    align-items: flex-end;
+    cursor: pointer;
   }
 
   .self-hand-container {
     flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    gap: var(--space-2);
-    padding: 2px 2px 4px;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0;
+    padding: 0 8px;
+    overflow: visible;
+    transform-origin: bottom center;
+    transform: translateY(14px) scale(0.76);
+    transition: transform var(--dur) var(--ease);
   }
 
   .self-hand-container .hand-card-item {
     scroll-snap-align: start;
     flex-shrink: 0;
+    transform-origin: 50% 130%;
+    transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-angle, 0deg));
+    transition: margin var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  }
+
+  .self-hand-container .hand-card-item + .hand-card-item {
+    margin-left: -26px;
+  }
+
+  /* Tap once on mobile/iPad -> expand entire hand clearly; tap outside -> collapse */
+  .player-bottom-dock.hand-expanded {
+    z-index: 45;
+  }
+
+  .player-bottom-dock.hand-expanded .self-hand-container {
+    transform: translateY(-24px) scale(1.14);
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    justify-content: safe center;
+    gap: 6px;
+    padding: 4px 10px;
+  }
+
+  .player-bottom-dock.hand-expanded .self-hand-container .hand-card-item {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  .player-bottom-dock.hand-expanded .self-hand-container .hand-card-item + .hand-card-item {
+    margin-left: 0;
   }
 }
 

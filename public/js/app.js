@@ -5082,11 +5082,37 @@ function setupMobileFieldZoom() {
   });
 }
 
+function setupMobileHandToggle() {
+  const dock = document.querySelector('.player-bottom-dock');
+  if (!dock) return;
+
+  const isTouchOrCompact = () =>
+    window.matchMedia('(max-width: 1023px), (hover: none)').matches;
+
+  // First tap on collapsed hand expands the whole hand; subsequent taps interact normally
+  dock.addEventListener('click', (ev) => {
+    if (!isTouchOrCompact()) return;
+    if (!dock.classList.contains('hand-expanded')) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      dock.classList.add('hand-expanded');
+    }
+  }, true);
+
+  // Tap anywhere outside the hand dock (and outside card action popup) collapses it back down
+  document.addEventListener('pointerdown', (ev) => {
+    if (!dock.classList.contains('hand-expanded')) return;
+    if (ev.target.closest('.player-bottom-dock, #card-action-popup')) return;
+    dock.classList.remove('hand-expanded');
+  }, true);
+}
+
 // ==================== INITIALIZATION & EVENT BINDINGS ====================
 window.addEventListener('DOMContentLoaded', () => {
   setupDialogs();
   setupRpsDialogBindings();
   setupMobileFieldZoom();
+  setupMobileHandToggle();
   populateAiDeckDropdown();
   renderDeckSelector();
   applyLanguage();
