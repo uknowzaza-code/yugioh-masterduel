@@ -106,6 +106,7 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: clip;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -1423,14 +1424,146 @@ textarea:focus {
   bottom: 84px;
   width: min(94%, 760px);
   max-width: calc(100% - 16px);
+  max-height: 36dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 46;
   margin-top: 0;
-  background: rgba(9, 13, 24, 0.42);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1.5px solid rgba(250, 204, 21, 0.65);
+  padding: 7px 10px;
+  background: rgba(11, 14, 24, 0.72);
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  border: 1.5px solid rgba(250, 204, 21, 0.6);
   border-radius: var(--radius-lg);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.48);
+}
+
+.chain-prompt-bar .btn-chain-pass {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-pill);
+}
+
+.chain-prompt-bar .btn-chain-peek {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  background: rgba(91, 140, 255, 0.16);
+  border: 1px solid rgba(91, 140, 255, 0.55);
+  color: #bae6fd;
+  border-radius: var(--radius-pill);
+}
+
+.chain-prompt-bar .btn-chain-peek:hover {
+  background: rgba(91, 140, 255, 0.28);
+  border-color: var(--accent-hover);
+  color: #ffffff;
+}
+
+.chain-prompt-bar.is-peeking {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: calc(100vw - 20px);
+  padding: 5px 10px !important;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  background: rgba(9, 13, 24, 0.72) !important;
+  border: 1px solid rgba(91, 140, 255, 0.65);
+  border-radius: var(--radius-pill) !important;
+}
+
+.chain-prompt-bar.is-peeking .chain-options-list,
+.chain-prompt-bar.is-peeking .inline-prompt-actions,
+.chain-prompt-bar.is-peeking .chain-trigger-desc {
+  display: none !important;
+}
+
+.chain-prompt-bar.is-peeking .chain-bar-header {
+  margin-bottom: 0 !important;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* Clickable Chain Stack & Chain Option Inspect */
+.chain-stack-item.is-inspectable {
+  cursor: pointer;
+  transition: transform 0.14s var(--ease), box-shadow 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.chain-stack-item.is-inspectable:hover,
+.chain-stack-item.is-inspectable:active {
+  border-color: #fde047;
+  transform: scale(1.06);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.6);
+}
+
+.chain-option-inspect-btn,
+.btn-mini.chain-option-inspect-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  min-block-size: 24px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-pill);
+  color: var(--text-1);
+}
+
+.chain-option-inspect-btn:hover {
+  background: var(--accent-soft);
+  border-color: #fde047;
+  color: #fde047;
+}
+
+/* Clickable Card Links in Duel Log */
+.log-card-link {
+  display: inline;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 600;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.log-card-link:hover,
+.log-card-link:focus-visible {
+  background: rgba(245, 181, 68, 0.2);
+  border-color: rgba(245, 181, 68, 0.72);
+  color: #fde047;
+}
+
+/* Mobile Card Detail Quick-View Glass Overlay */
+#mobile-card-preview,
+.mobile-card-preview {
+  background: rgba(5, 7, 11, 0.58);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.mobile-card-preview-card {
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.mobile-card-preview-close {
+  background: var(--bg-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+}
+
+.mobile-card-preview-close:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
 }
 
 /* Distinct, Thumb-Friendly Card Action Buttons (Summon / Activate / Set / Attack) */
@@ -1438,8 +1571,8 @@ textarea:focus {
 #field-pick-banner .inline-prompt-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding-top: var(--space-2);
+  gap: var(--space-2);
+  padding-top: var(--space-1);
 }
 
 .inline-prompt-btn {
@@ -1447,8 +1580,8 @@ textarea:focus {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 42px;
-  padding: 8px var(--space-4);
+  min-height: 36px;
+  padding: 6px var(--space-3);
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
@@ -1524,24 +1657,98 @@ textarea:focus {
 }
 
 @media (max-width: 1023px) {
+  /* Compact, slim translucent Chain Prompt Bar & Field Pick Banner on mobile/tablet */
+  .chain-prompt-bar {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 12px);
+    max-width: 580px;
+    max-height: 32dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 8px;
+    border-radius: var(--radius-md);
+    background: rgba(11, 15, 28, 0.84);
+    z-index: 60;
+  }
+
+  .chain-bar-header {
+    gap: 5px;
+    margin-bottom: 4px;
+  }
+
+  .chain-trigger-desc {
+    font-size: 0.74rem;
+    line-height: 1.25;
+  }
+
+  .chain-prompt-bar .btn-chain-pass,
+  .chain-prompt-bar .btn-chain-peek,
+  .chain-prompt-bar .btn-primary:not(.chain-option-inspect-btn),
+  .chain-prompt-bar .btn-secondary:not(.chain-option-inspect-btn),
+  .chain-prompt-bar .btn-mini:not(.chain-option-inspect-btn) {
+    min-height: 32px;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+  }
+
+  .chain-options-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .chain-option-btn {
+    min-width: 140px;
+    max-width: 210px;
+    padding: 5px 8px;
+    gap: 6px;
+    font-size: 0.72rem;
+    min-height: 34px;
+  }
+
+  .chain-option-btn img {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .chain-prompt-bar .chain-option-inspect-btn,
+  .chain-option-inspect-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    min-block-size: 28px;
+    padding: 0;
+  }
+
   #field-pick-banner {
-    padding: var(--space-3);
+    padding: 6px 8px;
   }
 
   #field-pick-banner .chain-options-list,
   #field-pick-banner .inline-prompt-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     width: 100%;
+    padding-top: 2px;
+    margin-top: 0;
   }
 
   .inline-prompt-btn {
-    width: 100%;
-    min-height: 48px;
-    padding: 12px var(--space-4);
-    font-size: 15px;
-    justify-content: flex-start;
+    width: auto;
+    flex: 1 1 auto;
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.74rem;
+    justify-content: center;
+    border-radius: var(--radius-sm);
   }
 }
 
@@ -1625,14 +1832,30 @@ textarea:focus {
     justify-content: space-between;
     gap: var(--space-2);
     min-height: calc(100dvh - 68px);
+    min-width: 0;
+    max-width: 100%;
     padding: 0;
     overflow: visible;
   }
 
   .inspector-sidebar {
     order: 2;
-    height: 260px;
+    height: clamp(240px, 38dvh, 330px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .inspector-tabs {
+    flex-shrink: 0;
+    margin: var(--space-2);
+  }
+
+  .inspector-pane {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .player-hud.opponent-hud,
@@ -1640,6 +1863,7 @@ textarea:focus {
     flex: 0 0 auto;
     position: relative;
     z-index: 15;
+    max-width: 100%;
   }
 
   .playmat-container {
@@ -1652,8 +1876,13 @@ textarea:focus {
     padding: var(--space-2);
     gap: 5px;
     margin: 0;
+    max-width: 100%;
     justify-content: center;
     overflow: hidden;
+  }
+
+  .playmat-container > .equip-arrows-svg {
+    position: absolute !important;
   }
 
   .playmat-container[data-field-scale="85"] {
@@ -1665,15 +1894,24 @@ textarea:focus {
   }
 
   .field-row {
-    grid-template-columns: var(--side-w) 1fr var(--side-w);
+    grid-template-columns: var(--side-w) minmax(0, 1fr) var(--side-w);
     gap: var(--field-gap);
     flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .side-col {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .five-zones-grid {
     grid-template-columns: repeat(5, var(--slot-w));
     gap: var(--field-gap);
     justify-content: center;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .zone-slot,
@@ -1686,19 +1924,59 @@ textarea:focus {
   }
 
   .playmat-container .opp-deck-pile,
-  .playmat-container .opp-extra-pile {
+  .playmat-container .opp-extra-pile,
+  .playmat-container .self-deck-pile,
+  .playmat-container .extra-deck-slot {
     transform: none;
   }
 
   .oct-zone-btn {
+    width: 100%;
+    max-width: var(--side-w);
     height: calc((var(--slot-h) - 3px) / 2);
     min-height: 0;
-    padding: 2px 6px;
+    padding: 1px 4px;
+    line-height: 1.08;
+    overflow: hidden;
+  }
+
+  .oct-label {
+    font-size: 0.54rem;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .oct-count {
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+
+  .phase-orb-stack {
+    width: 100%;
+    min-width: 0;
+    gap: 2px;
   }
 
   .phase-action-buttons {
-    min-width: 78px;
-    min-height: 26px;
+    width: 100%;
+    min-width: 0;
+    max-width: var(--side-w);
+    min-height: 0;
+    gap: 2px;
+  }
+
+  .center-utils-col .btn-chain-toggle,
+  .center-utils-col .btn-surrender,
+  .center-utils-col .btn-mobile-zoom {
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px 3px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Keep horizontal centered phase bar crisp on iPad & Mobile */
@@ -1731,8 +2009,8 @@ textarea:focus {
     z-index: 30;
     padding: 4px var(--space-3);
     padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
-    height: 70px;
-    min-height: 70px;
+    height: 72px;
+    min-height: 72px;
     overflow: visible;
     align-items: flex-end;
     cursor: pointer;
@@ -1740,50 +2018,94 @@ textarea:focus {
 
   .self-hand-container {
     flex-wrap: nowrap;
-    justify-content: center;
+    justify-content: safe center;
     align-items: flex-end;
     gap: 0;
-    padding: 0 8px;
-    overflow: visible;
+    padding: 2px 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    scroll-snap-type: x proximity;
     transform-origin: bottom center;
-    transform: translateY(14px) scale(0.76);
+    transform: translateY(6px);
     transition: transform var(--dur) var(--ease);
   }
 
   .self-hand-container .hand-card-item {
     scroll-snap-align: start;
     flex-shrink: 0;
-    transform-origin: 50% 130%;
+    transform-origin: 50% 100%;
     transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-angle, 0deg));
     transition: margin var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
 
   .self-hand-container .hand-card-item + .hand-card-item {
-    margin-left: -26px;
+    margin-left: -18px;
   }
 
-  /* Tap once on mobile/iPad -> expand entire hand clearly; tap outside -> collapse */
+  /* Tap once on mobile/iPad -> expand hand smoothly without scaling the scroll container */
   .player-bottom-dock.hand-expanded {
     z-index: 45;
   }
 
   .player-bottom-dock.hand-expanded .self-hand-container {
-    transform: translateY(-24px) scale(1.14);
+    transform: translateY(-16px);
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     scroll-snap-type: x proximity;
     justify-content: safe center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 6px 10px;
+    background: rgba(15, 20, 34, 0.92);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-2);
   }
 
   .player-bottom-dock.hand-expanded .self-hand-container .hand-card-item {
+    --hand-w: clamp(56px, 16.5dvw, 76px);
+    width: var(--hand-w);
+    min-width: var(--hand-w);
+    height: calc(var(--hand-w) * 1.4583);
     transform: translateY(0) rotate(0deg);
   }
 
   .player-bottom-dock.hand-expanded .self-hand-container .hand-card-item + .hand-card-item {
     margin-left: 0;
+  }
+
+  /* Compact Chain Stack Overlay & YGOPro Strip on Tablet/Mobile */
+  .chain-stack-overlay {
+    right: 4px;
+    padding: 5px 4px;
+    gap: 4px;
+    max-height: 55dvh;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .chain-stack-item {
+    width: 42px;
+    height: 59px;
+  }
+
+  #ygopro-card-strip {
+    position: fixed;
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: 76dvh;
+    overflow-y: auto;
+    z-index: 65;
+  }
+
+  .card-action-popup {
+    max-width: calc(100vw - 16px);
+    max-height: 75dvh;
+    overflow-y: auto;
   }
 }
 
@@ -1792,13 +2114,35 @@ textarea:focus {
     padding: var(--space-2) var(--space-3);
   }
 
-  .btn-gold,
-  .btn-secondary,
-  .btn-primary,
+  .btn-gold:not(.btn-chain-pass):not(.btn-chain-peek):not(.btn-mini),
+  .btn-secondary:not(.btn-chain-pass):not(.btn-chain-peek):not(.btn-mini),
+  .btn-primary:not(.btn-chain-pass):not(.btn-chain-peek):not(.btn-mini),
   #btn-create-room,
   #btn-join-room,
   #btn-invite-quick-join {
     min-height: 44px;
+  }
+
+  .chain-prompt-bar {
+    padding: 5px 7px;
+    max-height: 28dvh;
+  }
+
+  .chain-prompt-bar .btn-chain-pass,
+  .chain-prompt-bar .btn-chain-peek,
+  .chain-prompt-bar .btn-secondary:not(.chain-option-inspect-btn),
+  .chain-prompt-bar .btn-primary:not(.chain-option-inspect-btn),
+  .chain-prompt-bar .btn-mini:not(.chain-option-inspect-btn) {
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+
+  .chain-option-btn {
+    min-width: 136px;
+    max-width: 196px;
+    padding: 4px 7px;
+    font-size: 0.71rem;
   }
 
   .playmat-picker-row {
@@ -1825,7 +2169,8 @@ textarea:focus {
   }
 
   .player-hud.opponent-hud {
-    padding: 4px 8px;
+    padding: 4px 6px;
+    gap: 4px;
   }
 
   .playmat-container {
@@ -1837,17 +2182,49 @@ textarea:focus {
     gap: 3px;
   }
 
+  .phase-orb {
+    width: clamp(32px, calc(var(--slot-w) * 0.9), 40px);
+    height: clamp(32px, calc(var(--slot-w) * 0.9), 40px);
+    font-size: 0.46rem;
+  }
+
   .phase-action-buttons {
-    min-width: 58px;
-    min-height: 24px;
+    min-width: 0;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .center-utils-col {
+    gap: 2px;
+  }
+
+  .center-utils-col .btn-chain-toggle,
+  .center-utils-col .btn-surrender,
+  .center-utils-col .btn-mobile-zoom {
+    min-height: 20px;
+    font-size: 0.48rem;
+    padding: 1px 2px;
+  }
+
+  .oct-zone-btn {
+    padding: 1px 2px;
+  }
+
+  .oct-label {
+    font-size: 0.48rem;
+  }
+
+  .oct-count {
+    font-size: 0.66rem;
   }
 
   #btn-go-battle.btn-phase,
   .btn-phase.btn-end-turn,
   .btn-phase.btn-mp2 {
-    font-size: 10px;
-    padding: 3px 5px;
-    min-height: 26px;
+    font-size: 9.5px;
+    padding: 2px 4px;
+    min-height: 22px;
+    width: 100%;
   }
 
   #phase-steps-bar.phase-steps {
@@ -1865,6 +2242,16 @@ textarea:focus {
     height: 22px;
     padding: 0 4px;
     font-size: 10px;
+  }
+
+  .chain-stack-overlay {
+    right: 4px;
+    padding: 4px 3px;
+  }
+
+  .chain-stack-item {
+    width: 38px;
+    height: 54px;
   }
 
   .player-bottom-dock {
@@ -1899,10 +2286,24 @@ textarea:focus {
     font-size: 9.5px;
   }
 
+  .player-bottom-dock {
+    height: 58px;
+    min-height: 58px;
+  }
+
   .self-hand-container .hand-card-item {
     height: clamp(46px, calc(var(--slot-h) * 0.95), 62px);
     width: calc(clamp(46px, calc(var(--slot-h) * 0.95), 62px) / 1.4583);
     min-width: calc(clamp(46px, calc(var(--slot-h) * 0.95), 62px) / 1.4583);
+  }
+
+  .chain-prompt-bar {
+    max-height: 30dvh;
+    padding: 4px 7px;
+  }
+
+  .chain-stack-overlay {
+    max-height: 58dvh;
   }
 }
 

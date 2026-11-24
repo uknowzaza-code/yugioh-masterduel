@@ -6,6 +6,7 @@
 import { randomInt } from 'node:crypto';
 import createCore, {
   OcgDuelMode,
+  OcgHintTiming,
   OcgLocation,
   OcgMessageType,
   OcgPhase,
@@ -96,6 +97,29 @@ function toCompactVfxMeta(code) {
     level: m.level,
     rank: m.rank,
     linkRating: m.linkRating
+  };
+}
+
+function toLogCardSnapshot(meta) {
+  if (!meta) return null;
+  return {
+    id: meta.id,
+    passcode: meta.passcode,
+    name: meta.name,
+    nameTh: meta.nameTh,
+    kind: meta.kind,
+    frame: meta.frame,
+    subtype: meta.subtype,
+    subType: meta.subType || meta.subtype || null,
+    attribute: meta.attribute,
+    race: meta.race,
+    level: meta.level,
+    rank: meta.rank,
+    linkRating: meta.linkRating,
+    atk: meta.atk,
+    def: meta.def,
+    description: meta.description || '',
+    descriptionTh: meta.descriptionTh || ''
   };
 }
 
@@ -251,11 +275,19 @@ export class YGOProEngine {
     }
   }
 
-  log(msg) {
+  log(msg, cardMeta = null, extraCardMetas = null) {
+    const snap = toLogCardSnapshot(cardMeta);
+    const refs = Array.isArray(extraCardMetas)
+      ? extraCardMetas.map(toLogCardSnapshot).filter(Boolean)
+      : null;
     this.logs.push({
       turn: this.turnCount || 1,
       phase: this.phase || PHASES.DP,
-      text: msg
+      text: msg,
+      cardId: snap?.id || null,
+      cardCode: snap?.passcode ? Number(snap.passcode) : null,
+      cardSnapshot: snap || null,
+      ...(refs && refs.length > 0 ? { cardRefs: refs } : {})
     });
     if (this.logs.length > 250) {
       this.logs = this.logs.slice(-250);
@@ -354,21 +386,16 @@ export class YGOProEngine {
             }
           }
         }
-        // Auto-pass empty or AUTO-skipped non-forced SELECT_CHAIN timing windows
+        // Auto-pass empty or Master Duel AUTO/OFF-skipped non-forced SELECT_CHAIN timing windows
         if (
           this.pendingMessage &&
           this.pendingMessage.type === OcgMessageType.SELECT_CHAIN &&
-          !this.pendingMessage.forced
+          this._shouldAutoSkipSelectChain(this.pendingMessage)
         ) {
-          const selectsEmpty = !this.pendingMessage.selects || this.pendingMessage.selects.length === 0;
-          const pMode = this.chainModes?.[this.pendingMessage.player] || 'AUTO';
-          const isOpenDpSp = pMode === 'AUTO' && this.chainStack.length === 0 && (this.phase === PHASES.DP || this.phase === PHASES.SP);
-          if (selectsEmpty || pMode === 'OFF' || isOpenDpSp) {
-            prevPending = this.pendingMessage;
-            this.pendingMessage = null;
-            this.core.duelSetResponse(this.handle, { type: OcgResponseType.SELECT_CHAIN, index: null });
-            continue;
-          }
+          prevPending = this.pendingMessage;
+          this.pendingMessage = null;
+          this.core.duelSetResponse(this.handle, { type: OcgResponseType.SELECT_CHAIN, index: null });
+          continue;
         }
         if (this.isSoloVsAi && this.pendingMessage && this.pendingMessage.player === this.aiIndex && this.winner === null) {
           const aiResp = this._computeAiResponse(this.pendingMessage);
@@ -399,6 +426,67 @@ export class YGOProEngine {
     }
 
     this._syncStateFromCore();
+  }
+
+  /**
+   * Authentic Yu-Gi-Oh! Master Duel Chain Toggle filter (AUTO / ON / OFF).
+   * - OFF: skips all non-forced SELECT_CHAIN prompts.
+   * - ON: prompts at every legal fast-effect timing window (Draw/Standby/Self-Chain/etc.).
+   * - AUTO: prompts only when truly needed:
+   *   1) Mandatory / Trigger effects or cards whose scripted SetHintTiming matches (spe_count > 0)
+   *   2) Responding to an opponent's Chain Link (chainStack top is opponent's card)
+   *   3) Combat windows (Attack Declaration / Damage Step / Damage Calculation)
+   *   4) Opponent's End Phase / Battle Start when you have an on-field Spell/Trap or Monster Quick Effect
+   *   Skips self-turn free-chain spam, Draw/Standby Phase open windows, Set/Pos-Change micro-windows,
+   *   and free-chain self-chaining (use Chain: ON if you want Standby Maxx "C" or self-chaining).
+   */
+  _shouldAutoSkipSelectChain(msg) {
+    if (!msg || msg.forced) return false;
+    const selects = msg.selects || [];
+    if (selects.length === 0) return true;
+
+    const pMode = this.chainModes?.[msg.player] || 'AUTO';
+    if (pMode === 'OFF') return true;
+    if (pMode === 'ON') return false;
+
+    const speCount = Number(msg.spe_count || 0);
+    const chainLen = this.chainStack.length;
+
+    // 1. Active Chain response window
+    if (chainLen > 0) {
+      const topChain = this.chainStack[chainLen - 1];
+      // Always prompt when responding to opponent's card/effect
+      if (topChain && topChain.controller !== msg.player) return false;
+      // On your own Chain Link, only prompt in AUTO if an event-triggered effect (SEGOC / spe_count > 0) matched
+      return speCount === 0;
+    }
+
+    // 2. Open / Event window (no active Chain yet)
+    // Prompt if ocgcore flagged Trigger effects or scripted SetHintTiming matches (e.g. Maxx "C"/Imperm on opp Summon, Veiler on Main End, Torrential, Mirror Force)
+    if (speCount > 0) return false;
+
+    const timingSelf = Number(msg.hint_timing || 0);
+    const timingOther = Number(msg.hint_timing_other || 0);
+    const timingAny = timingSelf | timingOther;
+
+    // Always prompt on Attack Declaration / Damage Step / Damage Calculation
+    const combatMask = OcgHintTiming.ATTACK | OcgHintTiming.DAMAGE_STEP | OcgHintTiming.DAMAGE_CAL;
+    if ((timingAny & combatMask) !== 0) return false;
+
+    // On opponent's turn, prompt at End Phase or Battle Start only if an on-field card (e.g. Set MST/Trap/Quick Monster) can activate
+    const isOpponentTurn = msg.player !== this.turnPlayerIndex;
+    if (isOpponentTurn) {
+      const oppCheckpointMask = OcgHintTiming.END_PHASE | OcgHintTiming.BATTLE_START;
+      if ((timingOther & oppCheckpointMask) !== 0) {
+        const hasFieldCard = selects.some(
+          (s) => s.location === OcgLocation.SZONE || s.location === OcgLocation.MZONE
+        );
+        if (hasFieldCard) return false;
+      }
+    }
+
+    // Otherwise auto-pass (Master Duel AUTO skips Draw/Standby, own-turn free-chain micro-windows, Set/Pos-Change, etc.)
+    return true;
   }
 
   _consumeMessages(msgs) {
@@ -439,7 +527,7 @@ export class YGOProEngine {
         }
         case OcgMessageType.SUMMONING: {
           const meta = getUiCardMeta(m.code);
-          this.log(`${this.playerNames[m.controller]} Normal Summoned ${meta?.name || m.code}.`);
+          this.log(`${this.playerNames[m.controller]} Normal Summoned ${meta?.name || m.code}.`, meta);
           this.recentEvents.push({
             seq: ++this.eventSeq,
             type: 'SUMMON',
@@ -455,7 +543,7 @@ export class YGOProEngine {
         }
         case OcgMessageType.SPSUMMONING: {
           const meta = getUiCardMeta(m.code);
-          this.log(`${this.playerNames[m.controller]} Special Summoned ${meta?.name || m.code}.`);
+          this.log(`${this.playerNames[m.controller]} Special Summoned ${meta?.name || m.code}.`, meta);
           this.recentEvents.push({
             seq: ++this.eventSeq,
             type: 'SUMMON',
@@ -471,7 +559,7 @@ export class YGOProEngine {
         }
         case OcgMessageType.FLIPSUMMONING: {
           const meta = getUiCardMeta(m.code);
-          this.log(`${this.playerNames[m.controller]} Flip Summoned ${meta?.name || m.code}.`);
+          this.log(`${this.playerNames[m.controller]} Flip Summoned ${meta?.name || m.code}.`, meta);
           this.recentEvents.push({
             seq: ++this.eventSeq,
             type: 'SUMMON',
@@ -575,7 +663,7 @@ export class YGOProEngine {
             index: m.sequence,
             position: mapOcgPositionToUi(m.position || 0)
           });
-          this.log(`⛓️ [Chain Link ${chainLink}] ${this.playerNames[m.controller]} activated ${meta?.name || m.code}.`);
+          this.log(`⛓️ [Chain Link ${chainLink}] ${this.playerNames[m.controller]} activated ${meta?.name || m.code}.`, meta);
           break;
         }
         case OcgMessageType.CHAIN_SOLVED:
@@ -588,13 +676,17 @@ export class YGOProEngine {
           break;
         case OcgMessageType.CONFIRM_CARDS: {
           const confirmedNames = [];
+          const confirmedMetas = [];
           for (const c of m.cards || []) {
             this._confirmedCards.add(`${m.player}:${c.controller}:${c.location}:${c.sequence}:${c.code}`);
             const meta = getUiCardMeta(c.code);
-            if (meta?.name) confirmedNames.push(meta.name);
+            if (meta?.name) {
+              confirmedNames.push(meta.name);
+              confirmedMetas.push(meta);
+            }
           }
           if (confirmedNames.length > 0) {
-            this.log(`👁️ ${this.playerNames[m.player]} confirmed: ${confirmedNames.join(', ')}.`);
+            this.log(`👁️ ${this.playerNames[m.player]} confirmed: ${confirmedNames.join(', ')}.`, confirmedMetas[0] || null, confirmedMetas);
           }
           break;
         }
@@ -662,7 +754,7 @@ export class YGOProEngine {
             directAttack: !m.target,
             damage: 0
           };
-          this.log(`${this.playerNames[m.card?.controller ?? 0]} attacks with ${atkMeta?.name || 'Monster'}!`);
+          this.log(`${this.playerNames[m.card?.controller ?? 0]} attacks with ${atkMeta?.name || 'Monster'}!`, atkMeta);
           break;
         }
         case OcgMessageType.WIN:
@@ -927,7 +1019,8 @@ export class YGOProEngine {
         cardNameTh: meta?.name || meta?.nameTh || `Card #${sel.code}`,
         labelTh: desc,
         effectId: `ocg_${index}`,
-        code: sel.code
+        code: sel.code,
+        card: toLogCardSnapshot(meta)
       };
     });
     const topChain = this.chainStack[this.chainStack.length - 1];

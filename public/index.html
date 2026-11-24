@@ -367,6 +367,7 @@
           <div class="chain-bar-header">
             <span class="chain-spark">⚡</span>
             <div id="chain-trigger-desc" class="chain-trigger-desc"></div>
+            <button type="button" class="btn-mini btn-chain-peek" id="btn-chain-peek" aria-pressed="false" title="Temporarily view the board">👁️ View Board</button>
             <button type="button" class="btn-secondary btn-chain-pass" id="btn-chain-pass" data-i18n="btnPassChain">⏭️ ไม่ใช้เอฟเฟค (Pass)</button>
           </div>
           <div id="chain-options-list" class="chain-options-list"></div>
@@ -387,6 +388,8 @@
 
     <!-- Floating Card Action Menu Popup -->
     <div id="card-action-popup" class="card-action-popup hidden"></div>
+    <!-- Mobile Card Detail Quick-View Popup -->
+    <div id="mobile-card-preview" class="mobile-card-preview hidden" role="dialog" aria-modal="true" aria-label="Card Details"></div>
     <div id="duel-live-region" class="visually-hidden" aria-live="polite"></div>
     <div id="turn-change-banner" class="turn-change-banner" role="status" aria-live="polite" aria-atomic="true"></div>
   </main>

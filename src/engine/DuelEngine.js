@@ -201,17 +201,24 @@ export class DuelEngine {
       if (cardId && !CARD_REGISTRY.has(cardId)) {
         cardSnapshot = {
           id: cardOrId.id,
+          passcode: cardOrId.passcode || null,
           name: cardOrId.name,
           nameTh: cardOrId.nameTh,
           kind: cardOrId.kind,
           frame: cardOrId.frame,
+          subtype: cardOrId.subtype || cardOrId.subType || null,
+          subType: cardOrId.subType || cardOrId.subtype || null,
           attribute: cardOrId.attribute,
           race: cardOrId.race,
           level: cardOrId.level,
+          rank: cardOrId.rank,
+          linkRating: cardOrId.linkRating,
           atk: cardOrId.atk,
           def: cardOrId.def,
-          descTh: cardOrId.descTh,
-          descEn: cardOrId.descEn
+          description: cardOrId.description || cardOrId.descEn || '',
+          descriptionTh: cardOrId.descriptionTh || cardOrId.descTh || '',
+          descTh: cardOrId.descTh || cardOrId.descriptionTh || '',
+          descEn: cardOrId.descEn || cardOrId.description || ''
         };
       }
     }

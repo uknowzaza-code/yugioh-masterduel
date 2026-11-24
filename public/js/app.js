@@ -144,7 +144,11 @@ const appState = {
   aiTimer: null,
   mpManager: null,
   rpsContext: null,
-  lastRpsSeat: null
+  lastRpsSeat: null,
+  lastAutoInspectedEventKey: null,
+  knownCardsById: new Map(),
+  knownCardsByCode: new Map(),
+  knownCardsByName: new Map()
 };
 
 // ==================== TOP-LAYER EXIT & DIALOG HELPERS ====================
@@ -1950,6 +1954,11 @@ function enqueuePacedStateSync(payload) {
     stateSyncPacer.queue = [];
     stateSyncPacer.duelId = incomingDuelId;
     stateSyncPacer.lastApplyAt = Date.now();
+    appState.lastAutoInspectedEventKey = null;
+    appState.knownCardsById.clear();
+    appState.knownCardsByCode.clear();
+    appState.knownCardsByName.clear();
+    closeMobileCardDetail();
     applyDuelStateSync(payload);
     return;
   }
@@ -1999,6 +2008,9 @@ function renderDuelScreen() {
     extraActions: {},
     attackTargets: {}
   };
+
+  // Harvest visible/public card metadata for fast chain & duel-log inspection
+  harvestKnownCardsFromState(state, myIdx, legal);
 
   // 1. Update Player & Opponent HUDs
   document.getElementById('self-name').textContent = me.name;
@@ -2163,7 +2175,11 @@ function renderDuelScreen() {
   } else {
     appState.activeChainPrompt = null;
     clearChainCardHighlights();
-    chainBar?.classList.add('hidden');
+    if (chainBar) {
+      chainBar.classList.add('hidden');
+      chainBar.classList.remove('is-peeking');
+      syncChainPeekButton(chainBar, document.getElementById('btn-chain-peek'));
+    }
   }
 
   // 6b. Opponent Response / Chain Priority Glowing Aura
@@ -2185,7 +2201,10 @@ function renderDuelScreen() {
     resDlg.close();
   }
 
-  // 8. Play smooth Master Duel card & battle diff animations
+  // 8. Auto-focus Card Inspector on latest activated or played card (without overriding manual clicks on re-render)
+  autoFocusLatestPlayedOrActivatedCard(state, appState.lastRenderedState, myIdx);
+
+  // 9. Play smooth Master Duel card & battle diff animations
   if (prevSnapshot) {
     try {
       playBoardDiffAnimations(prevSnapshot, state, myIdx);
@@ -2315,7 +2334,9 @@ function renderFiveZonesGrid(gridId, slotsArray, isSelf, legal, zoneType) {
         cardEl.addEventListener('click', (e) => {
           if (shouldSuppressCardClick()) return;
           e.stopPropagation();
-          if (!isFaceDown) inspectCard(card);
+          if (!isFaceDown) {
+            inspectCardAndFocus(card, { openMobilePreview: true });
+          }
         });
       }
 
@@ -2379,6 +2400,7 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         clearPinnedCmdCards();
+        document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
         executeCardAction(card, act);
       });
       cmdsEl.appendChild(btn);
@@ -2390,14 +2412,23 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
     if (shouldSuppressCardClick()) return;
     e.stopPropagation();
     if (!isFaceDown) inspectCard(card);
+    const isMobileViewport = window.innerWidth < 1024;
     if (actionItems.length > 0) {
-      const wasPinned = el.classList.contains('cmds-pinned');
-      clearPinnedCmdCards();
-      if (!wasPinned) {
-        el.classList.add('cmds-pinned');
+      if (isMobileViewport) {
+        clearPinnedCmdCards();
+        showActionPopupForCard(card, actionItems, el, { allowSingleActionMenu: true });
+      } else {
+        const wasPinned = el.classList.contains('cmds-pinned');
+        clearPinnedCmdCards();
+        if (!wasPinned) {
+          el.classList.add('cmds-pinned');
+        }
       }
     } else {
       clearPinnedCmdCards();
+      if (isMobileViewport && !isFaceDown) {
+        showMobileCardDetail(card);
+      }
     }
   });
 }
@@ -2462,7 +2493,9 @@ function renderSingleSlot(slotId, card, isSelf, legal, label) {
     cardEl.addEventListener('click', (e) => {
       if (shouldSuppressCardClick()) return;
       e.stopPropagation();
-      if (!isFaceDown) inspectCard(card);
+      if (!isFaceDown) {
+        inspectCardAndFocus(card, { openMobilePreview: true });
+      }
     });
   }
 
@@ -3071,65 +3104,582 @@ function renderOcgPromptModal(prompt) {
   if (!dlg.open) dlg.showModal();
 }
 
-function inspectCard(card) {
-  if (!card) return;
-  appState.lastInspectedCard = card;
-  const pane = document.getElementById('inspector-content');
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getCardRichnessScore(card) {
+  if (!card || typeof card !== 'object') return 0;
+  let score = 0;
+  if (card.description || card.descriptionTh || card.descEn || card.descTh) score += 4;
+  if (card.kind) score += 2;
+  if (card.frame) score += 1;
+  if (card.atk !== undefined || card.currentAtk !== undefined) score += 1;
+  if (card.race) score += 1;
+  if (card.nameTh && card.nameTh !== card.name) score += 1;
+  return score;
+}
+
+function normalizeCardForInspector(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const codeKey = raw.passcode || (raw.code ? String(raw.code) : '');
+  const base =
+    (raw.id ? getCardById(raw.id) : null) ||
+    (codeKey ? getCardById(codeKey) : null) ||
+    null;
+
+  const merged = base ? { ...base, ...raw } : { ...raw };
+  merged.id = raw.id || base?.id || (codeKey ? `cdb_${codeKey}` : '');
+  merged.passcode = codeKey || base?.passcode || '';
+  merged.name = raw.name || base?.name || raw.nameTh || base?.nameTh || (codeKey ? `Card #${codeKey}` : 'Card');
+  merged.nameTh = raw.nameTh || base?.nameTh || merged.name;
+  merged.kind = raw.kind || base?.kind || 'MONSTER';
+  merged.frame = raw.frame || base?.frame || (merged.kind === 'SPELL' ? 'SPELL' : merged.kind === 'TRAP' ? 'TRAP' : 'EFFECT');
+  merged.subtype = raw.subtype || raw.subType || base?.subtype || base?.subType || null;
+  merged.subType = merged.subtype;
+  merged.attribute = raw.attribute || base?.attribute || (merged.kind === 'MONSTER' ? 'DARK' : merged.kind);
+  merged.race = raw.race || base?.race || 'Unknown';
+  merged.level = raw.level ?? base?.level ?? 0;
+  merged.rank = raw.rank ?? base?.rank ?? 0;
+  merged.linkRating = raw.linkRating ?? base?.linkRating ?? 0;
+  merged.atk = raw.atk ?? base?.atk ?? 0;
+  merged.def = raw.def ?? base?.def ?? 0;
+  merged.description = raw.description || raw.descEn || base?.description || base?.descEn || '';
+  merged.descriptionTh = raw.descriptionTh || raw.descTh || base?.descriptionTh || base?.descTh || merged.description;
+  merged.summonMaterials = raw.summonMaterials || base?.summonMaterials || null;
+  return merged;
+}
+
+function registerKnownCard(card) {
+  if (!card || typeof card !== 'object') return;
+  if (card.isHiddenFaceDown || card.id === 'facedown' || card.id === 'deck_hidden') return;
+  const norm = normalizeCardForInspector(card);
+  if (!norm || (!norm.name && !norm.nameTh)) return;
+  const newScore = getCardRichnessScore(norm);
+
+  if (norm.id) {
+    const prev = appState.knownCardsById.get(norm.id);
+    if (!prev || newScore >= getCardRichnessScore(prev)) {
+      appState.knownCardsById.set(norm.id, norm);
+    }
+  }
+  const codeStr = norm.passcode ? String(Number(norm.passcode) || norm.passcode).trim() : '';
+  if (codeStr && codeStr !== '0') {
+    const prev = appState.knownCardsByCode.get(codeStr);
+    if (!prev || newScore >= getCardRichnessScore(prev)) {
+      appState.knownCardsByCode.set(codeStr, norm);
+    }
+  }
+  for (const nm of [norm.name, norm.nameTh]) {
+    const key = String(nm || '').trim().toLowerCase();
+    if (key.length >= 3 && !/^card #\d+$/.test(key) && key !== 'face-down card' && key !== 'deck card') {
+      const prev = appState.knownCardsByName.get(key);
+      if (!prev || newScore >= getCardRichnessScore(prev)) {
+        appState.knownCardsByName.set(key, norm);
+      }
+    }
+  }
+}
+
+function isCardHiddenFromMe(card, myIdx) {
+  if (!card) return true;
+  if (card.isHiddenFaceDown || card.id === 'facedown' || card.id === 'deck_hidden') return true;
+  if (typeof card.controller === 'number' && card.controller !== myIdx) {
+    const onField = card.zone === 'MMZ' || card.zone === 'STZ' || card.zone === 'EMZ' || card.zone === 'FIELD';
+    const isSetPos = card.position === POSITIONS.SET || card.position === POSITIONS.SET_DEF || Boolean(card.isFaceDown);
+    if ((onField && isSetPos) || card.zone === 'HAND' || card.zone === 'DECK') {
+      return true;
+    }
+  }
+  return false;
+}
+
+function harvestKnownCardsFromState(state, myIdx, legal) {
+  if (!state?.players) return;
+  const me = state.players[myIdx];
+  const opp = state.players[1 - myIdx];
+
+  if (me) {
+    const ownCards = [
+      ...(me.hand || []),
+      ...(me.mmz || []),
+      ...(me.stz || []),
+      me.emz,
+      ...(me.emzSlots || []),
+      me.fieldSpell,
+      ...(me.gy || []),
+      ...(me.banished || []),
+      ...(me.extra || [])
+    ];
+    for (const c of ownCards) {
+      if (c) registerKnownCard(c);
+    }
+  }
+
+  if (opp) {
+    const oppFieldCards = [
+      ...(opp.mmz || []),
+      ...(opp.stz || []),
+      opp.emz,
+      ...(opp.emzSlots || []),
+      opp.fieldSpell
+    ];
+    for (const c of oppFieldCards) {
+      if (!c) continue;
+      const isSetPos = c.position === POSITIONS.SET || c.position === POSITIONS.SET_DEF || Boolean(c.isFaceDown);
+      if (!isSetPos) registerKnownCard(c);
+    }
+    for (const c of [...(opp.gy || []), ...(opp.banished || [])]) {
+      if (c && !c.isFaceDown && !c.isHiddenFaceDown) registerKnownCard(c);
+    }
+  }
+
+  for (const item of state.chainStack || []) {
+    if (item?.card) registerKnownCard(item.card);
+  }
+  for (const ev of state.recentEvents || []) {
+    if (ev?.meta && !ev.nowFaceDown && !ev.to?.isFaceDown) {
+      registerKnownCard(ev.meta);
+    }
+  }
+  for (const entry of state.logs || []) {
+    if (entry?.cardSnapshot) registerKnownCard(entry.cardSnapshot);
+    if (Array.isArray(entry?.cardRefs)) {
+      for (const ref of entry.cardRefs) registerKnownCard(ref);
+    }
+  }
+  for (const item of legal?.chainPrompt?.respondableCards || []) {
+    if (item?.card) registerKnownCard(item.card);
+  }
+}
+
+function findVisibleCardInState(state, myIdx, { instanceId, id, code }) {
+  if (!state?.players) return null;
+  const normCode = code ? String(Number(code) || code).trim() : '';
+  const matches = (c) => {
+    if (!c || isCardHiddenFromMe(c, myIdx)) return false;
+    if (instanceId && c.instanceId === instanceId) return true;
+    if (id && c.id === id) return true;
+    if (normCode && c.passcode && String(Number(c.passcode) || c.passcode).trim() === normCode) return true;
+    return false;
+  };
+
+  for (const item of state.chainStack || []) {
+    if (item?.card && matches(item.card)) return item.card;
+  }
+
+  for (let pIdx = 0; pIdx < state.players.length; pIdx++) {
+    const p = state.players[pIdx];
+    if (!p) continue;
+    const zones = pIdx === myIdx
+      ? [
+          ...(p.mmz || []),
+          ...(p.stz || []),
+          p.emz,
+          ...(p.emzSlots || []),
+          p.fieldSpell,
+          ...(p.hand || []),
+          ...(p.gy || []),
+          ...(p.banished || []),
+          ...(p.extra || [])
+        ]
+      : [
+          ...(p.mmz || []),
+          ...(p.stz || []),
+          p.emz,
+          ...(p.emzSlots || []),
+          p.fieldSpell,
+          ...(p.gy || []),
+          ...(p.banished || [])
+        ];
+    for (const c of zones) {
+      if (matches(c)) return c;
+    }
+  }
+  return null;
+}
+
+function resolveFullCardMeta(ref, state = appState.currentState) {
+  if (!ref) return null;
+  const myIdx = appState.myPlayerIndex ?? 0;
+
+  if (typeof ref === 'string') {
+    const fromKnown = appState.knownCardsById.get(ref) || appState.knownCardsByCode.get(ref) || appState.knownCardsByName.get(ref.toLowerCase());
+    if (fromKnown) return normalizeCardForInspector(fromKnown);
+    const fromReg = getCardById(ref);
+    if (fromReg) return normalizeCardForInspector(fromReg);
+    return null;
+  }
+
+  const instanceId = ref.instanceId || ref.card?.instanceId || null;
+  const id = ref.id || ref.cardId || ref.card?.id || null;
+  const rawCode = ref.passcode || ref.code || ref.cardCode || ref.card?.passcode || ref.card?.code || '';
+  const code = rawCode ? String(Number(rawCode) || rawCode).trim() : '';
+  const nameKey = String(ref.name || ref.cardName || ref.nameTh || ref.cardNameTh || '').trim().toLowerCase();
+
+  const liveMatch = findVisibleCardInState(state, myIdx, { instanceId, id, code });
+  const knownMatch =
+    (id && appState.knownCardsById.get(id)) ||
+    (code && code !== '0' && appState.knownCardsByCode.get(code)) ||
+    (nameKey && appState.knownCardsByName.get(nameKey)) ||
+    null;
+  const regMatch = (id && getCardById(id)) || (code && code !== '0' && getCardById(code)) || null;
+
+  // Prefer the richest metadata source while preserving live board stats if present
+  const candidates = [regMatch, knownMatch, ref.card, ref, liveMatch].filter(Boolean);
+  if (candidates.length === 0) return null;
+
+  const combined = {};
+  for (const src of candidates) {
+    for (const [k, v] of Object.entries(src)) {
+      if (v !== undefined && v !== null && v !== '') {
+        combined[k] = v;
+      }
+    }
+  }
+  return normalizeCardForInspector(combined);
+}
+
+function switchInspectorTab(tabName = 'card') {
+  document.querySelectorAll('.insp-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.getAttribute('data-insp') === tabName);
+  });
+  document.querySelectorAll('.inspector-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `inspector-${tabName}-pane`);
+  });
+}
+
+function inspectCardAndFocus(card, opts = {}) {
+  const resolved = resolveFullCardMeta(card, appState.currentState);
+  if (!resolved) return;
+  inspectCard(resolved);
+  switchInspectorTab('card');
+  if (opts.openMobilePreview && window.innerWidth < 1024) {
+    showMobileCardDetail(resolved);
+  }
+}
+
+function autoFocusLatestPlayedOrActivatedCard(state, prevState, myIdx) {
+  if (!state) return;
+  let candidate = null;
+
+  // 1. Inspect recentEvents (YGOProEngine structured events) newest-first
+  const events = Array.isArray(state.recentEvents) ? state.recentEvents : [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    if (!ev) continue;
+
+    if (ev.type === 'CHAINING' || ev.type === 'ACTIVATE' || ev.type === 'CHAIN_ADD') {
+      const chainMatch = (state.chainStack || []).find(
+        item => item.chainLink === ev.chainLink && item.card
+      );
+      const cardRef = chainMatch?.card || ev.meta || (ev.code ? { code: ev.code } : null);
+      if (cardRef) {
+        candidate = { key: `ev:${ev.seq}:${ev.type}:${ev.code || ''}`, cardRef };
+        break;
+      }
+    } else if (ev.type === 'SUMMON' || ev.type === 'FLIP') {
+      const isHiddenOpp = ev.controller !== myIdx && (ev.position === POSITIONS.SET || ev.position === POSITIONS.SET_DEF);
+      if (!isHiddenOpp && (ev.meta || ev.code)) {
+        candidate = { key: `ev:${ev.seq}:${ev.type}:${ev.code || ''}`, cardRef: ev.meta || { code: ev.code } };
+        break;
+      }
+    } else if (ev.type === 'POS_CHANGE') {
+      if (!ev.nowFaceDown && (ev.meta || ev.code)) {
+        candidate = { key: `ev:${ev.seq}:POS_CHANGE:${ev.code || ''}`, cardRef: ev.meta || { code: ev.code } };
+        break;
+      }
+    } else if (ev.type === 'MOVE') {
+      const toZone = ev.to?.zone;
+      const onField = toZone === 'MMZ' || toZone === 'EMZ' || toZone === 'STZ' || toZone === 'FIELD';
+      if (onField && !ev.to?.isFaceDown && (ev.meta || ev.code)) {
+        candidate = { key: `ev:${ev.seq}:MOVE:${ev.code || ''}`, cardRef: ev.meta || { code: ev.code } };
+        break;
+      }
+    }
+  }
+
+  // 2. Fallback to top of active chainStack (covers DuelEngine & mid-chain states)
+  if (!candidate && Array.isArray(state.chainStack) && state.chainStack.length > 0) {
+    const top = state.chainStack[state.chainStack.length - 1];
+    if (top?.card) {
+      candidate = {
+        key: `chain:${state.turnCount}:${state.phase}:${top.chainLink}:${top.card.instanceId || top.card.id || top.card.passcode || ''}`,
+        cardRef: top.card
+      };
+    }
+  }
+
+  // 3. Fallback for DuelEngine (when recentEvents is empty): diff visible field cards or latest card log
+  if (!candidate && events.length === 0 && prevState?.players) {
+    const collectFieldMap = (s) => {
+      const map = new Map();
+      for (let pIdx = 0; pIdx < (s.players?.length || 0); pIdx++) {
+        const p = s.players[pIdx];
+        if (!p) continue;
+        const fieldCards = [
+          ...(p.mmz || []),
+          ...(p.stz || []),
+          p.emz,
+          ...(p.emzSlots || []),
+          p.fieldSpell
+        ].filter(Boolean);
+        for (const c of fieldCards) {
+          map.set(c.instanceId, { card: c, pIdx });
+        }
+      }
+      return map;
+    };
+
+    const prevMap = collectFieldMap(prevState);
+    const curMap = collectFieldMap(state);
+    for (const [instId, entry] of curMap.entries()) {
+      const { card, pIdx } = entry;
+      const isSetPos = card.position === POSITIONS.SET || card.position === POSITIONS.SET_DEF || Boolean(card.isFaceDown);
+      if (pIdx !== myIdx && isSetPos) continue;
+      const prevEntry = prevMap.get(instId);
+      const prevWasSet = prevEntry && (prevEntry.card.position === POSITIONS.SET || prevEntry.card.position === POSITIONS.SET_DEF || Boolean(prevEntry.card.isFaceDown));
+      if (!prevEntry || (prevWasSet && !isSetPos)) {
+        candidate = {
+          key: `diff:${state.turnCount}:${instId}:${card.zone}:${card.position}`,
+          cardRef: card
+        };
+      }
+    }
+
+    if (!candidate && Array.isArray(state.logs) && state.logs.length > 0) {
+      const latestLog = state.logs[state.logs.length - 1];
+      const prevLastLog = prevState.logs?.[prevState.logs.length - 1];
+      const logChanged = !prevLastLog || latestLog.id !== prevLastLog.id || latestLog.text !== prevLastLog.text || state.logs.length !== prevState.logs?.length;
+      if (logChanged && (latestLog.cardSnapshot || latestLog.cardId || latestLog.cardCode)) {
+        candidate = {
+          key: `log:${latestLog.id || state.logs.length}:${latestLog.cardId || latestLog.cardCode || ''}`,
+          cardRef: latestLog.cardSnapshot || { id: latestLog.cardId, code: latestLog.cardCode }
+        };
+      }
+    }
+  }
+
+  if (!candidate || !candidate.key || candidate.key === appState.lastAutoInspectedEventKey) {
+    return;
+  }
+
+  const resolved = resolveFullCardMeta(candidate.cardRef, state);
+  if (!resolved || isCardHiddenFromMe(resolved, myIdx)) {
+    return;
+  }
+
+  appState.lastAutoInspectedEventKey = candidate.key;
+  inspectCard(resolved);
+}
+
+function closeMobileCardDetail() {
+  const el = document.getElementById('mobile-card-preview');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.innerHTML = '';
+}
+
+function showMobileCardDetail(card) {
+  const resolved = resolveFullCardMeta(card, appState.currentState);
+  if (!resolved) return;
+
+  let overlay = document.getElementById('mobile-card-preview');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'mobile-card-preview';
+    overlay.className = 'mobile-card-preview hidden';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Card Details');
+    document.getElementById('screen-duel')?.appendChild(overlay);
+  }
+
   const lang = appState.lang;
-  const badge = getCardSubHeaderBadge(card, lang);
-  const frameClass = getCardFrameClass(card);
-  const attrMeta = getAttributeMeta(card);
-  const statsLine = card.kind === 'MONSTER'
-    ? `<span class="stat-chip stat-atk">ATK ${card.currentAtk ?? card.atk}</span>
-       ${card.frame !== 'LINK' ? `<span class="stat-chip stat-def">DEF ${card.currentDef ?? card.def}</span>` : ''}
-       <span class="stat-chip">${lang === 'en' ? 'Type' : 'เผ่า'}: ${card.race}</span>
-       <span class="stat-chip" style="border-color:${attrMeta.bg}">${attrMeta.badge} ${lang === 'en' ? attrMeta.nameEn : attrMeta.nameTh}</span>`
-    : `<span class="stat-chip">${attrMeta.badge} ${badge}</span>`;
+  const badge = getCardSubHeaderBadge(resolved, lang);
+  const frameClass = getCardFrameClass(resolved);
+  const attrMeta = getAttributeMeta(resolved);
+  const titleMain = getLocalizedCardName(resolved, lang) || resolved.name || 'Card';
+  const titleSub = lang === 'en' ? (resolved.nameTh !== titleMain ? resolved.nameTh : '') : (resolved.name !== titleMain ? resolved.name : '');
+  const previewLevel = resolved.kind === 'MONSTER'
+    ? (resolved.frame === 'XYZ' ? `R${resolved.rank}` : resolved.frame === 'LINK' ? `L${resolved.linkRating}` : `★${resolved.currentLevel ?? resolved.level}`)
+    : (resolved.kind === 'SPELL' ? 'SPELL' : 'TRAP');
+  const statsLine = resolved.kind === 'MONSTER'
+    ? `<span class="stat-chip stat-atk">ATK ${escapeHtml(resolved.currentAtk ?? resolved.atk)}</span>
+       ${resolved.frame !== 'LINK' ? `<span class="stat-chip stat-def">DEF ${escapeHtml(resolved.currentDef ?? resolved.def)}</span>` : ''}
+       <span class="stat-chip">${escapeHtml(previewLevel)}</span>
+       <span class="stat-chip">${escapeHtml(lang === 'en' ? 'Type' : 'เผ่า')}: ${escapeHtml(resolved.race)}</span>
+       <span class="stat-chip" style="border-color:${escapeHtml(attrMeta.bg)}">${escapeHtml(attrMeta.badge)} ${escapeHtml(lang === 'en' ? attrMeta.nameEn : attrMeta.nameTh)}</span>`
+    : `<span class="stat-chip">${escapeHtml(attrMeta.badge)} ${escapeHtml(badge)}</span>`;
+  const summonText = lang === 'en'
+    ? (resolved.summonMaterials?.description || resolved.summonMaterials?.descriptionTh || '')
+    : (resolved.summonMaterials?.descriptionTh || resolved.summonMaterials?.description || '');
+  const descMain = getLocalizedCardDesc(resolved, lang) || '';
 
-  const previewLevel = card.kind === 'MONSTER'
-    ? (card.frame === 'XYZ' ? `R${card.rank}` : card.frame === 'LINK' ? `L${card.linkRating}` : `★${card.currentLevel ?? card.level}`)
-    : (card.kind === 'SPELL' ? 'SPELL' : 'TRAP');
-
-  pane.innerHTML = `
-    <div class="inspected-card-view">
-      <div class="inspected-art-wrap">
-        <div class="inspector-card-frame ${frameClass}">
-          <div class="insp-frame-head">
-            <span class="insp-frame-name">${getLocalizedCardName(card, lang)}</span>
-            <span class="card-attr-orb" style="background:${attrMeta.bg};color:${attrMeta.color}">${attrMeta.badge}</span>
-          </div>
-          <div class="insp-frame-sub">${previewLevel}</div>
-          <div class="insp-frame-art-box">
-            <img class="inspected-art" src="${getCardArtUrl(card)}" alt="${card.name}" />
-          </div>
-          <div class="insp-frame-foot">
-            ${card.kind === 'MONSTER'
-              ? `<span>ATK/${card.currentAtk ?? card.atk}</span><span>${card.frame === 'LINK' ? `LINK-${card.linkRating}` : `DEF/${card.currentDef ?? card.def}`}</span>`
-              : `<span>[${badge}]</span>`}
-          </div>
+  overlay.innerHTML = `
+    <div class="mobile-card-preview-card">
+      <div class="mobile-card-preview-header">
+        <div class="mobile-card-preview-titles">
+          <div class="mobile-card-preview-name">${escapeHtml(titleMain)}</div>
+          ${titleSub ? `<div class="mobile-card-preview-subname">${escapeHtml(titleSub)}</div>` : ''}
         </div>
-        <div class="inspected-meta-col">
-          <div class="inspected-title-th">${getLocalizedCardName(card, lang)}</div>
-          <div class="inspected-title-en">${lang === 'en' ? card.nameTh : card.name}</div>
-          <div class="inspected-sub-badge">${badge}</div>
-        </div>
+        <button type="button" class="btn-mini mobile-card-preview-close" aria-label="${lang === 'en' ? 'Close' : 'ปิด'}">✕</button>
       </div>
-      <div class="inspected-stats-badges">${statsLine}</div>
-      ${(lang === 'en' ? (card.summonMaterials?.description || card.summonMaterials?.descriptionTh) : card.summonMaterials?.descriptionTh)
-        ? `<div class="inspected-summon-box"><strong>${t(lang, 'summonCond')}</strong> ${lang === 'en' ? (card.summonMaterials.description || card.summonMaterials.descriptionTh) : card.summonMaterials.descriptionTh}</div>`
-        : ''}
-      <div class="inspected-desc-box">
-        <div class="inspected-desc-head">${t(lang, 'effectHeader')}</div>
-        <div id="inspected-desc-main">${getLocalizedCardDesc(card, lang)}</div>
-        ${lang === 'th' && card.description ? `<hr class="inspected-hr"/><div class="inspected-desc-en">${card.description}</div>` : ''}
+      <div class="mobile-card-preview-body">
+        <div class="mobile-card-preview-top">
+          <div class="inspector-card-frame ${escapeHtml(frameClass)} mobile-preview-frame">
+            <div class="insp-frame-art-box">
+              <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(titleMain)}" />
+            </div>
+          </div>
+          <div class="mobile-card-preview-meta">
+            <div class="inspected-sub-badge">${escapeHtml(badge)}</div>
+            <div class="inspected-stats-badges">${statsLine}</div>
+          </div>
+        </div>
+        ${summonText ? `<div class="inspected-summon-box"><strong>${escapeHtml(t(lang, 'summonCond'))}</strong> ${escapeHtml(summonText)}</div>` : ''}
+        <div class="inspected-desc-box">
+          <div class="inspected-desc-head">${escapeHtml(t(lang, 'effectHeader'))}</div>
+          <div class="mobile-card-preview-desc">${escapeHtml(descMain)}</div>
+          ${lang === 'th' && resolved.description && resolved.description !== descMain ? `<hr class="inspected-hr"/><div class="inspected-desc-en">${escapeHtml(resolved.description)}</div>` : ''}
+        </div>
       </div>
     </div>
   `;
 
-  if (lang === 'th' && card.description) {
+  overlay.querySelector('.mobile-card-preview-close')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeMobileCardDetail();
+  });
+  overlay.onclick = (ev) => {
+    if (ev.target === overlay) {
+      closeMobileCardDetail();
+    }
+  };
+
+  const img = overlay.querySelector('img');
+  img?.addEventListener('error', () => {
+    img.src = generateProceduralCardSvg(resolved);
+  }, { once: true });
+
+  if (lang === 'th' && resolved.description) {
+    const descEl = overlay.querySelector('.mobile-card-preview-desc');
+    translateTextWithGoogle(resolved.description).then((translated) => {
+      if (translated && descEl && !overlay.classList.contains('hidden') && appState.lang === 'th') {
+        descEl.textContent = translated;
+      }
+    });
+  }
+
+  overlay.classList.remove('hidden');
+}
+
+function getChainPeekButtonLabel(isPeeking, lang = appState.lang) {
+  if (isPeeking) {
+    return lang === 'en' ? '↩️ Back to Chain' : '↩️ กลับไปเลือกเชน';
+  }
+  return lang === 'en' ? '👁️ View Board' : '👁️ ดูสนาม';
+}
+
+function syncChainPeekButton(bar, btn) {
+  if (!bar || !btn) return;
+  const isPeeking = bar.classList.contains('is-peeking');
+  btn.textContent = getChainPeekButtonLabel(isPeeking);
+  btn.setAttribute('aria-pressed', isPeeking ? 'true' : 'false');
+  btn.title = appState.lang === 'en'
+    ? (isPeeking ? 'Back to prompt' : 'Temporarily hide bar to view the board')
+    : (isPeeking ? 'กลับไปเลือกเชน/คำสั่ง' : 'ซ่อนแถบชั่วคราวเพื่อดูสนาม');
+}
+
+function createFieldPeekButton(banner) {
+  const peekBtn = document.createElement('button');
+  peekBtn.type = 'button';
+  peekBtn.className = 'btn-mini btn-chain-peek';
+  syncChainPeekButton(banner, peekBtn);
+  peekBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    banner.classList.toggle('is-peeking');
+    syncChainPeekButton(banner, peekBtn);
+  });
+  return peekBtn;
+}
+
+function syncAllPeekButtons() {
+  const chainBar = document.getElementById('chain-prompt-bar');
+  const chainPeekBtn = document.getElementById('btn-chain-peek');
+  if (chainBar && chainPeekBtn) syncChainPeekButton(chainBar, chainPeekBtn);
+
+  const fieldBanner = document.getElementById('field-pick-banner');
+  const fieldPeekBtn = fieldBanner?.querySelector('.btn-chain-peek');
+  if (fieldBanner && fieldPeekBtn) syncChainPeekButton(fieldBanner, fieldPeekBtn);
+}
+
+function inspectCard(card) {
+  if (!card) return;
+  const resolved = normalizeCardForInspector(card) || card;
+  appState.lastInspectedCard = resolved;
+  const pane = document.getElementById('inspector-content');
+  if (!pane) return;
+  const lang = appState.lang;
+  const badge = getCardSubHeaderBadge(resolved, lang);
+  const frameClass = getCardFrameClass(resolved);
+  const attrMeta = getAttributeMeta(resolved);
+  const statsLine = resolved.kind === 'MONSTER'
+    ? `<span class="stat-chip stat-atk">ATK ${escapeHtml(resolved.currentAtk ?? resolved.atk)}</span>
+       ${resolved.frame !== 'LINK' ? `<span class="stat-chip stat-def">DEF ${escapeHtml(resolved.currentDef ?? resolved.def)}</span>` : ''}
+       <span class="stat-chip">${escapeHtml(lang === 'en' ? 'Type' : 'เผ่า')}: ${escapeHtml(resolved.race)}</span>
+       <span class="stat-chip" style="border-color:${escapeHtml(attrMeta.bg)}">${escapeHtml(attrMeta.badge)} ${escapeHtml(lang === 'en' ? attrMeta.nameEn : attrMeta.nameTh)}</span>`
+    : `<span class="stat-chip">${escapeHtml(attrMeta.badge)} ${escapeHtml(badge)}</span>`;
+
+  const previewLevel = resolved.kind === 'MONSTER'
+    ? (resolved.frame === 'XYZ' ? `R${resolved.rank}` : resolved.frame === 'LINK' ? `L${resolved.linkRating}` : `★${resolved.currentLevel ?? resolved.level}`)
+    : (resolved.kind === 'SPELL' ? 'SPELL' : 'TRAP');
+
+  pane.innerHTML = `
+    <div class="inspected-card-view">
+      <div class="inspected-art-wrap">
+        <div class="inspector-card-frame ${escapeHtml(frameClass)}">
+          <div class="insp-frame-head">
+            <span class="insp-frame-name">${escapeHtml(getLocalizedCardName(resolved, lang))}</span>
+            <span class="card-attr-orb" style="background:${escapeHtml(attrMeta.bg)};color:${escapeHtml(attrMeta.color)}">${escapeHtml(attrMeta.badge)}</span>
+          </div>
+          <div class="insp-frame-sub">${escapeHtml(previewLevel)}</div>
+          <div class="insp-frame-art-box">
+            <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(resolved.name)}" />
+          </div>
+          <div class="insp-frame-foot">
+            ${resolved.kind === 'MONSTER'
+              ? `<span>ATK/${escapeHtml(resolved.currentAtk ?? resolved.atk)}</span><span>${resolved.frame === 'LINK' ? `LINK-${escapeHtml(resolved.linkRating)}` : `DEF/${escapeHtml(resolved.currentDef ?? resolved.def)}`}</span>`
+              : `<span>[${escapeHtml(badge)}]</span>`}
+          </div>
+        </div>
+        <div class="inspected-meta-col">
+          <div class="inspected-title-th">${escapeHtml(getLocalizedCardName(resolved, lang))}</div>
+          <div class="inspected-title-en">${escapeHtml(lang === 'en' ? resolved.nameTh : resolved.name)}</div>
+          <div class="inspected-sub-badge">${escapeHtml(badge)}</div>
+        </div>
+      </div>
+      <div class="inspected-stats-badges">${statsLine}</div>
+      ${(lang === 'en' ? (resolved.summonMaterials?.description || resolved.summonMaterials?.descriptionTh) : resolved.summonMaterials?.descriptionTh)
+        ? `<div class="inspected-summon-box"><strong>${escapeHtml(t(lang, 'summonCond'))}</strong> ${escapeHtml(lang === 'en' ? (resolved.summonMaterials.description || resolved.summonMaterials.descriptionTh) : resolved.summonMaterials.descriptionTh)}</div>`
+        : ''}
+      <div class="inspected-desc-box">
+        <div class="inspected-desc-head">${escapeHtml(t(lang, 'effectHeader'))}</div>
+        <div id="inspected-desc-main">${escapeHtml(getLocalizedCardDesc(resolved, lang))}</div>
+        ${lang === 'th' && resolved.description ? `<hr class="inspected-hr"/><div class="inspected-desc-en">${escapeHtml(resolved.description)}</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  if (lang === 'th' && resolved.description) {
     const descEl = document.getElementById('inspected-desc-main');
-    translateTextWithGoogle(card.description).then((translated) => {
-      if (translated && descEl && appState.lastInspectedCard?.id === card.id && appState.lang === 'th') {
+    translateTextWithGoogle(resolved.description).then((translated) => {
+      if (translated && descEl && appState.lastInspectedCard?.id === resolved.id && appState.lang === 'th') {
         descEl.textContent = translated;
       }
     });
@@ -3137,7 +3687,7 @@ function inspectCard(card) {
 
   const img = pane.querySelector('img');
   img?.addEventListener('error', () => {
-    img.src = generateProceduralCardSvg(card);
+    img.src = generateProceduralCardSvg(resolved);
   }, { once: true });
 }
 
@@ -3155,6 +3705,7 @@ function clearZonePickMode(force = false) {
   const banner = document.getElementById('field-pick-banner');
   if (banner) {
     banner.classList.add('hidden');
+    banner.classList.remove('is-peeking');
     banner.innerHTML = '';
     delete banner.dataset.mode;
   }
@@ -3176,6 +3727,7 @@ function openInlinePickBanner({
 
   activeZonePickMandatory = Boolean(mandatory);
   banner.dataset.mode = mode;
+  banner.classList.remove('is-peeking');
   banner.innerHTML = '';
 
   const head = document.createElement('div');
@@ -3189,7 +3741,8 @@ function openInlinePickBanner({
   const msgEl = document.createElement('div');
   msgEl.className = 'chain-trigger-desc field-pick-msg';
   msgEl.textContent = message;
-  head.append(spark, msgEl, ...headerButtons);
+  const peekBtn = createFieldPeekButton(banner);
+  head.append(spark, msgEl, peekBtn, ...headerButtons);
   banner.appendChild(head);
 
   if (actionButtons.length > 0) {
@@ -3208,7 +3761,7 @@ function openInlinePickBanner({
   };
   const onDocClick = (ev) => {
     if (Date.now() < suppressPopupHideUntil) return;
-    if (!ev.target.closest('#field-pick-banner')) {
+    if (!ev.target.closest('#field-pick-banner, #mobile-card-preview')) {
       clearZonePickMode(true);
     }
   };
@@ -4164,6 +4717,7 @@ function enterOcgFieldPlaceMode(prompt) {
   }
 
   clearZonePickMode(true);
+  document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
   activeZonePickMandatory = true;
 
   const onlyOpp = candidates.every(c => c.owner === 'opp');
@@ -4201,15 +4755,18 @@ function enterOcgFieldPlaceMode(prompt) {
   };
 
   if (banner) {
+    banner.classList.remove('is-peeking');
     banner.innerHTML = '';
     const head = document.createElement('div');
     head.className = 'chain-bar-header';
+    head.style.marginBottom = '0';
     const spark = document.createElement('span');
     spark.className = 'chain-spark';
     spark.textContent = '📍';
     const msgEl = document.createElement('div');
     msgEl.className = 'chain-trigger-desc field-pick-msg';
-    head.append(spark, msgEl);
+    const peekBtn = createFieldPeekButton(banner);
+    head.append(spark, msgEl, peekBtn);
     if (reqCount > 1) {
       confirmBtn = document.createElement('button');
       confirmBtn.type = 'button';
@@ -4273,6 +4830,7 @@ function enterOcgFieldPlaceMode(prompt) {
 function enterZonePickMode(card, actionPayload) {
   clearZonePickMode(true);
   document.getElementById('card-action-popup')?.classList.add('hidden');
+  document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
 
   const cardSubtype = card.subType || card.subtype;
   if (cardSubtype === 'FIELD' && (actionPayload.type === 'ACTIVATE_EFFECT' || actionPayload.type === 'SET_SPELL_TRAP')) {
@@ -4408,11 +4966,12 @@ function executeCardAction(card, act) {
   }
 }
 
-function showActionPopupForCard(card, actionItems, _anchorEl) {
+function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
   if (!actionItems || actionItems.length === 0) return;
   document.getElementById('card-action-popup')?.classList.add('hidden');
 
-  if (actionItems.length === 1) {
+  const { allowSingleActionMenu = false } = opts;
+  if (actionItems.length === 1 && !allowSingleActionMenu) {
     executeCardAction(card, actionItems[0]);
     return;
   }
@@ -4420,6 +4979,17 @@ function showActionPopupForCard(card, actionItems, _anchorEl) {
   suppressPopupHideUntil = Date.now() + 260;
   const lang = appState.lang;
   const cardTitle = lang === 'en' ? (card.name || card.nameTh) : (card.nameTh || card.name);
+
+  const inspectBtn = document.createElement('button');
+  inspectBtn.type = 'button';
+  inspectBtn.className = 'btn-mini chain-option-inspect-btn';
+  inspectBtn.textContent = '🔍';
+  inspectBtn.title = lang === 'en' ? 'View Card Info' : 'ดูรายละเอียดการ์ด';
+  inspectBtn.setAttribute('aria-label', inspectBtn.title);
+  inspectBtn.onclick = (ev) => {
+    ev.stopPropagation();
+    inspectCardAndFocus(card, { openMobilePreview: true });
+  };
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -4471,7 +5041,7 @@ function showActionPopupForCard(card, actionItems, _anchorEl) {
   openInlinePickBanner({
     icon: '🃏',
     message: cardTitle,
-    headerButtons: [closeBtn],
+    headerButtons: [inspectBtn, closeBtn],
     actionButtons: btns,
     mandatory: false,
     mode: 'card-actions',
@@ -4489,11 +5059,177 @@ function hideActionPopup(force = false) {
   }
 }
 
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const logCardMatcherCache = {
+  knownCount: -1,
+  registryCount: -1,
+  nameMap: new Map(),
+  regex: null
+};
+
+function getLogCardNameMatcher() {
+  const allCards = getAllCards();
+  const knownSize = appState.knownCardsByName.size;
+  if (
+    logCardMatcherCache.knownCount === knownSize &&
+    logCardMatcherCache.registryCount === allCards.length &&
+    logCardMatcherCache.regex !== undefined
+  ) {
+    return logCardMatcherCache;
+  }
+
+  const nameMap = new Map();
+  const addName = (rawName, card) => {
+    const clean = String(rawName || '').trim();
+    if (clean.length < 3) return;
+    const key = clean.toLowerCase();
+    if (/^card #\d+$/.test(key) || key === 'face-down card' || key === 'deck card') return;
+    if (!nameMap.has(key)) {
+      nameMap.set(key, { name: clean, card });
+    }
+  };
+
+  // Prefer cards actually seen in this duel first (richer live/cdb metadata)
+  for (const [key, card] of appState.knownCardsByName.entries()) {
+    if (card?.name) addName(card.name, card);
+    if (card?.nameTh) addName(card.nameTh, card);
+    if (!nameMap.has(key) && key.length >= 3) {
+      nameMap.set(key, { name: key, card });
+    }
+  }
+  for (const card of allCards) {
+    if (card?.name) addName(card.name, card);
+    if (card?.nameTh) addName(card.nameTh, card);
+  }
+
+  const sortedNames = Array.from(nameMap.values())
+    .map(v => v.name)
+    .sort((a, b) => b.length - a.length);
+
+  let regex = null;
+  if (sortedNames.length > 0) {
+    try {
+      regex = new RegExp(sortedNames.map(escapeRegExp).join('|'), 'gi');
+    } catch {
+      regex = null;
+    }
+  }
+
+  logCardMatcherCache.knownCount = knownSize;
+  logCardMatcherCache.registryCount = allCards.length;
+  logCardMatcherCache.nameMap = nameMap;
+  logCardMatcherCache.regex = regex;
+  return logCardMatcherCache;
+}
+
+function isWordBoundarySafe(text, startIdx, endIdx) {
+  const firstChar = text[startIdx] || '';
+  const lastChar = text[endIdx - 1] || '';
+  const beforeChar = startIdx > 0 ? text[startIdx - 1] : '';
+  const afterChar = endIdx < text.length ? text[endIdx] : '';
+  const isAsciiWord = (ch) => /[A-Za-z0-9]/.test(ch);
+  if (isAsciiWord(firstChar) && isAsciiWord(beforeChar)) return false;
+  if (isAsciiWord(lastChar) && isAsciiWord(afterChar)) return false;
+  return true;
+}
+
+function appendLinkedLogText(container, text, itemCardDef, extraRefs = []) {
+  const rawText = String(text || '');
+  if (!rawText) return;
+
+  const matcher = getLogCardNameMatcher();
+  const entryLookup = new Map();
+  const extraNames = [];
+  const registerEntryRef = (c) => {
+    if (!c) return;
+    for (const nm of [c.name, c.nameTh]) {
+      const clean = String(nm || '').trim();
+      if (clean.length < 3) continue;
+      const key = clean.toLowerCase();
+      if (!entryLookup.has(key)) {
+        entryLookup.set(key, c);
+        if (!matcher.nameMap.has(key)) {
+          extraNames.push(clean);
+        }
+      }
+    }
+  };
+  registerEntryRef(itemCardDef);
+  for (const ref of extraRefs) registerEntryRef(ref);
+
+  let activeRegex = matcher.regex;
+  if (extraNames.length > 0) {
+    const combinedNames = [
+      ...extraNames,
+      ...Array.from(matcher.nameMap.values()).map(v => v.name)
+    ].sort((a, b) => b.length - a.length);
+    try {
+      activeRegex = new RegExp(combinedNames.map(escapeRegExp).join('|'), 'gi');
+    } catch {
+      activeRegex = matcher.regex;
+    }
+  }
+
+  if (!activeRegex) {
+    container.appendChild(document.createTextNode(` ${rawText}`));
+    return;
+  }
+
+  container.appendChild(document.createTextNode(' '));
+  activeRegex.lastIndex = 0;
+  let lastIndex = 0;
+  let match;
+  while ((match = activeRegex.exec(rawText)) !== null) {
+    const matchedStr = match[0];
+    const startIdx = match.index;
+    const endIdx = startIdx + matchedStr.length;
+    if (!isWordBoundarySafe(rawText, startIdx, endIdx)) {
+      continue;
+    }
+    const key = matchedStr.toLowerCase();
+    const cardRef = entryLookup.get(key) || matcher.nameMap.get(key)?.card || null;
+    if (!cardRef) continue;
+
+    if (startIdx > lastIndex) {
+      container.appendChild(document.createTextNode(rawText.slice(lastIndex, startIdx)));
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'log-card-link';
+    btn.textContent = matchedStr;
+    btn.title = appState.lang === 'en' ? `View ${matchedStr}` : `ดูข้อมูลการ์ด ${matchedStr}`;
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      inspectCardAndFocus(cardRef, { openMobilePreview: true });
+    });
+    container.appendChild(btn);
+    lastIndex = endIdx;
+  }
+
+  if (lastIndex < rawText.length) {
+    container.appendChild(document.createTextNode(rawText.slice(lastIndex)));
+  }
+}
+
 function renderDuelLogs(logs) {
   const list = document.getElementById('duel-log-list');
+  if (!list) return;
   list.innerHTML = '';
   for (const item of [...logs].reverse()) {
-    const cardDef = (item.cardId && getCardById(item.cardId)) || item.cardSnapshot || null;
+    const rawCard =
+      item.card ||
+      item.cardSnapshot ||
+      (item.cardId && getCardById(item.cardId)) ||
+      (item.cardCode && resolveFullCardMeta({ code: item.cardCode })) ||
+      (item.meta || null);
+    const cardDef = rawCard ? resolveFullCardMeta(rawCard, appState.currentState) : null;
+    const extraRefs = Array.isArray(item.cardRefs)
+      ? item.cardRefs.map(r => resolveFullCardMeta(r, appState.currentState)).filter(Boolean)
+      : [];
+
     const div = document.createElement('div');
     div.className = `log-entry ${cardDef ? 'log-entry-with-card' : ''}`;
 
@@ -4513,8 +5249,7 @@ function renderDuelLogs(logs) {
       div.appendChild(thumbWrap);
 
       div.addEventListener('click', () => {
-        inspectCard(cardDef);
-        document.querySelector('.insp-tab[data-insp="card"]')?.click();
+        inspectCardAndFocus(cardDef, { openMobilePreview: true });
       });
     }
 
@@ -4525,7 +5260,7 @@ function renderDuelLogs(logs) {
     meta.textContent = `[T${item.turn}-${item.phase}]`;
     const textSpan = document.createElement('span');
     textSpan.className = 'log-entry-text';
-    textSpan.textContent = ` ${item.text}`;
+    appendLinkedLogText(textSpan, item.text, cardDef, extraRefs);
     body.appendChild(meta);
     body.appendChild(textSpan);
     div.appendChild(body);
@@ -4558,27 +5293,68 @@ function renderChainStackOverlay(chainStack, myIdx) {
   }
 
   container.classList.remove('hidden');
-  // Render top-to-bottom in reverse (highest Chain Link on top, CL1 at bottom) or sequential
+  container.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'chain-stack-header';
+  header.textContent = `⛓️ CHAIN (${chainStack.length})`;
+  container.appendChild(header);
+
+  const listEl = document.createElement('div');
+  listEl.className = 'chain-stack-list';
+
+  // Render top-to-bottom in reverse (highest Chain Link on top, CL1 at bottom)
   const items = [...chainStack].sort((a, b) => b.chainLink - a.chainLink);
-  container.innerHTML = `
-    <div class="chain-stack-header">⛓️ CHAIN (${chainStack.length})</div>
-    <div class="chain-stack-list">
-      ${items.map(item => {
-        const isYou = item.playerIndex === myIdx;
-        const ownerLabel = isYou ? 'You' : 'Opp';
-        const card = item.card || {};
-        const cardName = getLocalizedCardName(card, appState.lang);
-        const effLabel = item.effect?.labelTh || item.effect?.labelEn || '';
-        return `
-          <div class="chain-stack-item ${isYou ? 'is-you' : 'is-opp'}" title="${cardName}${effLabel ? ` — ${effLabel}` : ''}">
-            <div class="chain-stack-owner ${isYou ? 'you' : 'opp'}">${ownerLabel}</div>
-            <img class="chain-stack-thumb" src="${getCardArtUrl(card)}" alt="${cardName}" />
-            <div class="chain-stack-cl-badge">⛓️ ${item.chainLink}</div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
+  for (const item of items) {
+    const isYou = item.playerIndex === myIdx;
+    const ownerLabel = isYou ? 'You' : 'Opp';
+    const resolvedCard = resolveFullCardMeta(item.card || item, appState.currentState) || item.card || {};
+    const cardName = getLocalizedCardName(resolvedCard, appState.lang) || resolvedCard.name || 'Card';
+    const effLabel = appState.lang === 'en'
+      ? (item.effect?.labelEn || item.effect?.labelTh || '')
+      : (item.effect?.labelTh || item.effect?.labelEn || '');
+    const hintSuffix = appState.lang === 'en' ? 'Click to view card details' : 'คลิกเพื่อดูรายละเอียดการ์ด';
+
+    const row = document.createElement('div');
+    row.className = `chain-stack-item ${isYou ? 'is-you' : 'is-opp'} is-inspectable`;
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.title = `${cardName}${effLabel ? ` — ${effLabel}` : ''} (${hintSuffix})`;
+    row.setAttribute('aria-label', `Chain Link ${item.chainLink}: ${cardName}`);
+
+    const ownerEl = document.createElement('div');
+    ownerEl.className = `chain-stack-owner ${isYou ? 'you' : 'opp'}`;
+    ownerEl.textContent = ownerLabel;
+
+    const img = document.createElement('img');
+    img.className = 'chain-stack-thumb';
+    img.src = getCardArtUrl(resolvedCard);
+    img.alt = cardName;
+    img.addEventListener('error', () => {
+      img.src = generateProceduralCardSvg(resolvedCard);
+    }, { once: true });
+
+    const badge = document.createElement('div');
+    badge.className = 'chain-stack-cl-badge';
+    badge.textContent = `⛓️ ${item.chainLink}`;
+
+    const openChainCardDetail = (ev) => {
+      ev.stopPropagation();
+      inspectCardAndFocus(resolvedCard, { openMobilePreview: true });
+    };
+    row.addEventListener('click', openChainCardDetail);
+    row.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openChainCardDetail(ev);
+      }
+    });
+
+    row.append(ownerEl, img, badge);
+    listEl.appendChild(row);
+  }
+
+  container.appendChild(listEl);
 }
 
 // ==================== BOTTOM CHAIN SELECTION BAR (NO BLUR) ====================
@@ -4594,18 +5370,26 @@ function clearChainCardHighlights() {
 function openChainPromptBar(chainPrompt) {
   sfx.playChainAlert();
   clearChainCardHighlights();
+  document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
+
   const bar = document.getElementById('chain-prompt-bar');
+  const peekBtn = document.getElementById('btn-chain-peek');
+  if (bar) {
+    bar.classList.remove('is-peeking');
+    syncChainPeekButton(bar, peekBtn);
+  }
+
   const descEl = document.getElementById('chain-trigger-desc');
   const passHint = appState.lang === 'en' ? ' (Right-Click to Pass)' : ' (คลิกขวาเพื่อข้าม)';
   if (chainPrompt.isOpenWindow) {
     descEl.innerHTML = appState.lang === 'en'
-      ? `⚡ <strong>Open Timing Window</strong> (${chainPrompt.triggerEffectLabelTh}) — Click glowing card or choose below (Chain Link ${chainPrompt.chainLinkNumber})${passHint}:`
-      : `⚡ <strong>จังหวะเปิด (Open Timing)</strong> (${chainPrompt.triggerEffectLabelTh}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่าง (<strong>Chain Link ${chainPrompt.chainLinkNumber}</strong>)${passHint}:`;
+      ? `⚡ <strong>Open Timing Window</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — Click glowing card or choose below (Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)})${escapeHtml(passHint)}:`
+      : `⚡ <strong>จังหวะเปิด (Open Timing)</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่าง (<strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>)${escapeHtml(passHint)}:`;
   } else {
     const isSelfTrigger = chainPrompt.triggerPlayerIndex === appState.myPlayerIndex;
     descEl.innerHTML = appState.lang === 'en'
-      ? `${isSelfTrigger ? 'You activated' : 'Opponent activated'} <strong>"${chainPrompt.triggerCardNameTh}"</strong> (${chainPrompt.triggerEffectLabelTh}) — Click glowing card or choose below for <strong>Chain Link ${chainPrompt.chainLinkNumber}</strong>${passHint}:`
-      : `${isSelfTrigger ? 'คุณสั่งใช้งาน' : 'อีกฝ่ายสั่งใช้งาน'} <strong>"${chainPrompt.triggerCardNameTh}"</strong> (${chainPrompt.triggerEffectLabelTh}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่างเพื่อเชน <strong>Chain Link ${chainPrompt.chainLinkNumber}</strong>${passHint}:`;
+      ? `${isSelfTrigger ? 'You activated' : 'Opponent activated'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — Click glowing card or choose below for <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`
+      : `${isSelfTrigger ? 'คุณสั่งใช้งาน' : 'อีกฝ่ายสั่งใช้งาน'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่างเพื่อเชน <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`;
   }
 
   const list = document.getElementById('chain-options-list');
@@ -4614,7 +5398,11 @@ function openChainPromptBar(chainPrompt) {
   const triggerChainItem = (item) => {
     clearChainCardHighlights();
     appState.activeChainPrompt = null;
-    bar?.classList.add('hidden');
+    if (bar) {
+      bar.classList.add('hidden');
+      bar.classList.remove('is-peeking');
+      syncChainPeekButton(bar, peekBtn);
+    }
     dispatchDuelAction({
       type: 'CHAIN_RESPONSE',
       respond: true,
@@ -4631,29 +5419,70 @@ function openChainPromptBar(chainPrompt) {
       byInstance.get(item.instanceId).push(item);
     }
 
-    const cardDef = getCardById(item.cardId) || {
+    const cardDef = resolveFullCardMeta(
+      item.card || {
+        id: item.cardId,
+        passcode: item.passcode || (item.code ? String(item.code) : ''),
+        name: item.cardName,
+        nameTh: item.cardNameTh
+      },
+      appState.currentState
+    ) || {
       id: item.cardId,
       passcode: item.passcode,
       name: item.cardName,
       nameTh: item.cardNameTh
     };
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chain-option-btn';
-    btn.innerHTML = `
-      <img src="${getCardArtUrl(cardDef)}" alt="" style="width:40px;height:40px;border-radius:5px;object-fit:cover;flex-shrink:0;" />
-      <div>
-        <div style="color:#facc15;font-weight:800;font-size:0.82rem;">⚡ ${item.cardNameTh}</div>
-        <div style="font-size:0.72rem;color:#cbd5e1;">${item.labelTh}</div>
-      </div>
-    `;
-    const img = btn.querySelector('img');
-    img?.addEventListener('error', () => {
+
+    const optEl = document.createElement('div');
+    optEl.className = 'chain-option-btn';
+    optEl.setAttribute('role', 'button');
+    optEl.setAttribute('tabindex', '0');
+
+    const img = document.createElement('img');
+    img.src = getCardArtUrl(cardDef);
+    img.alt = '';
+    img.style.cssText = 'width:40px;height:40px;border-radius:5px;object-fit:cover;flex-shrink:0;';
+    img.addEventListener('error', () => {
       img.src = generateProceduralCardSvg(cardDef);
     }, { once: true });
-    btn.addEventListener('mouseenter', () => inspectCard(cardDef));
-    btn.addEventListener('click', () => triggerChainItem(item));
-    list.appendChild(btn);
+
+    const textWrap = document.createElement('div');
+    textWrap.style.cssText = 'flex:1;min-width:0;';
+    const titleLine = document.createElement('div');
+    titleLine.style.cssText = 'color:#facc15;font-weight:800;font-size:0.82rem;';
+    titleLine.textContent = `⚡ ${item.cardNameTh || item.cardName || ''}`;
+    const subLine = document.createElement('div');
+    subLine.style.cssText = 'font-size:0.72rem;color:#cbd5e1;';
+    subLine.textContent = item.labelTh || '';
+    textWrap.append(titleLine, subLine);
+
+    const inspectBtn = document.createElement('button');
+    inspectBtn.type = 'button';
+    inspectBtn.className = 'chain-option-inspect-btn';
+    inspectBtn.textContent = '🔍';
+    inspectBtn.title = appState.lang === 'en' ? 'View Card Info' : 'ดูรายละเอียดการ์ด';
+    inspectBtn.setAttribute('aria-label', inspectBtn.title);
+    inspectBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      inspectCardAndFocus(cardDef, { openMobilePreview: true });
+    });
+
+    optEl.append(img, textWrap, inspectBtn);
+    optEl.addEventListener('mouseenter', () => inspectCard(cardDef));
+    optEl.addEventListener('click', (ev) => {
+      if (ev.target.closest('.chain-option-inspect-btn')) return;
+      triggerChainItem(item);
+    });
+    optEl.addEventListener('keydown', (ev) => {
+      if (ev.target.closest('.chain-option-inspect-btn')) return;
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        triggerChainItem(item);
+      }
+    });
+    list.appendChild(optEl);
   }
 
   // Highlight & wire live hand/field cards directly like YGOPro
@@ -4668,8 +5497,9 @@ function openChainPromptBar(chainPrompt) {
       ev.preventDefault();
       if (items.length === 1) {
         triggerChainItem(items[0]);
-      } else {
-        bar?.classList.remove('hidden');
+      } else if (bar) {
+        bar.classList.remove('hidden', 'is-peeking');
+        syncChainPeekButton(bar, peekBtn);
       }
     };
     el.addEventListener('click', onPick, true);
@@ -5021,6 +5851,7 @@ function applyLanguage() {
   if (appState.lastInspectedCard) {
     inspectCard(appState.lastInspectedCard);
   }
+  syncAllPeekButtons();
   updateMpTabUI();
   const lanLabelEl = document.getElementById('lan-box-label');
   const lanHintEl = document.getElementById('lan-scope-hint');
@@ -5124,10 +5955,10 @@ function setupMobileHandToggle() {
     }
   }, true);
 
-  // Tap anywhere outside the hand dock (and outside card action popup / inline banner) collapses it back down
+  // Tap anywhere outside the hand dock (and outside card action popup / inline banner / card preview) collapses it back down
   document.addEventListener('pointerdown', (ev) => {
     if (!dock.classList.contains('hand-expanded')) return;
-    if (ev.target.closest('.player-bottom-dock, #card-action-popup, #field-pick-banner')) return;
+    if (ev.target.closest('.player-bottom-dock, #card-action-popup, #field-pick-banner, #mobile-card-preview, #chain-prompt-bar')) return;
     dock.classList.remove('hand-expanded');
   }, true);
 }
@@ -5367,14 +6198,44 @@ window.addEventListener('DOMContentLoaded', () => {
       renderP2PLiveStatus({ stage: 'idle', message: '' });
     }
     appState.lastRenderedState = null;
+    appState.lastAutoInspectedEventKey = null;
+    closeMobileCardDetail();
     switchScreen('screen-lobby');
+  });
+
+  // Chain Peek Board Button (temporarily minimize chain bar to inspect field)
+  const chainPeekBtn = document.getElementById('btn-chain-peek');
+  if (chainPeekBtn) {
+    const chainBar = document.getElementById('chain-prompt-bar');
+    syncChainPeekButton(chainBar, chainPeekBtn);
+    chainPeekBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (!chainBar) return;
+      chainBar.classList.toggle('is-peeking');
+      syncChainPeekButton(chainBar, chainPeekBtn);
+    });
+  }
+
+  // Close mobile card detail quick-view on Escape
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      const preview = document.getElementById('mobile-card-preview');
+      if (preview && !preview.classList.contains('hidden')) {
+        closeMobileCardDetail();
+      }
+    }
   });
 
   // Chain Pass Button
   document.getElementById('btn-chain-pass')?.addEventListener('click', () => {
     clearChainCardHighlights();
     appState.activeChainPrompt = null;
-    document.getElementById('chain-prompt-bar')?.classList.add('hidden');
+    const chainBar = document.getElementById('chain-prompt-bar');
+    if (chainBar) {
+      chainBar.classList.add('hidden');
+      chainBar.classList.remove('is-peeking');
+      syncChainPeekButton(chainBar, document.getElementById('btn-chain-peek'));
+    }
     dispatchDuelAction({ type: 'CHAIN_RESPONSE', respond: false });
   });
 
@@ -5479,6 +6340,9 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('waiting-room-banner')?.classList.add('hidden');
       renderP2PLiveStatus({ stage: 'idle', message: '' });
     }
+    appState.lastRenderedState = null;
+    appState.lastAutoInspectedEventKey = null;
+    closeMobileCardDetail();
     switchScreen('screen-lobby');
   });
 });
