@@ -2021,21 +2021,21 @@ textarea:focus {
     justify-content: safe center;
     align-items: flex-end;
     gap: 0;
-    padding: 2px 8px;
+    padding: 2px 10px;
     max-width: 100%;
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
-    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
     transform-origin: bottom center;
     transform: translateY(6px);
     transition: transform var(--dur) var(--ease);
   }
 
   .self-hand-container .hand-card-item {
-    scroll-snap-align: start;
     flex-shrink: 0;
+    touch-action: pan-x;
     transform-origin: 50% 100%;
     transform: translateY(var(--fan-y, 0px)) rotate(var(--fan-angle, 0deg));
     transition: margin var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur-fast) var(--ease);
@@ -2056,10 +2056,10 @@ textarea:focus {
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
-    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
     justify-content: safe center;
-    gap: 6px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 8px 14px;
     background: rgba(15, 20, 34, 0.92);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);

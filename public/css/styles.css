@@ -3245,6 +3245,15 @@ dialog .chain-options-list {
   user-select: none;
 }
 
+/* Allow smooth horizontal touch scrolling across playable hand cards; upward drag triggers play */
+.duel-card.hand-card-item.draggable-card {
+  touch-action: pan-x;
+}
+
+body.is-card-dragging .duel-card.hand-card-item.draggable-card {
+  touch-action: none;
+}
+
 body.is-card-dragging,
 body.is-card-dragging * {
   cursor: grabbing !important;

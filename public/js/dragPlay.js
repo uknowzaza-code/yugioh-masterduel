@@ -101,7 +101,9 @@ export function enableCardDragToPlay(cardEl, config) {
     const originCx = startRect.left + startRect.width / 2;
     const originCy = startRect.top + startRect.height / 2;
 
+    const isTouchHandCard = downEvent.pointerType !== 'mouse' && card.zone === 'HAND';
     let isDragging = false;
+    let gestureAborted = false;
     let dragMode = null; // 'ATTACK' | 'CARD_MOVE'
     let ghostEl = null;
     let currentHoverEl = null;
@@ -234,6 +236,9 @@ export function enableCardDragToPlay(cardEl, config) {
       onHidePopup?.();
       onInspect?.(card);
       document.body.classList.add('is-card-dragging');
+      if (isTouchHandCard) {
+        document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
+      }
       cardEl.classList.add('drag-source-dim');
 
       prepareLegalDropTargets();
@@ -313,10 +318,18 @@ export function enableCardDragToPlay(cardEl, config) {
       }
     };
 
+    const handleTouchMoveGuard = (touchEvent) => {
+      if (isDragging && touchEvent.cancelable) {
+        touchEvent.preventDefault();
+      }
+    };
+
     const cleanup = () => {
+      isDragging = false;
       document.removeEventListener('pointermove', handleMove);
       document.removeEventListener('pointerup', handleUp);
       document.removeEventListener('pointercancel', handleCancel);
+      document.removeEventListener('touchmove', handleTouchMoveGuard);
       document.removeEventListener('keydown', handleKeyDown);
 
       document.body.classList.remove('is-card-dragging');
@@ -469,9 +482,25 @@ export function enableCardDragToPlay(cardEl, config) {
     };
 
     const handleMove = (moveEvent) => {
+      if (gestureAborted) return;
       if (!isDragging) {
-        const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
-        if (dist < 6) return;
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        if (isTouchHandCard) {
+          const upward = -dy;
+          const absX = Math.abs(dx);
+          // Yield to native horizontal hand scroll if swiping sideways or downward
+          if ((absX >= 10 && absX >= upward * 1.1) || dy >= 10) {
+            gestureAborted = true;
+            cleanup();
+            return;
+          }
+          // Only trigger drag-to-play on mobile hand cards when dragged clearly UPWARD (forward)
+          if (upward < 18 || upward <= absX * 1.35) return;
+        } else {
+          const dist = Math.hypot(dx, dy);
+          if (dist < 6) return;
+        }
         startVisualDrag(moveEvent.clientX, moveEvent.clientY);
       }
 
@@ -506,6 +535,9 @@ export function enableCardDragToPlay(cardEl, config) {
     document.addEventListener('pointermove', handleMove);
     document.addEventListener('pointerup', handleUp);
     document.addEventListener('pointercancel', handleCancel);
+    if (isTouchHandCard) {
+      document.addEventListener('touchmove', handleTouchMoveGuard, { passive: false });
+    }
     document.addEventListener('keydown', handleKeyDown);
   });
 }
