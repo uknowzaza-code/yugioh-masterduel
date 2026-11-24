@@ -1857,12 +1857,16 @@ textarea:focus {
 
 @media (max-width: 1023px) {
   #screen-lobby {
-    padding: var(--space-3);
+    padding: var(--space-2);
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   .lobby-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: 0;
+    max-width: 100%;
   }
 
   .mode-select-panel {
@@ -1870,7 +1874,48 @@ textarea:focus {
   }
 
   .lobby-panel {
-    padding: var(--space-4);
+    padding: var(--space-3);
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .lobby-panel *,
+  .mode-card,
+  .mode-card-header,
+  .lan-info-box,
+  .lan-url-col,
+  .mp-actions-row,
+  .join-code-group,
+  .solo-controls,
+  .sandbox-row,
+  .summary-header,
+  .waiting-room-banner,
+  .waiting-content-col,
+  .waiting-title,
+  .open-room-item,
+  .panel-header-row,
+  .deck-search-bar,
+  .deck-filter-row {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .lan-urls-list,
+  .lan-scope-hint,
+  .waiting-sub,
+  .mode-card p {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .solo-controls select,
+  #select-ai-deck,
+  #input-player-name,
+  #input-room-code,
+  .deck-search-input {
+    min-width: 0;
+    max-width: 100%;
   }
 
   /* iPad / Tablet Duel Layout (640px - 1023px) */
@@ -2170,6 +2215,126 @@ textarea:focus {
 @media (max-width: 639px) {
   .app-header {
     padding: var(--space-2) var(--space-3);
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .brand-logo {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .logo-subtitle {
+    display: none;
+  }
+
+  .header-nav {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .header-nav .nav-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
+  #screen-lobby {
+    padding: 8px;
+  }
+
+  .lobby-panel {
+    padding: 10px;
+  }
+
+  .mode-card {
+    padding: 10px;
+  }
+
+  .mode-card-header {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .lan-info-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .lan-info-box .qr-box {
+    align-self: center;
+    width: 96px;
+    height: 96px;
+  }
+
+  .lan-info-box .qr-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .mp-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .mp-actions-row > #btn-create-room,
+  .join-code-group {
+    width: 100%;
+  }
+
+  .join-code-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .join-code-group #input-room-code {
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  .solo-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .solo-controls select,
+  #select-ai-deck,
+  #btn-start-solo {
+    width: 100%;
+  }
+
+  .sandbox-row,
+  .summary-header,
+  .open-room-item,
+  .waiting-room-banner,
+  .waiting-title,
+  .panel-header-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .deck-cards-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .deck-filter-row,
+  .playmat-picker-row {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-1);
   }
 
   .btn-gold:not(.btn-chain-pass):not(.btn-chain-peek):not(.btn-mini),
