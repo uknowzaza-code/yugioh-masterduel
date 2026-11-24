@@ -110,7 +110,7 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Accessible focus rings everywhere */
+/* Accessible focus rings on keyboard navigation (no ugly blue tap flash on touch) */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -118,6 +118,64 @@ textarea:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.duel-card,
+.hand-card-item,
+.zone-slot,
+.emz-slot,
+.card-zone-box,
+.deck-pile-slot,
+.oct-zone-btn,
+.chain-stack-item,
+.chain-option-btn,
+.self-hand-container,
+.player-bottom-dock {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.duel-card:focus:not(:focus-visible),
+.zone-slot:focus:not(:focus-visible),
+.emz-slot:focus:not(:focus-visible),
+.card-zone-box:focus:not(:focus-visible),
+.chain-stack-item:focus:not(:focus-visible),
+.chain-option-btn:focus:not(:focus-visible),
+button:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (pointer: coarse) {
+  .duel-card:focus,
+  .duel-card:focus-visible,
+  .hand-card-item:focus,
+  .hand-card-item:focus-visible,
+  .zone-slot:focus,
+  .zone-slot:focus-visible,
+  .emz-slot:focus,
+  .emz-slot:focus-visible,
+  .card-zone-box:focus,
+  .card-zone-box:focus-visible,
+  .deck-pile-slot:focus,
+  .deck-pile-slot:focus-visible,
+  .oct-zone-btn:focus,
+  .oct-zone-btn:focus-visible,
+  .chain-stack-item:focus,
+  .chain-stack-item:focus-visible,
+  .chain-option-btn:focus,
+  .chain-option-btn:focus-visible,
+  .player-bottom-dock:focus,
+  .player-bottom-dock:focus-visible {
+    outline: none !important;
+  }
+
+  .duel-card:active {
+    filter: brightness(1.12);
+    transition: filter 0.12s ease, transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }
 
 /* Clean slim scrollbars */
