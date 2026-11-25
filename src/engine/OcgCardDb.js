@@ -295,6 +295,151 @@ export function getUiCardMeta(code) {
   return meta;
 }
 
+const OCG_SYSTEM_STRINGS = {
+  // Core actions
+  0: 'Activate Effect',
+  1: 'Normal Summon',
+  2: 'Special Summon',
+  10: 'Set',
+  11: 'Flip Summon',
+  12: 'Change Position',
+  // Coin toss
+  60: 'Heads',
+  61: 'Tails',
+  // Card types (e.g. SPYRAL Super Agent, Crush Card, Prohibition, etc.)
+  70: 'Monster',
+  71: 'Spell',
+  72: 'Trap',
+  // Phases
+  80: 'Main Phase 1',
+  81: 'Battle Phase',
+  82: 'Main Phase 2',
+  83: 'End Phase',
+  // Yes / No
+  90: 'Yes',
+  91: 'No',
+  // Common card/zone choices
+  100: 'Face-up Attack Position',
+  101: 'Face-up Defense Position',
+  102: 'Face-down Defense Position',
+  200: 'Apply Effect',
+  201: 'Yes',
+  202: 'No',
+  // Attributes (1010..1016)
+  1010: 'EARTH',
+  1011: 'WATER',
+  1012: 'FIRE',
+  1013: 'WIND',
+  1014: 'LIGHT',
+  1015: 'DARK',
+  1016: 'DIVINE',
+  // Monster Types / Races (1020..1045)
+  1020: 'Warrior',
+  1021: 'Spellcaster',
+  1022: 'Fairy',
+  1023: 'Fiend',
+  1024: 'Zombie',
+  1025: 'Machine',
+  1026: 'Aqua',
+  1027: 'Pyro',
+  1028: 'Rock',
+  1029: 'Winged Beast',
+  1030: 'Plant',
+  1031: 'Insect',
+  1032: 'Thunder',
+  1033: 'Dragon',
+  1034: 'Beast',
+  1035: 'Beast-Warrior',
+  1036: 'Dinosaur',
+  1037: 'Fish',
+  1038: 'Sea Serpent',
+  1039: 'Reptile',
+  1040: 'Psychic',
+  1041: 'Divine-Beast',
+  1042: 'Creator God',
+  1043: 'Wyrm',
+  1044: 'Cyberse',
+  1045: 'Illusion',
+  // Card categories / subtypes (1050..1082)
+  1050: 'Monster',
+  1051: 'Spell',
+  1052: 'Trap',
+  1054: 'Normal',
+  1055: 'Effect',
+  1056: 'Fusion',
+  1057: 'Ritual',
+  1058: 'Trap Monster',
+  1059: 'Spirit',
+  1060: 'Union',
+  1061: 'Gemini',
+  1062: 'Tuner',
+  1063: 'Synchro',
+  1064: 'Token',
+  1066: 'Quick-Play',
+  1067: 'Continuous',
+  1068: 'Equip',
+  1069: 'Field',
+  1070: 'Counter',
+  1071: 'Flip',
+  1072: 'Toon',
+  1073: 'Xyz',
+  1074: 'Pendulum',
+  1075: 'Special Summon',
+  1076: 'Link',
+  // Common SelectOption / effect labels (1100..1230)
+  1100: 'Destroy',
+  1101: 'Send to GY',
+  1102: 'Banish',
+  1103: 'Return to Deck',
+  1104: 'Return to Hand',
+  1105: 'Add to Hand',
+  1106: 'Draw',
+  1107: 'Discard',
+  1108: 'Special Summon',
+  1109: 'Normal Summon',
+  1110: 'Flip Summon',
+  1111: 'Set',
+  1112: 'Activate',
+  1113: 'Equip',
+  1114: 'Tribute',
+  1115: 'Target',
+  1150: 'Activate Effect',
+  1151: 'Normal Summon',
+  1152: 'Special Summon',
+  1153: 'Set',
+  1154: 'Flip Summon',
+  1155: 'Change Position',
+  1156: 'Attack',
+  1157: 'Direct Attack',
+  1158: 'Destroy',
+  1159: 'Banish',
+  1160: 'Activate Pendulum Scale',
+  1161: 'Apply Effect',
+  1162: 'Fusion Summon',
+  1163: 'Ritual Summon',
+  1164: 'Synchro Summon',
+  1165: 'Xyz Summon',
+  1166: 'Link Summon',
+  1167: 'Pendulum Summon',
+  1190: 'Add to Hand',
+  1191: 'Send to GY',
+  1192: 'Banish',
+  1193: 'Shuffle into Deck',
+  1194: 'Place on Top of Deck',
+  1195: 'Place on Bottom of Deck',
+  1200: 'Yes',
+  1201: 'No',
+  1210: 'Add to Hand',
+  1211: 'Special Summon',
+  1212: 'Send to GY',
+  1213: 'Banish',
+  1300: 'Heads',
+  1301: 'Tails',
+  1370: 'Increase Level',
+  1371: 'Decrease Level',
+  1372: 'Keep Level'
+};
+
 /**
  * แปลง desc id ของ ocgcore เป็นข้อความภาษาอังกฤษจาก cards.cdb หรือ system strings
  */
@@ -311,6 +456,12 @@ export function resolveOcgDescription(descId, fallbackCardCode = null) {
       if (meta?.name) return `Activate ${meta.name}`;
     }
     return 'Activate Effect';
+  }
+
+  // System strings (0..65535) must be checked before classic 4-bit card Stringid to avoid collisions
+  if (big > 0n && big < 0x10000n) {
+    const sysNum = Number(big);
+    if (OCG_SYSTEM_STRINGS[sysNum]) return OCG_SYSTEM_STRINGS[sysNum];
   }
 
   // EDOPro / ocgcore-wasm 64-bit Stringid: (code << 20) + strIdx
@@ -335,23 +486,11 @@ export function resolveOcgDescription(descId, fallbackCardCode = null) {
     }
   }
 
-  const num = Number(big);
-  const sysMap = {
-    0: 'Activate Effect',
-    1: 'Normal Summon',
-    2: 'Special Summon',
-    10: 'Set',
-    11: 'Flip Summon',
-    12: 'Change Position',
-    1160: 'Activate Pendulum Scale'
-  };
-  if (sysMap[num]) return sysMap[num];
-
   if (fallbackCardCode) {
     const meta = getUiCardMeta(fallbackCardCode);
     if (meta?.name) return `Activate ${meta.name}`;
   }
-  return 'Activate Effect';
+  return `Option #${Number(big)}`;
 }
 
 let allDbCodes = null;
