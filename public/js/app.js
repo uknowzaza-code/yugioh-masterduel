@@ -4136,6 +4136,9 @@ function openInlinePickBanner({
 
   activeZonePickMandatory = Boolean(mandatory);
   banner.dataset.mode = mode;
+  if (mode === 'zone-pick') {
+    document.body.classList.add('is-zone-picking');
+  }
   banner.classList.remove('is-peeking');
   banner.innerHTML = '';
 
@@ -5182,6 +5185,7 @@ function enterOcgFieldPlaceMode(prompt) {
   };
 
   if (banner) {
+    banner.dataset.mode = 'zone-pick';
     banner.classList.remove('is-peeking');
     banner.innerHTML = '';
     const head = document.createElement('div');

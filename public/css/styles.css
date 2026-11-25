@@ -3130,16 +3130,26 @@ textarea:focus {
 }
 
 /* While picking a zone on the field, sit cleanly at the very bottom over the dimmed hand dock -> 0% playmat blocked! */
-body.is-zone-picking #field-pick-banner {
+body.is-zone-picking #field-pick-banner,
+#field-pick-banner[data-mode="zone-pick"] {
   bottom: 8px;
-  width: min(92%, 660px);
-  padding: 7px 14px;
+  width: min(92%, 680px);
+  padding: 7px 12px;
   background: linear-gradient(180deg, rgba(12, 20, 38, 0.56) 0%, rgba(6, 10, 20, 0.64) 100%);
   border-color: rgba(245, 197, 66, 0.56);
 }
 
-body.is-zone-picking #field-pick-banner .chain-bar-header {
+body.is-zone-picking #field-pick-banner .chain-bar-header,
+#field-pick-banner[data-mode="zone-pick"] .chain-bar-header {
   margin-bottom: 0;
+  flex-wrap: nowrap;
+}
+
+#field-pick-banner[data-mode="zone-pick"] .chain-trigger-desc {
+  flex: 1 1 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chain-prompt-bar .chain-trigger-desc {
@@ -5527,7 +5537,7 @@ dialog.rps-dialog::backdrop {
     --field-gap: clamp(3px, 0.8vw, 5px);
     --slot-w: calc(clamp(40px, min(calc((100vw - 12px - (var(--side-w) * 2) - (var(--field-gap) * 6)) / 5), calc((100dvh - 285px) / 5.55 * 59 / 86)), 66px) * var(--field-scale));
     --slot-h: calc(var(--slot-w) * 86 / 59);
-    --mobile-dock-h: 106px;
+    --mobile-dock-h: 120px;
     height: 100%;
     min-height: 0;
     padding: max(4px, env(safe-area-inset-top, 0px)) max(4px, env(safe-area-inset-right, 0px)) max(4px, env(safe-area-inset-bottom, 0px)) max(4px, env(safe-area-inset-left, 0px));
@@ -5736,7 +5746,8 @@ dialog.rps-dialog::backdrop {
     z-index: var(--z-chain-bar);
   }
 
-  body.is-zone-picking #field-pick-banner {
+  body.is-zone-picking #field-pick-banner,
+  #field-pick-banner[data-mode="zone-pick"] {
     bottom: max(8px, env(safe-area-inset-bottom, 0px));
     width: calc(100vw - 14px);
     padding: 7px 10px;
@@ -6156,9 +6167,12 @@ dialog.rps-dialog::backdrop {
     padding: 6px 8px;
   }
 
-  body.is-zone-picking #field-pick-banner {
+  body.is-zone-picking #field-pick-banner,
+  #field-pick-banner[data-mode="zone-pick"] {
+    width: auto;
+    max-width: none;
     bottom: max(4px, env(safe-area-inset-bottom, 0px));
-    padding: 6px 10px;
+    padding: 5px 8px;
   }
 
   .chain-prompt-bar .btn-chain-pass,
