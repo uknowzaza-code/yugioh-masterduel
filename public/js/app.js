@@ -63,7 +63,8 @@ import {
 } from '/js/cardAnimations.js';
 import {
   enableCardDragToPlay,
-  shouldSuppressCardClick
+  shouldSuppressCardClick,
+  cancelActiveCardDrag
 } from '/js/dragPlay.js';
 import {
   RpsSession,
@@ -151,6 +152,148 @@ const appState = {
   knownCardsByName: new Map()
 };
 
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.lang = appState.lang;
+}
+
+// ==================== INLINE SVG ICON SYSTEM & PERFORMANCE HELPERS ====================
+const UI_ICON_PATHS = {
+  chain: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  peek: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  back: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  inspect: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  battle: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="M5 14l4 4"/><path d="M7 17l-3 3"/>',
+  sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/>',
+  summon: '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4L12 3Z"/>',
+  set: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
+  activate: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
+  position: '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
+  gy: '<path d="M6 21V10a6 6 0 0 1 12 0v11"/><path d="M4 21h16"/><path d="M12 8v6"/><path d="M9.5 11h5"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  banish: '<circle cx="12" cy="12" r="9"/><path d="M12 3a6 6 0 0 1 0 12 4 4 0 0 1 0-8 2 2 0 0 1 0 4"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  target: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
+  cards: '<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M4 8v10a2 2 0 0 0 2 2h8"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  negate: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+  zoom: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6"/><path d="M8 11h6"/>',
+  end: '<path d="m5 5 8 7-8 7V5Z"/><path d="M19 5v14"/>',
+  leave: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  mp2: '<path d="M12 3 4 12l8 9 8-9-8-9Z"/>',
+  log: '<path d="M8 6h12"/><path d="M8 12h12"/><path d="M8 18h12"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/>',
+  trophy: '<path d="M6 9H4a2 2 0 0 1-2-2V5h4"/><path d="M18 9h2a2 2 0 0 0 2-2V5h-4"/><path d="M6 4h12v6a6 6 0 0 1-12 0V4Z"/><path d="M12 16v5"/><path d="M8 21h8"/>',
+  defeat: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7 7-7Z"/><path d="m12 6-2 4 4 2-2 4"/>'
+};
+
+function iconSvg(name, extraClass = '') {
+  const inner = UI_ICON_PATHS[name] || UI_ICON_PATHS.summon;
+  const cls = extraClass ? `ui-icon ${extraClass}` : 'ui-icon';
+  return `<svg class="${cls}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
+function stripLeadingEmoji(label) {
+  return String(label || '')
+    .replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\uFE0F\u200D]+\s*/gu, '')
+    .trim();
+}
+
+function setButtonLabel(el, text, fallbackIcon = null) {
+  if (!el) return;
+  const labelEl = el.querySelector('.btn-label');
+  if (labelEl) {
+    labelEl.textContent = text;
+    return;
+  }
+  const existingSvg = el.querySelector('svg');
+  if (existingSvg) {
+    const span = document.createElement('span');
+    span.className = 'btn-label';
+    span.textContent = text;
+    el.innerHTML = '';
+    el.append(existingSvg, span);
+    return;
+  }
+  if (fallbackIcon) {
+    el.innerHTML = `${iconSvg(fallbackIcon)}<span class="btn-label">${escapeHtml(text)}</span>`;
+    return;
+  }
+  el.textContent = text;
+}
+
+function isCoarseTouchPointer() {
+  return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+}
+
+function isCompactDuelViewport() {
+  return window.innerWidth < 1024 || isCoarseTouchPointer();
+}
+
+function clearSelectedHandCard() {
+  document.querySelectorAll('.duel-card.is-selected').forEach((el) => {
+    el.classList.remove('is-selected');
+  });
+}
+
+// Zone-dirty render cache & append-only log cursor
+const zoneRenderCache = {
+  duelId: null,
+  myIdx: -1,
+  lang: '',
+  zones: new Map(),
+  equipSig: '',
+  comboGuideSig: '',
+  logCount: 0,
+  lastLogSig: '',
+  logDuelId: null,
+  logLang: ''
+};
+
+function resetDuelRenderCaches() {
+  zoneRenderCache.duelId = null;
+  zoneRenderCache.myIdx = -1;
+  zoneRenderCache.lang = '';
+  zoneRenderCache.zones.clear();
+  zoneRenderCache.equipSig = '';
+  zoneRenderCache.comboGuideSig = '';
+  zoneRenderCache.logCount = 0;
+  zoneRenderCache.lastLogSig = '';
+  zoneRenderCache.logDuelId = null;
+  zoneRenderCache.logLang = '';
+}
+
+function createLightweightStateSnapshot(state) {
+  if (!state) return null;
+  const slimFieldCard = (c) => (c ? {
+    instanceId: c.instanceId,
+    position: c.position,
+    isFaceDown: Boolean(c.isFaceDown),
+    equipTargetInstanceId: c.equipTargetInstanceId || null
+  } : null);
+  const logsArr = Array.isArray(state.logs) ? state.logs : [];
+  const lastLog = logsArr.length > 0 ? logsArr[logsArr.length - 1] : null;
+  return {
+    duelId: state.duelId,
+    turnCount: state.turnCount,
+    turnPlayer: state.turnPlayer,
+    phase: state.phase,
+    battleSeq: state.battleSeq || 0,
+    eventSeq: state.eventSeq || 0,
+    players: (state.players || []).map((p) => ({
+      name: p.name,
+      lp: p.lp,
+      hand: { length: Array.isArray(p.hand) ? p.hand.length : 0 },
+      mmz: (p.mmz || []).map(slimFieldCard),
+      stz: (p.stz || []).map(slimFieldCard),
+      emz: slimFieldCard(p.emz),
+      emzSlots: Array.isArray(p.emzSlots) ? p.emzSlots.map(slimFieldCard) : null,
+      fieldSpell: slimFieldCard(p.fieldSpell)
+    })),
+    logsLength: logsArr.length,
+    lastLog: lastLog ? { id: lastLog.id, text: lastLog.text } : null
+  };
+}
+
 // ==================== TOP-LAYER EXIT & DIALOG HELPERS ====================
 let supportsDisplayTransition;
 function canTransitionDisplay() {
@@ -226,16 +369,36 @@ function showToast(message) {
 }
 
 function switchScreen(screenId) {
+  const isDuel = screenId === 'screen-duel';
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(screenId)?.classList.add('active');
-  if (screenId !== 'screen-duel') {
+  document.body.classList.toggle('is-duel-active', isDuel);
+
+  // Clean up mobile sheets/drawers and in-flight gestures across screen transitions
+  document.getElementById('inspector-sidebar')?.classList.remove('is-mobile-open');
+  document.getElementById('mobile-duel-menu-drawer')?.classList.remove('open');
+  document.getElementById('btn-mobile-duel-menu')?.setAttribute('aria-expanded', 'false');
+  document.getElementById('btn-mobile-inspector-toggle')?.setAttribute('aria-expanded', 'false');
+  cancelActiveCardDrag();
+  clearSelectedHandCard();
+
+  if (!isDuel) {
     resetTurnChangeBannerQueue();
+    resetDuelRenderCaches();
   }
   hideActionPopup(true);
   clearZonePickMode(true);
   closeYgoproCardStrip();
   clearChainCardHighlights();
   clearPinnedCmdCards();
+
+  // Always reset viewport scroll position when transitioning screens (fixes mobile Lobby -> Duel landing scrolled down)
+  window.scrollTo(0, 0);
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
+  if (isDuel) {
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
 }
 
 // ==================== LOBBY & 55 TOP DECKS RENDERING ====================
@@ -401,16 +564,15 @@ function renderDeckSelector() {
         restoreBtn.type = 'button';
         restoreBtn.id = 'btn-restore-hidden-decks';
         restoreBtn.className = 'btn-mini';
-        restoreBtn.style.marginLeft = '0.4rem';
         restoreBtn.addEventListener('click', () => {
           saveHiddenPresetDeckIds(new Set());
           renderDeckSelector();
           populateAiDeckDropdown();
-          showToast('♻️ กู้คืนเด็คที่ลบทั้งหมดแล้ว', 'info');
+          showToast(appState.lang === 'en' ? 'Restored all hidden decks' : '♻️ กู้คืนเด็คที่ลบทั้งหมดแล้ว', 'info');
         });
         countBadge.insertAdjacentElement('afterend', restoreBtn);
       }
-      restoreBtn.textContent = `♻️ กู้คืน (${hiddenIds.size})`;
+      restoreBtn.textContent = lang === 'en' ? `Restore (${hiddenIds.size})` : `♻️ กู้คืน (${hiddenIds.size})`;
       restoreBtn.classList.remove('hidden');
     } else if (restoreBtn) {
       restoreBtn.classList.add('hidden');
@@ -425,22 +587,26 @@ function renderDeckSelector() {
     return;
   }
 
+  const frag = document.createDocumentFragment();
   filteredDecks.forEach((deck) => {
     const coverCard = getCardById(deck.coverCardId);
     const cardEl = document.createElement('div');
     const title = getDeckDisplayTitle(deck, lang);
-    cardEl.className = `deck-choice-card ${deck.id === appState.selectedDeckId ? 'selected' : ''}`;
+    const isSelected = deck.id === appState.selectedDeckId;
+    const delTitle = lang === 'en' ? `Delete deck ${title}` : `ลบเด็ค ${title}`;
+    cardEl.className = `deck-choice-card ${isSelected ? 'selected' : ''}`;
     cardEl.dataset.deckId = deck.id;
+    cardEl.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     cardEl.innerHTML = `
-      <button type="button" class="deck-card-delete-btn" title="ลบเด็คนี้" aria-label="ลบเด็ค ${title}">🗑️</button>
+      <button type="button" class="deck-card-delete-btn" title="${escapeHtml(delTitle)}" aria-label="${escapeHtml(delTitle)}">${iconSvg('trash')}</button>
       <div class="deck-choice-top">
-        <img class="deck-choice-thumb" src="${getCardArtUrl(coverCard)}" alt="${deck.name}" />
-        <div style="min-width:0;flex:1;">
-          <span class="deck-choice-badge">${deck.badge}</span>
-          <div class="deck-choice-title">${title}</div>
+        <img class="deck-choice-thumb" src="${getCardArtUrl(coverCard)}" alt="${escapeHtml(deck.name)}" loading="lazy" decoding="async" />
+        <div class="deck-choice-info">
+          <span class="deck-choice-badge">${escapeHtml(deck.badge)}</span>
+          <div class="deck-choice-title">${escapeHtml(title)}</div>
         </div>
       </div>
-      <div class="deck-choice-diff">${deck.difficulty}</div>
+      <div class="deck-choice-diff">${escapeHtml(deck.difficulty)}</div>
     `;
     const img = cardEl.querySelector('img');
     img.addEventListener('error', () => {
@@ -453,12 +619,19 @@ function renderDeckSelector() {
     });
 
     cardEl.addEventListener('click', () => {
+      if (appState.selectedDeckId === deck.id) return;
       appState.selectedDeckId = deck.id;
-      renderDeckSelector();
+      container.querySelectorAll('.deck-choice-card.selected').forEach((prevEl) => {
+        prevEl.classList.remove('selected');
+        prevEl.setAttribute('aria-pressed', 'false');
+      });
+      cardEl.classList.add('selected');
+      cardEl.setAttribute('aria-pressed', 'true');
       renderSelectedDeckSummary();
     });
-    container.appendChild(cardEl);
+    frag.appendChild(cardEl);
   });
+  container.appendChild(frag);
 
   if (prevScrollTop > 0) {
     container.scrollTop = prevScrollTop;
@@ -556,14 +729,14 @@ function renderSelectedDeckSummary() {
   summaryEl.innerHTML = `
     <div class="summary-header">
       <div>
-        <h3>${title}</h3>
-        <p style="font-size:0.82rem;color:#cbd5e1;margin-top:2px;">${summary}</p>
+        <h3>${escapeHtml(title)}</h3>
+        <p class="deck-summary-desc">${escapeHtml(summary)}</p>
       </div>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
-        <button type="button" class="btn-outline" id="btn-copy-selected-ydk" title="คัดลอกเด็คนี้เป็นโค้ด YDK ลง Clipboard">📋 Copy YDK</button>
-        <button type="button" class="btn-outline" id="btn-copy-selected-ydke" title="คัดลอกเด็คนี้เป็นลิงก์ YDKE (ydke://...) ลง Clipboard">🔗 Copy YDKE</button>
-        <button type="button" class="btn-outline" id="btn-inspect-selected-deck">${t(lang, 'inspectDeckBtn')}</button>
-        <button type="button" class="btn-outline" id="btn-delete-selected-deck" style="border-color:#ef4444;color:#fca5a5;">🗑️ ลบเด็ค</button>
+      <div class="deck-summary-actions">
+        <button type="button" class="btn-outline" id="btn-copy-selected-ydk" title="${lang === 'en' ? 'Copy deck as YDK to clipboard' : 'คัดลอกเด็คนี้เป็นโค้ด YDK ลง Clipboard'}">Copy YDK</button>
+        <button type="button" class="btn-outline" id="btn-copy-selected-ydke" title="${lang === 'en' ? 'Copy deck as YDKE link to clipboard' : 'คัดลอกเด็คนี้เป็นลิงก์ YDKE (ydke://...) ลง Clipboard'}">Copy YDKE</button>
+        <button type="button" class="btn-outline" id="btn-inspect-selected-deck">${iconSvg('inspect')}<span class="btn-label">${escapeHtml(stripLeadingEmoji(t(lang, 'inspectDeckBtn')))}</span></button>
+        <button type="button" class="btn-outline btn-danger-outline" id="btn-delete-selected-deck">${iconSvg('trash')}<span class="btn-label">${escapeHtml(t(lang, 'deleteDeckBtn'))}</span></button>
       </div>
     </div>
   `;
@@ -596,6 +769,7 @@ function openDeckListModal(deck) {
     ...deck.extraDeckRecipe.map(r => ({ ...r, section: 'Extra Deck' }))
   ];
 
+  const frag = document.createDocumentFragment();
   for (const item of allItems) {
     const card = getCardById(item.id);
     if (!card) continue;
@@ -604,22 +778,23 @@ function openDeckListModal(deck) {
     const box = document.createElement('div');
     box.className = 'browser-card-box';
     box.innerHTML = `
-      <div style="display:flex;gap:0.55rem;align-items:center;">
-        <img src="${getCardArtUrl(card)}" alt="${card.name}" style="width:50px;height:50px;border-radius:6px;object-fit:cover;" />
-        <div>
-          <div style="font-size:0.7rem;color:#38bdf8;font-weight:700;">${item.section} ×${item.count}</div>
-          <div style="font-size:0.84rem;font-weight:800;color:#facc15;">${cardName}</div>
-          <div style="font-size:0.72rem;color:#94a3b8;">${getCardSubHeaderBadge(card, lang)}</div>
+      <div class="browser-card-head">
+        <img class="browser-card-thumb" src="${getCardArtUrl(card)}" alt="${escapeHtml(card.name)}" loading="lazy" decoding="async" />
+        <div class="browser-card-meta">
+          <div class="browser-card-section">${escapeHtml(item.section)} ×${item.count}</div>
+          <div class="browser-card-name">${escapeHtml(cardName)}</div>
+          <div class="browser-card-sub">${escapeHtml(getCardSubHeaderBadge(card, lang))}</div>
         </div>
       </div>
-      <div style="font-size:0.76rem;color:#e2e8f0;line-height:1.4;">${cardDesc}</div>
+      <div class="browser-card-desc">${escapeHtml(cardDesc)}</div>
     `;
     const img = box.querySelector('img');
     img.addEventListener('error', () => {
       img.src = generateProceduralCardSvg(card);
     }, { once: true });
-    grid.appendChild(box);
+    frag.appendChild(box);
   }
+  grid.appendChild(frag);
 
   dlg.showModal();
 }
@@ -677,8 +852,8 @@ async function fetchNetworkAndCustomCards() {
           link.href = publicUrl;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
-          link.style.color = '#38bdf8';
-          link.textContent = `🔗 ${publicUrl}`;
+          link.className = 'open-room-host';
+          link.textContent = publicUrl;
           row.appendChild(link);
           urlListEl.appendChild(row);
         }
@@ -687,6 +862,8 @@ async function fetchNetworkAndCustomCards() {
           const qrImg = document.createElement('img');
           qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(publicUrl)}`;
           qrImg.alt = 'QR Code';
+          qrImg.loading = 'lazy';
+          qrImg.decoding = 'async';
           qrBox.appendChild(qrImg);
         }
       } else if (info.ips && info.ips.length > 0) {
@@ -694,13 +871,13 @@ async function fetchNetworkAndCustomCards() {
         appState.primaryShareUrl = primaryUrl;
         if (lanLabelEl) {
           lanLabelEl.textContent = appState.lang === 'en'
-            ? '📱 Same-Wi-Fi (LAN) Share Link:'
-            : '📱 ลิงก์เล่นด้วยกันบน Wi-Fi เดียวกัน (LAN):';
+            ? 'Same-Wi-Fi (LAN) Share Link:'
+            : 'ลิงก์เล่นด้วยกันบน Wi-Fi เดียวกัน (LAN):';
         }
         if (lanHintEl) {
           lanHintEl.textContent = appState.lang === 'en'
-            ? '⚠️ Same Wi-Fi / Hotspot only. For Cross-Wi-Fi, switch to Mode 2 (P2P Online) or use a public HTTPS tunnel.'
-            : '⚠️ ใช้ได้เฉพาะ Wi-Fi / Hotspot เดียวกัน — หากอยู่คนละ Wi-Fi ให้ใช้ Mode 2 (P2P Online) หรือรันผ่าน Public HTTPS Tunnel';
+            ? 'Same Wi-Fi / Hotspot only. For Cross-Wi-Fi, switch to Mode 2 (P2P Online) or use a public HTTPS tunnel.'
+            : 'ใช้ได้เฉพาะ Wi-Fi / Hotspot เดียวกัน — หากอยู่คนละ Wi-Fi ให้ใช้ Mode 2 (P2P Online) หรือรันผ่าน Public HTTPS Tunnel';
         }
         if (urlListEl) {
           urlListEl.innerHTML = '';
@@ -710,9 +887,9 @@ async function fetchNetworkAndCustomCards() {
             link.href = ip.url;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
-            link.style.color = '#38bdf8';
+            link.className = 'open-room-host';
             const ifaceLabel = ip.interface || ip.iface;
-            link.textContent = `🔗 ${ip.url}${ifaceLabel ? ` (${ifaceLabel})` : ''}`;
+            link.textContent = `${ip.url}${ifaceLabel ? ` (${ifaceLabel})` : ''}`;
             row.appendChild(link);
             urlListEl.appendChild(row);
           });
@@ -722,6 +899,8 @@ async function fetchNetworkAndCustomCards() {
           const qrImg = document.createElement('img');
           qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(primaryUrl)}`;
           qrImg.alt = 'QR Code';
+          qrImg.loading = 'lazy';
+          qrImg.decoding = 'async';
           qrBox.appendChild(qrImg);
         }
       } else {
@@ -1038,22 +1217,24 @@ function setupCrossWifiUiBindings() {
 function renderOpenRoomsList(openRooms = []) {
   const listEl = document.getElementById('open-rooms-list');
   if (!listEl) return;
+  const lang = appState.lang;
   if (!openRooms || openRooms.length === 0) {
-    listEl.innerHTML = `<div class="empty-rooms-text">ยังไม่มีห้องที่เปิดรอ — กด "➕ สร้างห้องดวลใหม่" เพื่อให้เพื่อนกดเข้าร่วมได้เลย!</div>`;
+    listEl.innerHTML = `<div class="empty-rooms-text">${escapeHtml(t(lang, 'emptyRoomsText'))}</div>`;
     return;
   }
 
   listEl.innerHTML = '';
   for (const r of openRooms) {
     const deck = getPresetDeckById(r.hostDeckId);
+    const deckName = deck ? getDeckDisplayTitle(deck, lang) : 'Custom Deck';
     const row = document.createElement('div');
     row.className = 'open-room-item';
     row.innerHTML = `
       <div>
-        <strong>ห้อง #${r.code}</strong> — โฮสต์: <span style="color:#38bdf8">${r.hostName}</span>
-        <span style="color:#94a3b8;font-size:0.75rem;">(${deck?.nameTh || 'Custom Deck'})</span>
+        <strong>${escapeHtml(t(lang, 'roomLabel'))} #${escapeHtml(r.code)}</strong> — ${escapeHtml(t(lang, 'hostLabel'))} <span class="open-room-host">${escapeHtml(r.hostName)}</span>
+        <span class="open-room-deck">(${escapeHtml(deckName)})</span>
       </div>
-      <button type="button" class="btn-gold btn-mini">เข้าร่วมทันที</button>
+      <button type="button" class="btn-gold btn-mini">${escapeHtml(t(lang, 'joinNowBtn'))}</button>
     `;
     row.querySelector('button').addEventListener('click', () => {
       const playerName = document.getElementById('input-player-name').value.trim() || 'Duelist 2';
@@ -1091,6 +1272,8 @@ function initMultiplayerManager() {
         const qrImg = document.createElement('img');
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(inviteUrl)}`;
         qrImg.alt = `Room #${roomCode} QR`;
+        qrImg.loading = 'lazy';
+        qrImg.decoding = 'async';
         qrBox.appendChild(qrImg);
       }
       showToast(`สร้างห้องสำเร็จ! รหัสห้อง: ${roomCode} (${mode})`);
@@ -1717,23 +1900,48 @@ function syncLocalEngineToUI() {
   }
 }
 
+let handSuppressTimerId = null;
+let activeHandSuppressCleanup = null;
+
 function collapseHandDock() {
   const dock = document.querySelector('.player-bottom-dock');
   if (!dock) return;
+  if (activeHandSuppressCleanup) {
+    activeHandSuppressCleanup();
+    activeHandSuppressCleanup = null;
+  }
   dock.classList.remove('hand-expanded');
+  clearSelectedHandCard();
+
+  // Coarse/touch pointers use Tap-First mode and don't hover-expand the hand dock
+  if (isCoarseTouchPointer()) {
+    dock.classList.remove('hand-suppressed');
+    return;
+  }
+
   dock.classList.add('hand-suppressed');
   if (document.activeElement && dock.contains(document.activeElement)) {
     document.activeElement.blur?.();
   }
   const clearSuppressed = () => {
+    if (handSuppressTimerId !== null) {
+      clearTimeout(handSuppressTimerId);
+      handSuppressTimerId = null;
+    }
     dock.classList.remove('hand-suppressed');
     dock.removeEventListener('pointerleave', clearSuppressed);
     dock.removeEventListener('pointerdown', clearSuppressed, true);
+    if (activeHandSuppressCleanup === clearSuppressed) {
+      activeHandSuppressCleanup = null;
+    }
   };
+  activeHandSuppressCleanup = clearSuppressed;
   dock.addEventListener('pointerleave', clearSuppressed, { once: true });
-  // On touch or intentional re-click, allow re-opening hand after current click finishes
-  setTimeout(() => {
-    dock.addEventListener('pointerdown', clearSuppressed, { once: true, capture: true });
+  handSuppressTimerId = setTimeout(() => {
+    handSuppressTimerId = null;
+    if (activeHandSuppressCleanup === clearSuppressed) {
+      dock.addEventListener('pointerdown', clearSuppressed, { once: true, capture: true });
+    }
   }, 120);
 }
 
@@ -1819,15 +2027,15 @@ function openEffectChoiceModal(sourceCard, effect, steps, baseActionPayload) {
       const box = document.createElement('div');
       box.className = 'browser-card-box playable-glow';
       box.innerHTML = `
-        <div style="display:flex;gap:0.55rem;align-items:center;">
-          <img src="${getCardArtUrl(candidate)}" alt="${candidate.name}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;" />
-          <div>
-            <div style="font-size:0.84rem;font-weight:800;color:#facc15;">${getLocalizedCardName(candidate, lang)}</div>
-            <div style="font-size:0.72rem;color:#38bdf8;">${getCardSubHeaderBadge(candidate, lang)}${candidate.kind === 'MONSTER' ? ` • ATK ${candidate.currentAtk ?? candidate.atk}` : ''}</div>
+        <div class="browser-card-head">
+          <img class="browser-card-thumb" src="${getCardArtUrl(candidate)}" alt="${escapeHtml(candidate.name)}" loading="lazy" decoding="async" />
+          <div class="browser-card-meta">
+            <div class="browser-card-name">${escapeHtml(getLocalizedCardName(candidate, lang))}</div>
+            <div class="browser-card-sub">${escapeHtml(getCardSubHeaderBadge(candidate, lang))}${candidate.kind === 'MONSTER' ? ` • ATK ${candidate.currentAtk ?? candidate.atk}` : ''}</div>
           </div>
         </div>
-        <div style="font-size:0.75rem;color:#cbd5e1;line-height:1.35;">${getLocalizedCardDesc(candidate, lang)}</div>
-        <div class="zone-card-actions" style="display:grid;gap:4px;margin-top:auto;"></div>
+        <div class="browser-card-desc">${escapeHtml(getLocalizedCardDesc(candidate, lang))}</div>
+        <div class="zone-card-actions browser-card-actions"></div>
       `;
       const img = box.querySelector('img');
       img?.addEventListener('error', () => {
@@ -1839,15 +2047,14 @@ function openEffectChoiceModal(sourceCard, effect, steps, baseActionPayload) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn-gold btn-mini';
-      btn.style.padding = '0.42rem';
 
       const syncButtonVisual = () => {
         const isSelected = selectedVals.includes(pickedVal);
-        box.style.outline = isSelected ? '2px solid #22c55e' : '';
+        box.classList.toggle('is-picked', isSelected);
         if (isSelected) {
-          btn.textContent = lang === 'en' ? `✅ Selected (${selectedVals.length}/${targetPickCount})` : `✅ เลือกแล้ว (คลิกเพื่อยกเลิก)`;
+          btn.textContent = lang === 'en' ? `Selected (${selectedVals.length}/${targetPickCount})` : `เลือกแล้ว (คลิกเพื่อยกเลิก)`;
         } else {
-          btn.textContent = lang === 'en' ? `🎯 Select "${candidate.name}"` : `🎯 เลือก "${candidate.nameTh}"`;
+          btn.textContent = lang === 'en' ? `Select "${candidate.name}"` : `เลือก "${candidate.nameTh}"`;
         }
       };
       syncButtonVisual();
@@ -1976,6 +2183,8 @@ function enqueuePacedStateSync(payload) {
     stateSyncPacer.duelId = incomingDuelId;
     stateSyncPacer.lastApplyAt = Date.now();
     appState.lastAutoInspectedEventKey = null;
+    appState.lastRenderedState = null;
+    resetDuelRenderCaches();
     appState.knownCardsById.clear();
     appState.knownCardsByCode.clear();
     appState.knownCardsByName.clear();
@@ -1991,14 +2200,82 @@ function enqueuePacedStateSync(payload) {
   pumpStateSyncQueue();
 }
 
-// ==================== DUEL SCREEN RENDERING ====================
+// ==================== DUEL SCREEN RENDERING (ZONE-DIRTY DIFFING) ====================
+function serializeActionsSig(acts) {
+  if (!Array.isArray(acts) || acts.length === 0) return '';
+  let out = '';
+  for (let i = 0; i < acts.length; i++) {
+    const a = acts[i];
+    if (i > 0) out += ',';
+    out += `${a.type}:${a.effectId || ''}:${a.position || ''}:${a.ocgAction ?? ''}:${a.ocgIndex ?? ''}:${a.isPendulumScale ? 1 : 0}:${a.label || a.labelTh || ''}`;
+  }
+  return out;
+}
+
+function serializeAttackSig(atkInfo, oppTargetsSig) {
+  if (!atkInfo) return '';
+  if (Array.isArray(atkInfo)) {
+    return `A:${atkInfo.map(item => (item.isDirect ? 'D' : item.instanceId || '')).join(',')}`;
+  }
+  return `O:${atkInfo.canDirectAttack ? 1 : 0}:${(atkInfo.targets || []).join(',')}|${oppTargetsSig}`;
+}
+
+function computeCardRenderSig(card, isSelf, legal, chainLinkMap, oppTargetsSig, isHand = false) {
+  if (!card) return '_';
+  const isFaceDown = !isSelf && (card.position === POSITIONS.SET || card.position === POSITIONS.SET_DEF);
+  const cl = chainLinkMap.get(card.instanceId) || 0;
+  if (isFaceDown) {
+    return `FD:${card.instanceId}:${card.position}:${card.zone || ''}:${card.zoneIndex ?? ''}:${cl}`;
+  }
+  const acts = isSelf
+    ? (isHand ? (legal.handActions?.[card.instanceId] || []) : (legal.fieldActions?.[card.instanceId] || []))
+    : [];
+  const atkInfo = (isSelf && !isHand) ? legal.attackTargets?.[card.instanceId] : null;
+  const ovlLen = Array.isArray(card.overlayUnits) ? card.overlayUnits.length : 0;
+  const counterSig = card.counters
+    ? (typeof card.counters === 'object' ? JSON.stringify(card.counters) : String(card.counters))
+    : (card.counterCount || 0);
+  return [
+    card.instanceId,
+    card.passcode || card.code || card.id || '',
+    card.position || '',
+    card.zone || '',
+    card.zoneIndex ?? '',
+    card.controller ?? '',
+    card.currentAtk ?? card.atk ?? '',
+    card.currentDef ?? card.def ?? '',
+    card.currentLevel ?? card.level ?? card.rank ?? card.linkRating ?? '',
+    card.effectsNegated ? 1 : 0,
+    ovlLen,
+    counterSig,
+    cl,
+    card.equipTargetInstanceId || '',
+    serializeActionsSig(acts),
+    serializeAttackSig(atkInfo, oppTargetsSig)
+  ].join('~');
+}
+
 function renderDuelScreen() {
   const state = appState.currentState;
   if (!state) return;
 
   const myIdx = appState.myPlayerIndex;
   const oppIdx = 1 - myIdx;
+  const lang = appState.lang;
   const isDuelVisible = document.getElementById('screen-duel')?.classList.contains('active');
+
+  if (
+    !appState.lastRenderedState ||
+    zoneRenderCache.duelId !== state.duelId ||
+    zoneRenderCache.myIdx !== myIdx ||
+    zoneRenderCache.lang !== lang
+  ) {
+    resetDuelRenderCaches();
+    zoneRenderCache.duelId = state.duelId;
+    zoneRenderCache.myIdx = myIdx;
+    zoneRenderCache.lang = lang;
+  }
+
   let prevSnapshot = null;
   if (isDuelVisible) {
     if (appState.lastRenderedState && appState.lastRenderedPlayerIndex === myIdx) {
@@ -2033,51 +2310,75 @@ function renderDuelScreen() {
   // Harvest visible/public card metadata for fast chain & duel-log inspection
   harvestKnownCardsFromState(state, myIdx, legal);
 
+  // Precompute shared render context for zone-dirty signatures
+  const chainLinkMap = new Map();
+  for (const item of (state.chainStack || [])) {
+    if (item?.card?.instanceId) {
+      chainLinkMap.set(item.card.instanceId, item.chainLink);
+    }
+  }
+  const oppAttackTargetsSig = [...(opp.mmz || []), opp.emz, ...(opp.emzSlots || [])]
+    .filter(Boolean)
+    .map((c) => `${c.instanceId}:${c.position}:${c.currentAtk ?? c.atk ?? 0}:${c.currentDef ?? c.def ?? 0}`)
+    .join(';');
+  const isZonePickingActive = document.body.classList.contains('is-zone-picking') ? 1 : 0;
+  const renderCtx = { chainLinkMap, oppAttackTargetsSig, isZonePickingActive };
+
   // 1. Update Player & Opponent HUDs
-  document.getElementById('self-name').textContent = me.name;
-  document.getElementById('self-lp-value').textContent = me.lp;
-  document.getElementById('self-deck-count').textContent = me.deck.length;
-  document.getElementById('self-gy-count').textContent = me.gy.length;
-  document.getElementById('self-banished-count').textContent = me.banished.length;
-  document.getElementById('self-extra-count').textContent = me.extra.length;
+  const setTextIfChanged = (id, val) => {
+    const el = document.getElementById(id);
+    const next = String(val);
+    if (el && el.textContent !== next) el.textContent = next;
+  };
+  setTextIfChanged('self-name', me.name);
+  setTextIfChanged('self-lp-value', me.lp);
+  setTextIfChanged('self-deck-count', me.deck.length);
+  setTextIfChanged('self-gy-count', me.gy.length);
+  setTextIfChanged('self-banished-count', me.banished.length);
+  setTextIfChanged('self-extra-count', me.extra.length);
 
-  document.getElementById('opp-name').textContent = opp.name;
-  document.getElementById('opp-lp-value').textContent = opp.lp;
-  document.getElementById('opp-deck-count').textContent = opp.deck.length;
-  document.getElementById('opp-extra-count').textContent = opp.extra.length;
+  setTextIfChanged('opp-name', opp.name);
+  setTextIfChanged('opp-lp-value', opp.lp);
+  setTextIfChanged('opp-deck-count', opp.deck.length);
+  setTextIfChanged('opp-extra-count', opp.extra.length);
   renderChainStackOverlay(state.chainStack || [], myIdx);
-  const oppDeckMat = document.getElementById('opp-deck-mat-count');
-  const oppExtraMat = document.getElementById('opp-extra-mat-count');
-  if (oppDeckMat) oppDeckMat.textContent = opp.deck.length;
-  if (oppExtraMat) oppExtraMat.textContent = opp.extra.length;
-  document.getElementById('opp-gy-count').textContent = opp.gy.length;
-  document.getElementById('opp-banished-count').textContent = opp.banished.length;
-  const oppGyMat = document.getElementById('opp-gy-mat-count');
-  const oppBanMat = document.getElementById('opp-banished-mat-count');
-  if (oppGyMat) oppGyMat.textContent = opp.gy.length;
-  if (oppBanMat) oppBanMat.textContent = opp.banished.length;
+  setTextIfChanged('opp-deck-mat-count', opp.deck.length);
+  setTextIfChanged('opp-extra-mat-count', opp.extra.length);
+  setTextIfChanged('opp-gy-count', opp.gy.length);
+  setTextIfChanged('opp-banished-count', opp.banished.length);
+  setTextIfChanged('opp-gy-mat-count', opp.gy.length);
+  setTextIfChanged('opp-banished-mat-count', opp.banished.length);
 
-  // Opponent Hand Backs
+  // Opponent Hand Backs (delta update — only append/remove changed count)
   const oppHandBar = document.getElementById('opp-hand-bar');
-  oppHandBar.innerHTML = '';
-  for (let i = 0; i < opp.hand.length; i++) {
-    const back = document.createElement('div');
-    back.className = 'opp-hand-card-back';
-    oppHandBar.appendChild(back);
+  if (oppHandBar) {
+    const targetOppHandLen = opp.hand.length;
+    const oppHandSig = `OH:${targetOppHandLen}`;
+    if (zoneRenderCache.zones.get('opp-hand') !== oppHandSig || oppHandBar.children.length !== targetOppHandLen) {
+      while (oppHandBar.children.length > targetOppHandLen) {
+        oppHandBar.lastElementChild?.remove();
+      }
+      if (oppHandBar.children.length < targetOppHandLen) {
+        const frag = document.createDocumentFragment();
+        for (let i = oppHandBar.children.length; i < targetOppHandLen; i++) {
+          const back = document.createElement('div');
+          back.className = 'opp-hand-card-back';
+          frag.appendChild(back);
+        }
+        oppHandBar.appendChild(frag);
+      }
+      zoneRenderCache.zones.set('opp-hand', oppHandSig);
+    }
   }
 
   // Highlight Extra Deck, GY & Banished buttons with glowing circular ring if they have legal actions!
   const extraBtn = document.getElementById('btn-self-extra');
-  if (Object.keys(legal.extraActions || {}).length > 0) {
-    extraBtn.classList.add('playable-glow');
-  } else {
-    extraBtn.classList.remove('playable-glow');
-  }
+  extraBtn?.classList.toggle('playable-glow', Object.keys(legal.extraActions || {}).length > 0);
 
   const gyBtn = document.getElementById('btn-self-gy');
   const hasGyActs = Object.keys(legal.gyActions || {}).length > 0;
-  gyBtn.classList.toggle('playable-glow', hasGyActs);
-  gyBtn.classList.toggle('zone-effect-active', hasGyActs);
+  gyBtn?.classList.toggle('playable-glow', hasGyActs);
+  gyBtn?.classList.toggle('zone-effect-active', hasGyActs);
 
   const banishedBtn = document.getElementById('btn-self-banished');
   const hasBanishedActs = Object.keys(legal.banishedActions || {}).length > 0;
@@ -2086,16 +2387,20 @@ function renderDuelScreen() {
 
   // 2. Update Phase Orb, Turn Elapsed Indicator & Action Buttons
   const isMyTurn = state.turnPlayer === myIdx;
-  const lang = appState.lang;
   const elapsedTurns = Math.max(0, state.turnCount - 1);
   const turnPill = document.getElementById('turn-indicator-pill');
   const shortPhaseNames = { DP: 'Draw', SP: 'Standby', MP1: 'Main 1', BP: 'Battle', MP2: 'Main 2', EP: 'End' };
-  turnPill.innerHTML = `<span class="orb-turn-num">Turn ${state.turnCount}</span><span class="orb-phase-name">${shortPhaseNames[state.phase] || state.phase}</span><span class="orb-turn-owner">${t(lang, isMyTurn ? 'yourTurn' : 'oppTurn')}</span>`;
-  turnPill.classList.toggle('opp-turn-orb', !isMyTurn);
+  const turnPillSig = `${state.turnCount}:${state.phase}:${isMyTurn ? 1 : 0}:${lang}`;
+  if (turnPill && zoneRenderCache.zones.get('turn-pill') !== turnPillSig) {
+    turnPill.innerHTML = `<span class="orb-turn-num">Turn ${state.turnCount}</span><span class="orb-phase-name">${shortPhaseNames[state.phase] || state.phase}</span><span class="orb-turn-owner">${t(lang, isMyTurn ? 'yourTurn' : 'oppTurn')}</span>`;
+    turnPill.classList.toggle('opp-turn-orb', !isMyTurn);
+    zoneRenderCache.zones.set('turn-pill', turnPillSig);
+  }
 
   const phaseTurnHeader = document.getElementById('phase-turn-header');
   if (phaseTurnHeader) {
-    phaseTurnHeader.textContent = `T${state.turnCount}`;
+    const nextHdr = `T${state.turnCount}`;
+    if (phaseTurnHeader.textContent !== nextHdr) phaseTurnHeader.textContent = nextHdr;
     phaseTurnHeader.title = lang === 'en'
       ? `Turn ${state.turnCount} (${elapsedTurns} turns elapsed)`
       : `เทิร์นที่ ${state.turnCount} (ผ่านมาแล้ว ${elapsedTurns} เทิร์น)`;
@@ -2103,9 +2408,14 @@ function renderDuelScreen() {
 
   const turnElapsedPill = document.getElementById('turn-elapsed-pill');
   if (turnElapsedPill) {
-    turnElapsedPill.textContent = lang === 'en'
-      ? `⏳ Turn ${state.turnCount} (${elapsedTurns} elapsed)`
-      : `⏳ เทิร์นที่ ${state.turnCount} (ผ่านมา ${elapsedTurns} เทิร์น)`;
+    const elapsedText = lang === 'en'
+      ? `Turn ${state.turnCount} (${elapsedTurns} elapsed)`
+      : `เทิร์นที่ ${state.turnCount} (ผ่านมา ${elapsedTurns} เทิร์น)`;
+    const elapsedSig = `TE:${elapsedText}`;
+    if (zoneRenderCache.zones.get('turn-elapsed') !== elapsedSig) {
+      turnElapsedPill.innerHTML = `${iconSvg('clock')}<span>${escapeHtml(elapsedText)}</span>`;
+      zoneRenderCache.zones.set('turn-elapsed', elapsedSig);
+    }
   }
 
   document.querySelectorAll('#phase-steps-bar .phase-badge').forEach((badge) => {
@@ -2124,67 +2434,92 @@ function renderDuelScreen() {
   const btnEndTurn = document.getElementById('btn-end-turn');
 
   const canShowEndTurn = isMyTurn && state.winner === null;
-  btnGoBattle.classList.toggle('hidden', !canShowEndTurn || !(legal.canBattlePhase ?? (state.phase === PHASES.MP1 && state.turnCount > 1)));
-  btnGoMp2.classList.toggle('hidden', !canShowEndTurn || !(legal.canMainPhase2 ?? (state.phase === PHASES.BP)));
-  btnEndTurn.hidden = !canShowEndTurn;
-  btnEndTurn.classList.toggle('hidden', !canShowEndTurn);
-  btnEndTurn.disabled = !canShowEndTurn || legal.canEndTurn === false;
+  btnGoBattle?.classList.toggle('hidden', !canShowEndTurn || !(legal.canBattlePhase ?? (state.phase === PHASES.MP1 && state.turnCount > 1)));
+  btnGoMp2?.classList.toggle('hidden', !canShowEndTurn || !(legal.canMainPhase2 ?? (state.phase === PHASES.BP)));
+  if (btnEndTurn) {
+    btnEndTurn.hidden = !canShowEndTurn;
+    btnEndTurn.classList.toggle('hidden', !canShowEndTurn);
+    btnEndTurn.disabled = !canShowEndTurn || legal.canEndTurn === false;
+  }
 
   // Chain Mode Button
   const chainToggleBtn = document.getElementById('btn-chain-toggle');
-  document.getElementById('chain-mode-text').textContent = me.chainMode;
-  chainToggleBtn.className = `btn-chain-toggle chain-${me.chainMode.toLowerCase()}`;
+  const chainModeTextEl = document.getElementById('chain-mode-text');
+  if (chainModeTextEl && chainModeTextEl.textContent !== me.chainMode) {
+    chainModeTextEl.textContent = me.chainMode;
+  }
+  if (chainToggleBtn) {
+    chainToggleBtn.className = `btn-chain-toggle chain-${me.chainMode.toLowerCase()}`;
+  }
 
-  // 3. Render Playmat Zones (Opponent & Player)
-  renderFiveZonesGrid('opp-stz-grid', opp.stz, false, legal, 'STZ');
-  renderFiveZonesGrid('opp-mmz-grid', opp.mmz, false, legal, 'MMZ');
-  renderSingleSlot('opp-field-spell-slot', opp.fieldSpell, false, legal, lang === 'en' ? 'Field Spell' : 'เวทสนาม');
+  // 3. Render Playmat Zones (Opponent & Player) with Zone-Dirty Diffing
+  let anyFieldZoneDirty = false;
+  if (renderFiveZonesGrid('opp-stz-grid', opp.stz, false, legal, 'STZ', renderCtx)) anyFieldZoneDirty = true;
+  if (renderFiveZonesGrid('opp-mmz-grid', opp.mmz, false, legal, 'MMZ', renderCtx)) anyFieldZoneDirty = true;
+  if (renderSingleSlot('opp-field-spell-slot', opp.fieldSpell, false, legal, lang === 'en' ? 'Field Spell' : 'เวทสนาม', renderCtx)) anyFieldZoneDirty = true;
   const leftEmzEntry = me.emzSlots
     ? (me.emzSlots[0] ? { card: me.emzSlots[0], isSelf: true } : opp.emzSlots?.[1] ? { card: opp.emzSlots[1], isSelf: false } : null)
     : (me.emz ? { card: me.emz, isSelf: true } : null);
   const rightEmzEntry = me.emzSlots
     ? (me.emzSlots[1] ? { card: me.emzSlots[1], isSelf: true } : opp.emzSlots?.[0] ? { card: opp.emzSlots[0], isSelf: false } : null)
     : (opp.emz ? { card: opp.emz, isSelf: false } : null);
-  renderSingleSlot('opp-emz-slot', rightEmzEntry?.card || null, Boolean(rightEmzEntry?.isSelf), legal, lang === 'en' ? 'Right EMZ' : 'EMZ ขวา');
+  if (renderSingleSlot('opp-emz-slot', rightEmzEntry?.card || null, Boolean(rightEmzEntry?.isSelf), legal, lang === 'en' ? 'Right EMZ' : 'EMZ ขวา', renderCtx)) anyFieldZoneDirty = true;
 
-  renderSingleSlot('self-emz-slot', leftEmzEntry?.card || null, Boolean(leftEmzEntry?.isSelf), legal, lang === 'en' ? 'Left EMZ' : 'EMZ ซ้าย');
-  renderSingleSlot('self-field-spell-slot', me.fieldSpell, true, legal, lang === 'en' ? 'Field Spell' : 'เวทสนาม');
-  renderFiveZonesGrid('self-mmz-grid', me.mmz, true, legal, 'MMZ');
-  renderFiveZonesGrid('self-stz-grid', me.stz, true, legal, 'STZ');
+  if (renderSingleSlot('self-emz-slot', leftEmzEntry?.card || null, Boolean(leftEmzEntry?.isSelf), legal, lang === 'en' ? 'Left EMZ' : 'EMZ ซ้าย', renderCtx)) anyFieldZoneDirty = true;
+  if (renderSingleSlot('self-field-spell-slot', me.fieldSpell, true, legal, lang === 'en' ? 'Field Spell' : 'เวทสนาม', renderCtx)) anyFieldZoneDirty = true;
+  if (renderFiveZonesGrid('self-mmz-grid', me.mmz, true, legal, 'MMZ', renderCtx)) anyFieldZoneDirty = true;
+  if (renderFiveZonesGrid('self-stz-grid', me.stz, true, legal, 'STZ', renderCtx)) anyFieldZoneDirty = true;
 
-  // 3b. Render Equip Card Links & Glowing Arrows
-  requestAnimationFrame(() => renderEquipArrows(state));
+  // 3b. Render Equip Card Links & Glowing Arrows (skip if unchanged)
+  requestAnimationFrame(() => renderEquipArrows(state, anyFieldZoneDirty));
 
-  // 4. Render Player Hand
+  // 4. Render Player Hand (zone-dirty diffed — skips rebuild if hand cards & actions unchanged!)
   const handContainer = document.getElementById('self-hand-container');
-  handContainer.innerHTML = '';
-  const handCount = me.hand.length;
-  const handMid = (handCount - 1) / 2;
-  const maxFanSpread = Math.min(34, Math.max(0, (handCount - 1) * 6));
-  me.hand.forEach((card, idx) => {
-    const cardActions = legal.handActions?.[card.instanceId] || [];
-    const canActivate = cardActions.some(
-      a => a.type === 'ACTIVATE_EFFECT' || a.type === 'ACTIVATE_SPELL' || a.type === 'ACTIVATE_TRAP'
-    );
-    const el = createCardElement(card, {
-      isFaceDown: false,
-      isPlayable: cardActions.length > 0,
-      isActivatable: canActivate,
-      extraClass: 'hand-card-item'
-    });
-    const norm = handCount > 1 ? (idx - handMid) / (handCount - 1) : 0;
-    const fanAngle = norm * maxFanSpread;
-    const fanY = Math.round(norm * norm * 52);
-    el.style.setProperty('--fan-angle', `${fanAngle.toFixed(2)}deg`);
-    el.style.setProperty('--fan-y', `${fanY}px`);
-    attachYgoProCardInteraction(el, card, cardActions, {
-      attackInfo: null,
-      isFaceDown: false
-    });
-    handContainer.appendChild(el);
-  });
+  if (handContainer) {
+    const handCount = me.hand.length;
+    const handCardSigs = new Array(handCount);
+    for (let idx = 0; idx < handCount; idx++) {
+      handCardSigs[idx] = computeCardRenderSig(me.hand[idx], true, legal, chainLinkMap, '', true);
+    }
+    const handSig = `SH:${lang}:${handCount}:${handCardSigs.join('|')}`;
+    if (zoneRenderCache.zones.get('self-hand') !== handSig) {
+      const prevHandScrollLeft = handContainer.scrollLeft;
+      handContainer.innerHTML = '';
+      const handFrag = document.createDocumentFragment();
+      const handMid = (handCount - 1) / 2;
+      const maxFanSpread = Math.min(20, Math.max(0, (handCount - 1) * 3.5));
+      me.hand.forEach((card, idx) => {
+        const cardActions = legal.handActions?.[card.instanceId] || [];
+        const canActivate = cardActions.some(
+          a => a.type === 'ACTIVATE_EFFECT' || a.type === 'ACTIVATE_SPELL' || a.type === 'ACTIVATE_TRAP'
+        );
+        const el = createCardElement(card, {
+          isFaceDown: false,
+          isPlayable: cardActions.length > 0,
+          isActivatable: canActivate,
+          extraClass: 'hand-card-item',
+          chainLink: chainLinkMap.get(card.instanceId) || 0
+        });
+        const norm = handCount > 1 ? (idx - handMid) / (handCount - 1) : 0;
+        const t = handCount > 1 ? norm * 2 : 0; // -1 .. +1
+        const fanAngle = norm * maxFanSpread;
+        // Center cards rise slightly; edge cards rest at 0px so bottoms never clip viewport on PC
+        const fanY = -Math.round((1 - t * t) * Math.min(10, handCount * 1.8));
+        el.style.setProperty('--fan-angle', `${fanAngle.toFixed(2)}deg`);
+        el.style.setProperty('--fan-y', `${fanY}px`);
+        attachYgoProCardInteraction(el, card, cardActions, {
+          attackInfo: null,
+          isFaceDown: false
+        });
+        handFrag.appendChild(el);
+      });
+      handContainer.appendChild(handFrag);
+      if (prevHandScrollLeft > 0) handContainer.scrollLeft = prevHandScrollLeft;
+      zoneRenderCache.zones.set('self-hand', handSig);
+    }
+  }
 
-  // 5. Render Duel Logs & Combo Guide in Sidebar
+  // 5. Render Duel Logs (Append-Only) & Combo Guide (Cached) in Sidebar
   renderDuelLogs(state.logs || []);
   renderInDuelComboGuide(me.deckId);
 
@@ -2214,11 +2549,12 @@ function renderDuelScreen() {
   const resDlg = document.getElementById('dialog-duel-result');
   if (state.winner !== null) {
     const isWin = state.winner === myIdx;
-    document.getElementById('result-badge-icon').textContent = isWin ? '🏆' : '💔';
-    document.getElementById('duel-result-title').textContent = isWin ? 'VICTORY — คุณชนะการดูเอล!' : 'DEFEAT — พ่ายแพ้การดูเอล';
+    const badgeEl = document.getElementById('result-badge-icon');
+    if (badgeEl) badgeEl.innerHTML = iconSvg(isWin ? 'trophy' : 'defeat', 'result-badge-svg');
+    document.getElementById('duel-result-title').textContent = t(lang, isWin ? 'victoryTitle' : 'defeatTitle');
     document.getElementById('duel-result-reason').textContent = state.winReasonTh || '';
     if (!resDlg.open) resDlg.showModal();
-  } else if (resDlg.open) {
+  } else if (resDlg?.open) {
     resDlg.close();
   }
 
@@ -2236,27 +2572,13 @@ function renderDuelScreen() {
   if (isDuelVisible) {
     enqueueTurnChangeBanners(appState.lastRenderedState, state, myIdx);
   }
-  appState.lastRenderedState = structuredClone(state);
+  appState.lastRenderedState = createLightweightStateSnapshot(state);
   appState.lastRenderedPlayerIndex = myIdx;
 }
 
-function renderEquipArrows(state) {
+function renderEquipArrows(state, force = false) {
   const playmat = document.getElementById('playmat-container');
   if (!playmat || !state?.players) return;
-
-  playmat.querySelectorAll('.is-equip-card, .is-equipped-target').forEach((el) => {
-    el.classList.remove('is-equip-card', 'is-equipped-target');
-  });
-
-  let svg = document.getElementById('equip-arrows-svg');
-  if (!svg) {
-    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'equip-arrows-svg';
-    svg.classList.add('equip-arrows-svg');
-    svg.setAttribute('aria-hidden', 'true');
-    playmat.appendChild(svg);
-  }
-  svg.innerHTML = '';
 
   const pairs = [];
   for (const p of state.players) {
@@ -2274,6 +2596,27 @@ function renderEquipArrows(state) {
       pairs.push({ fromId: card.instanceId, toId: card.equipTargetInstanceId });
     }
   }
+
+  const equipSig = pairs.map((pr) => `${pr.fromId}>${pr.toId}`).join('|');
+  if (!force && equipSig === zoneRenderCache.equipSig) {
+    return;
+  }
+  zoneRenderCache.equipSig = equipSig;
+
+  playmat.querySelectorAll('.is-equip-card, .is-equipped-target').forEach((el) => {
+    el.classList.remove('is-equip-card', 'is-equipped-target');
+  });
+
+  let svg = document.getElementById('equip-arrows-svg');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'equip-arrows-svg';
+    svg.classList.add('equip-arrows-svg');
+    svg.setAttribute('aria-hidden', 'true');
+    playmat.appendChild(svg);
+  }
+  svg.innerHTML = '';
+
   if (pairs.length === 0) return;
 
   const svgRect = svg.getBoundingClientRect();
@@ -2317,9 +2660,23 @@ function renderEquipArrows(state) {
   }
 }
 
-function renderFiveZonesGrid(gridId, slotsArray, isSelf, legal, zoneType) {
+function renderFiveZonesGrid(gridId, slotsArray, isSelf, legal, zoneType, renderCtx) {
   const grid = document.getElementById(gridId);
+  if (!grid) return false;
+
+  const { chainLinkMap = new Map(), oppAttackTargetsSig = '', isZonePickingActive = 0 } = renderCtx || {};
+  const slotSigs = new Array(5);
+  for (let i = 0; i < 5; i++) {
+    slotSigs[i] = computeCardRenderSig(slotsArray[i], isSelf, legal, chainLinkMap, oppAttackTargetsSig, false);
+  }
+  const hasTransientTarget = grid.querySelector('.zone-pick-target, .card-pick-target') ? 1 : 0;
+  const gridSig = `G:${gridId}:${appState.lang}:${isSelf ? 1 : 0}:${isZonePickingActive}:${hasTransientTarget}:${slotSigs.join('|')}`;
+  if (zoneRenderCache.zones.get(gridId) === gridSig && grid.children.length === 5) {
+    return false;
+  }
+
   grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
   for (let i = 0; i < 5; i++) {
     const card = slotsArray[i];
     const slotEl = document.createElement('div');
@@ -2341,7 +2698,8 @@ function renderFiveZonesGrid(gridId, slotsArray, isSelf, legal, zoneType) {
       const cardEl = createCardElement(card, {
         isFaceDown,
         isPlayable,
-        isAtkReady
+        isAtkReady,
+        chainLink: chainLinkMap.get(card.instanceId) || 0
       });
 
       if (isSelf) {
@@ -2364,8 +2722,11 @@ function renderFiveZonesGrid(gridId, slotsArray, isSelf, legal, zoneType) {
       slotEl.appendChild(cardEl);
     }
 
-    grid.appendChild(slotEl);
+    frag.appendChild(slotEl);
   }
+  grid.appendChild(frag);
+  zoneRenderCache.zones.set(gridId, gridSig);
+  return true;
 }
 
 function clearPinnedCmdCards() {
@@ -2380,18 +2741,18 @@ function getShortYgoProCmdLabel(act, lang, allActions = []) {
   if (act.type === 'SET_SPELL_TRAP') return isEn ? 'Set' : 'หมอบ';
   if (act.type === 'CHANGE_POSITION') return isEn ? 'Position' : 'สลับสภาพ';
   if (act.type === 'ATTACK') return isEn ? 'Attack' : 'โจมตี';
-  if (act.type === 'DECLARE_ATTACK') return isEn ? '⚔️ Attack' : '⚔️ โจมตี';
+  if (act.type === 'DECLARE_ATTACK') return isEn ? 'Attack' : 'โจมตี';
   if (act.isPendulumScale) return isEn ? 'Scale' : 'เพนดูลัม';
   if (act.type === 'ACTIVATE_EFFECT' || act.type === 'ACTIVATE_SPELL' || act.type === 'ACTIVATE_TRAP') {
     const actCount = allActions.filter(
       a => a.type === 'ACTIVATE_EFFECT' || a.type === 'ACTIVATE_SPELL' || a.type === 'ACTIVATE_TRAP'
     ).length;
     if (actCount > 1) {
-      return (isEn ? (act.label || act.labelTh) : (act.labelTh || act.label)) || (isEn ? 'Activate' : 'เปิดใช้');
+      return stripLeadingEmoji((isEn ? (act.label || act.labelTh) : (act.labelTh || act.label)) || (isEn ? 'Activate' : 'เปิดใช้'));
     }
     return isEn ? 'Activate' : 'เปิดใช้';
   }
-  return (isEn ? (act.label || act.labelTh) : (act.labelTh || act.label)) || 'Act';
+  return stripLeadingEmoji((isEn ? (act.label || act.labelTh) : (act.labelTh || act.label)) || 'Act');
 }
 
 function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
@@ -2417,10 +2778,11 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
       btn.type = 'button';
       btn.className = 'ygopro-cmd-btn';
       btn.textContent = getShortYgoProCmdLabel(act, lang, actionItems);
-      btn.title = lang === 'en' ? (act.label || act.labelTh || '') : (act.labelTh || act.label || '');
+      btn.title = stripLeadingEmoji(lang === 'en' ? (act.label || act.labelTh || '') : (act.labelTh || act.label || ''));
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         clearPinnedCmdCards();
+        clearSelectedHandCard();
         document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
         executeCardAction(card, act);
       });
@@ -2433,10 +2795,12 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
     if (shouldSuppressCardClick()) return;
     e.stopPropagation();
     if (!isFaceDown) inspectCard(card);
-    const isMobileViewport = window.innerWidth < 1024;
+    const isMobileOrTouch = isCompactDuelViewport();
     if (actionItems.length > 0) {
-      if (isMobileViewport) {
+      if (isMobileOrTouch) {
         clearPinnedCmdCards();
+        clearSelectedHandCard();
+        el.classList.add('is-selected');
         showActionPopupForCard(card, actionItems, el, { allowSingleActionMenu: true });
       } else {
         const wasPinned = el.classList.contains('cmds-pinned');
@@ -2447,7 +2811,8 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
       }
     } else {
       clearPinnedCmdCards();
-      if (isMobileViewport && !isFaceDown) {
+      clearSelectedHandCard();
+      if (isMobileOrTouch && !isFaceDown) {
         showMobileCardDetail(card);
       }
     }
@@ -2456,41 +2821,58 @@ function attachYgoProCardInteraction(el, card, actionItems = [], opts = {}) {
 
 function buildFieldCardActions(card, fieldActs, atkInfo) {
   const items = [...(fieldActs || [])];
+  const isEn = appState.lang === 'en';
   if (atkInfo && !Array.isArray(atkInfo)) {
     if (atkInfo.canDirectAttack) {
       items.push({
         type: 'DECLARE_ATTACK',
         attackerInstanceId: card.instanceId,
         directAttack: true,
-        labelTh: '⚔️ โจมตีผู้เล่นโดยตรง (Direct Attack)!'
+        label: 'Direct Attack!',
+        labelTh: 'โจมตีผู้เล่นโดยตรง (Direct Attack)!'
       });
     }
     const oppIdx = 1 - appState.myPlayerIndex;
     const oppMons = appState.currentState.players[oppIdx].mmz
       .concat(appState.currentState.players[oppIdx].emz)
       .filter(Boolean);
-    for (const t of oppMons) {
-      const targetTitle = t.position === POSITIONS.SET_DEF
+    for (const targetCard of oppMons) {
+      const targetTitleEn = targetCard.position === POSITIONS.SET_DEF
+        ? 'Face-down Monster'
+        : `${targetCard.name || targetCard.nameTh} (${targetCard.position === POSITIONS.ATK ? `${targetCard.currentAtk} ATK` : `${targetCard.currentDef} DEF`})`;
+      const targetTitleTh = targetCard.position === POSITIONS.SET_DEF
         ? 'มอนสเตอร์ที่หมอบอยู่'
-        : `${t.nameTh} (${t.position === POSITIONS.ATK ? `${t.currentAtk} ATK` : `${t.currentDef} DEF`})`;
+        : `${targetCard.nameTh || targetCard.name} (${targetCard.position === POSITIONS.ATK ? `${targetCard.currentAtk} ATK` : `${targetCard.currentDef} DEF`})`;
       items.push({
         type: 'DECLARE_ATTACK',
         attackerInstanceId: card.instanceId,
-        targetInstanceId: t.instanceId,
-        labelTh: `⚔️ โจมตี: ${targetTitle}`
+        targetInstanceId: targetCard.instanceId,
+        label: `Attack: ${targetTitleEn}`,
+        labelTh: isEn ? `Attack: ${targetTitleEn}` : `โจมตี: ${targetTitleTh}`
       });
     }
   }
   return items;
 }
 
-function renderSingleSlot(slotId, card, isSelf, legal, label) {
+function renderSingleSlot(slotId, card, isSelf, legal, label, renderCtx) {
   const slotEl = document.getElementById(slotId);
+  if (!slotEl) return false;
+
+  const { chainLinkMap = new Map(), oppAttackTargetsSig = '', isZonePickingActive = 0 } = renderCtx || {};
+  const cardSig = computeCardRenderSig(card, isSelf, legal, chainLinkMap, oppAttackTargetsSig, false);
+  const hasTransientTarget = slotEl.classList.contains('zone-pick-target') || slotEl.querySelector('.zone-pick-target, .card-pick-target') ? 1 : 0;
+  const slotSig = `S:${slotId}:${appState.lang}:${isSelf ? 1 : 0}:${label}:${isZonePickingActive}:${hasTransientTarget}:${cardSig}`;
+  if (zoneRenderCache.zones.get(slotId) === slotSig) {
+    return false;
+  }
+
   slotEl.innerHTML = '';
   slotEl.setAttribute('data-slot-label', label);
 
   if (!card) {
-    return;
+    zoneRenderCache.zones.set(slotId, slotSig);
+    return true;
   }
 
   const isFaceDown = !isSelf && (card.position === POSITIONS.SET || card.position === POSITIONS.SET_DEF);
@@ -2500,7 +2882,8 @@ function renderSingleSlot(slotId, card, isSelf, legal, label) {
   const cardEl = createCardElement(card, {
     isFaceDown,
     isPlayable: fieldActs.length > 0,
-    isAtkReady: Boolean(atkInfo)
+    isAtkReady: Boolean(atkInfo),
+    chainLink: chainLinkMap.get(card.instanceId) || 0
   });
 
   if (isSelf) {
@@ -2521,10 +2904,12 @@ function renderSingleSlot(slotId, card, isSelf, legal, label) {
   }
 
   slotEl.appendChild(cardEl);
+  zoneRenderCache.zones.set(slotId, slotSig);
+  return true;
 }
 
 function createCardElement(card, options = {}) {
-  const { isFaceDown = false, isPlayable = false, isActivatable = false, isAtkReady = false, extraClass = '' } = options;
+  const { isFaceDown = false, isPlayable = false, isActivatable = false, isAtkReady = false, extraClass = '', chainLink = null } = options;
   const el = document.createElement('div');
   const frameClass = getCardFrameClass(card);
   const isDef = card.zone === 'MMZ' && (card.position === POSITIONS.DEF || card.position === POSITIONS.SET_DEF);
@@ -2540,11 +2925,11 @@ function createCardElement(card, options = {}) {
 
   const isOnFieldZone = card.zone === 'MMZ' || card.zone === 'STZ' || card.zone === 'EMZ' || card.zone === 'FIELD';
   const isSetOwn = isOnFieldZone && (card.position === POSITIONS.SET || card.position === POSITIONS.SET_DEF);
-  const chainEntry = (appState.currentState?.chainStack || []).find(
-    item => item.card && item.card.instanceId === card.instanceId
-  );
-  const chainBadgeHtml = chainEntry
-    ? `<div class="chain-link-badge" title="Chain Link ${chainEntry.chainLink}" aria-label="Chain Link ${chainEntry.chainLink}"><span class="chain-link-icon">⛓️</span><span class="chain-link-num">${chainEntry.chainLink}</span></div>`
+  const resolvedChainLink = chainLink !== null
+    ? chainLink
+    : ((appState.currentState?.chainStack || []).find(item => item.card && item.card.instanceId === card.instanceId)?.chainLink || 0);
+  const chainBadgeHtml = resolvedChainLink
+    ? `<div class="chain-link-badge" title="Chain Link ${resolvedChainLink}" aria-label="Chain Link ${resolvedChainLink}">${iconSvg('chain', 'chain-link-icon')}<span class="chain-link-num">${resolvedChainLink}</span></div>`
     : '';
 
   el.className = [
@@ -2554,7 +2939,7 @@ function createCardElement(card, options = {}) {
     isDef ? 'def-position' : '',
     (isFaceDown || isSetOwn) && isFaceDown ? 'face-down' : '',
     !isFaceDown && isSetOwn ? 'set-own' : '',
-    chainEntry ? 'in-chain' : '',
+    resolvedChainLink ? 'in-chain' : '',
     isPlayable ? 'playable-glow' : '',
     isActivatable ? 'activatable-aura' : '',
     isAtkReady ? 'attack-ready-glow' : ''
@@ -2577,18 +2962,18 @@ function createCardElement(card, options = {}) {
 
   el.innerHTML = `
     <div class="card-mini-header-row">
-      <span class="card-mini-title">${isSetOwn ? '🂠 ' : ''}${cardName}</span>
-      <span class="card-attr-orb" style="background:${attrMeta.bg};color:${attrMeta.color}" title="${appState.lang === 'en' ? attrMeta.nameEn : attrMeta.nameTh}">${attrMeta.badge}</span>
+      <span class="card-mini-title">${escapeHtml(cardName)}</span>
+      <span class="card-attr-orb" style="background:${attrMeta.bg};color:${attrMeta.color}" title="${escapeHtml(appState.lang === 'en' ? attrMeta.nameEn : attrMeta.nameTh)}">${escapeHtml(attrMeta.badge)}</span>
     </div>
     <div class="card-mini-art-frame">
-      <img class="card-mini-art" src="${getCardArtUrl(card)}" alt="${cardName}" draggable="false" />
-      ${isSetOwn ? '<span class="set-card-back-indicator" title="คว่ำ (Set)" aria-label="Face-down set card"></span>' : ''}
-      ${cardKind === 'MONSTER' ? `<span class="card-lv-tag ${card.frame === 'XYZ' ? 'lv-xyz' : ''}">${rankOrLv}</span>` : ''}
+      <img class="card-mini-art" src="${getCardArtUrl(card)}" alt="${escapeHtml(cardName)}" draggable="false" loading="eager" decoding="async" />
+      ${isSetOwn ? `<span class="set-card-back-indicator" title="${appState.lang === 'en' ? 'Set (Face-down)' : 'คว่ำ (Set)'}" aria-label="Face-down set card"></span>` : ''}
+      ${cardKind === 'MONSTER' ? `<span class="card-lv-tag ${card.frame === 'XYZ' ? 'lv-xyz' : ''}">${escapeHtml(rankOrLv)}</span>` : ''}
     </div>
     <div class="card-mini-footer">
       <span class="card-stats-pair">${statsHtml}</span>
     </div>
-    ${card.effectsNegated ? `<div class="negated-badge">${appState.lang === 'en' ? '🔇 Negated' : '🔇 ใบ้เอฟเฟค'}</div>` : ''}
+    ${card.effectsNegated ? `<div class="negated-badge">${iconSvg('negate')}<span>${appState.lang === 'en' ? 'Negated' : 'ใบ้เอฟเฟค'}</span></div>` : ''}
     ${Array.isArray(card.overlayUnits) && card.overlayUnits.length > 0 ? `<div class="xyz-overlay-badge">OVL ${card.overlayUnits.length}</div>` : ''}
     ${chainBadgeHtml}
   `;
@@ -2773,7 +3158,7 @@ function renderOcgPromptModal(prompt) {
     titleEl.textContent = prompt.cardName ? `Activate ${prompt.cardName}?` : 'Confirm Effect';
     const wrap = document.createElement('div');
     wrap.style.cssText = 'grid-column:1/-1;display:flex;flex-direction:column;gap:12px;width:100%;';
-    wrap.innerHTML = `<p style="color:#e2e8f0;font-size:0.95rem;">${prompt.description || 'Do you want to activate this effect?'}</p>`;
+    wrap.innerHTML = `<p class="browser-card-desc">${escapeHtml(prompt.description || 'Do you want to activate this effect?')}</p>`;
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
     const yesBtn = document.createElement('button');
@@ -2944,9 +3329,9 @@ function renderOcgPromptModal(prompt) {
       }
       const cardRef = getCardById(String(c.passcode || c.code)) || { passcode: c.passcode || String(c.code || ''), name: c.name };
       btn.innerHTML = `
-        <img class="ocg-card-choice-img" src="${getCardArtUrl(cardRef)}" alt="${c.name}" />
-        <span class="ocg-card-choice-zone">${prefix}${ownerTag}${c.zone}</span>
-        <span class="ocg-card-choice-name">${c.name}</span>
+        <img class="ocg-card-choice-img" src="${getCardArtUrl(cardRef)}" alt="${escapeHtml(c.name)}" loading="lazy" decoding="async" />
+        <span class="ocg-card-choice-zone">${escapeHtml(prefix + ownerTag + c.zone)}</span>
+        <span class="ocg-card-choice-name">${escapeHtml(c.name)}</span>
       `;
       const img = btn.querySelector('img');
       img?.addEventListener('error', () => {
@@ -2997,9 +3382,9 @@ function renderOcgPromptModal(prompt) {
       btn.type = 'button';
       btn.className = 'ocg-card-choice-btn';
       btn.innerHTML = `
-        <img class="ocg-card-choice-img" src="${getCardArtUrl(cardRef)}" alt="${c.name}" />
-        <span class="ocg-card-choice-zone">${prefix}${c.zone}</span>
-        <span class="ocg-card-choice-name">${c.name}</span>
+        <img class="ocg-card-choice-img" src="${getCardArtUrl(cardRef)}" alt="${escapeHtml(c.name)}" loading="lazy" decoding="async" />
+        <span class="ocg-card-choice-zone">${escapeHtml(prefix + c.zone)}</span>
+        <span class="ocg-card-choice-name">${escapeHtml(c.name)}</span>
       `;
       const img = btn.querySelector('img');
       img?.addEventListener('error', () => {
@@ -3089,8 +3474,8 @@ function renderOcgPromptModal(prompt) {
     wrap.style.cssText = 'grid-column:1/-1;display:flex;flex-direction:column;gap:10px;width:100%;';
     const input = document.createElement('input');
     input.type = 'text';
+    input.className = 'deck-search-input';
     input.placeholder = 'Search card name or passcode...';
-    input.style.cssText = 'padding:8px 12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#f8fafc;';
     const results = document.createElement('div');
     results.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;max-height:240px;overflow:auto;';
     const renderMatches = () => {
@@ -3475,8 +3860,9 @@ function autoFocusLatestPlayedOrActivatedCard(state, prevState, myIdx) {
 
     if (!candidate && Array.isArray(state.logs) && state.logs.length > 0) {
       const latestLog = state.logs[state.logs.length - 1];
-      const prevLastLog = prevState.logs?.[prevState.logs.length - 1];
-      const logChanged = !prevLastLog || latestLog.id !== prevLastLog.id || latestLog.text !== prevLastLog.text || state.logs.length !== prevState.logs?.length;
+      const prevLogsLen = typeof prevState.logsLength === 'number' ? prevState.logsLength : (prevState.logs?.length || 0);
+      const prevLastLog = prevState.lastLog || prevState.logs?.[prevLogsLen - 1];
+      const logChanged = !prevLastLog || latestLog.id !== prevLastLog.id || latestLog.text !== prevLastLog.text || state.logs.length !== prevLogsLen;
       if (logChanged && (latestLog.cardSnapshot || latestLog.cardId || latestLog.cardCode)) {
         candidate = {
           key: `log:${latestLog.id || state.logs.length}:${latestLog.cardId || latestLog.cardCode || ''}`,
@@ -3526,7 +3912,7 @@ function showMobileCardDetail(card) {
   const frameClass = getCardFrameClass(resolved);
   const attrMeta = getAttributeMeta(resolved);
   const titleMain = getLocalizedCardName(resolved, lang) || resolved.name || 'Card';
-  const titleSub = lang === 'en' ? (resolved.nameTh !== titleMain ? resolved.nameTh : '') : (resolved.name !== titleMain ? resolved.name : '');
+  const titleSub = lang === 'th' && resolved.name && resolved.name !== titleMain ? resolved.name : '';
   const previewLevel = resolved.kind === 'MONSTER'
     ? (resolved.frame === 'XYZ' ? `R${resolved.rank}` : resolved.frame === 'LINK' ? `L${resolved.linkRating}` : `★${resolved.currentLevel ?? resolved.level}`)
     : (resolved.kind === 'SPELL' ? 'SPELL' : 'TRAP');
@@ -3549,13 +3935,13 @@ function showMobileCardDetail(card) {
           <div class="mobile-card-preview-name">${escapeHtml(titleMain)}</div>
           ${titleSub ? `<div class="mobile-card-preview-subname">${escapeHtml(titleSub)}</div>` : ''}
         </div>
-        <button type="button" class="btn-mini mobile-card-preview-close" aria-label="${lang === 'en' ? 'Close' : 'ปิด'}">✕</button>
+        <button type="button" class="btn-mini mobile-card-preview-close" aria-label="${escapeHtml(t(lang, 'closeBtn'))}">${iconSvg('close')}</button>
       </div>
       <div class="mobile-card-preview-body">
         <div class="mobile-card-preview-top">
           <div class="inspector-card-frame ${escapeHtml(frameClass)} mobile-preview-frame">
             <div class="insp-frame-art-box">
-              <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(titleMain)}" />
+              <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(titleMain)}" decoding="async" />
             </div>
           </div>
           <div class="mobile-card-preview-meta">
@@ -3601,16 +3987,14 @@ function showMobileCardDetail(card) {
 }
 
 function getChainPeekButtonLabel(isPeeking, lang = appState.lang) {
-  if (isPeeking) {
-    return lang === 'en' ? '↩️ Back to Chain' : '↩️ กลับไปเลือกเชน';
-  }
-  return lang === 'en' ? '👁️ View Board' : '👁️ ดูสนาม';
+  return t(lang, isPeeking ? 'backToPromptBtn' : 'viewBoardBtn');
 }
 
 function syncChainPeekButton(bar, btn) {
   if (!bar || !btn) return;
   const isPeeking = bar.classList.contains('is-peeking');
-  btn.textContent = getChainPeekButtonLabel(isPeeking);
+  const label = getChainPeekButtonLabel(isPeeking);
+  btn.innerHTML = `${iconSvg(isPeeking ? 'back' : 'peek')}<span class="btn-label">${escapeHtml(label)}</span>`;
   btn.setAttribute('aria-pressed', isPeeking ? 'true' : 'false');
   btn.title = appState.lang === 'en'
     ? (isPeeking ? 'Back to prompt' : 'Temporarily hide bar to view the board')
@@ -3650,6 +4034,7 @@ function inspectCard(card) {
   const badge = getCardSubHeaderBadge(resolved, lang);
   const frameClass = getCardFrameClass(resolved);
   const attrMeta = getAttributeMeta(resolved);
+  const titleMain = getLocalizedCardName(resolved, lang) || resolved.name || 'Card';
   const statsLine = resolved.kind === 'MONSTER'
     ? `<span class="stat-chip stat-atk">ATK ${escapeHtml(resolved.currentAtk ?? resolved.atk)}</span>
        ${resolved.frame !== 'LINK' ? `<span class="stat-chip stat-def">DEF ${escapeHtml(resolved.currentDef ?? resolved.def)}</span>` : ''}
@@ -3671,7 +4056,7 @@ function inspectCard(card) {
           </div>
           <div class="insp-frame-sub">${escapeHtml(previewLevel)}</div>
           <div class="insp-frame-art-box">
-            <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(resolved.name)}" />
+            <img class="inspected-art" src="${escapeHtml(getCardArtUrl(resolved))}" alt="${escapeHtml(resolved.name)}" decoding="async" />
           </div>
           <div class="insp-frame-foot">
             ${resolved.kind === 'MONSTER'
@@ -3680,8 +4065,8 @@ function inspectCard(card) {
           </div>
         </div>
         <div class="inspected-meta-col">
-          <div class="inspected-title-th">${escapeHtml(getLocalizedCardName(resolved, lang))}</div>
-          <div class="inspected-title-en">${escapeHtml(lang === 'en' ? resolved.nameTh : resolved.name)}</div>
+          <div class="inspected-title-th">${escapeHtml(titleMain)}</div>
+          ${lang === 'th' && resolved.name && resolved.name !== titleMain ? `<div class="inspected-title-en" lang="en">${escapeHtml(resolved.name)}</div>` : ''}
           <div class="inspected-sub-badge">${escapeHtml(badge)}</div>
         </div>
       </div>
@@ -3724,6 +4109,7 @@ function clearZonePickMode(force = false) {
   }
   activeZonePickMandatory = false;
   document.body.classList.remove('is-zone-picking');
+  clearSelectedHandCard();
   const banner = document.getElementById('field-pick-banner');
   if (banner) {
     banner.classList.add('hidden');
@@ -3734,12 +4120,13 @@ function clearZonePickMode(force = false) {
 }
 
 function openInlinePickBanner({
-  icon = '⚡',
+  icon = 'activate',
   message = '',
   headerButtons = [],
   actionButtons = [],
   mandatory = true,
   mode = 'prompt',
+  showPeekBtn = true,
   dismissOnOutside = false,
   dismissOnEsc = false
 }) {
@@ -3755,16 +4142,25 @@ function openInlinePickBanner({
   const head = document.createElement('div');
   head.className = 'chain-bar-header';
   if (actionButtons.length === 0) {
-    head.style.marginBottom = '0';
+    head.classList.add('chain-bar-header-compact');
   }
   const spark = document.createElement('span');
   spark.className = 'chain-spark';
-  spark.textContent = icon;
+  if (UI_ICON_PATHS[icon]) {
+    spark.innerHTML = iconSvg(icon);
+  } else {
+    spark.textContent = icon;
+  }
   const msgEl = document.createElement('div');
   msgEl.className = 'chain-trigger-desc field-pick-msg';
   msgEl.textContent = message;
-  const peekBtn = createFieldPeekButton(banner);
-  head.append(spark, msgEl, peekBtn, ...headerButtons);
+  head.append(spark, msgEl);
+  if (showPeekBtn) {
+    head.appendChild(createFieldPeekButton(banner));
+  }
+  if (headerButtons.length > 0) {
+    head.append(...headerButtons);
+  }
   banner.appendChild(head);
 
   if (actionButtons.length > 0) {
@@ -3787,10 +4183,20 @@ function openInlinePickBanner({
       clearZonePickMode(true);
     }
   };
+  let outsideClickTimer = null;
   if (dismissOnEsc) document.addEventListener('keydown', onEsc);
-  if (dismissOnOutside) setTimeout(() => document.addEventListener('click', onDocClick), 0);
+  if (dismissOnOutside) {
+    outsideClickTimer = setTimeout(() => {
+      outsideClickTimer = null;
+      document.addEventListener('click', onDocClick);
+    }, 0);
+  }
 
   activeZonePickCleanup = () => {
+    if (outsideClickTimer !== null) {
+      clearTimeout(outsideClickTimer);
+      outsideClickTimer = null;
+    }
     if (dismissOnEsc) document.removeEventListener('keydown', onEsc);
     if (dismissOnOutside) document.removeEventListener('click', onDocClick);
   };
@@ -3890,6 +4296,7 @@ function enterOcgPositionBanner(prompt) {
       img.className = `ygopro-pos-thumb ${p.isDef ? 'is-def' : ''}`;
       img.src = getCardArtUrl(cardRef);
       img.alt = p.labelEn;
+      img.decoding = 'async';
       img.addEventListener('error', () => {
         img.src = generateProceduralCardSvg(cardRef);
       }, { once: true });
@@ -3906,7 +4313,7 @@ function enterOcgPositionBanner(prompt) {
   if (btns.length === 0) return false;
 
   return Boolean(openInlinePickBanner({
-    icon: '🔄',
+    icon: 'position',
     message: lang === 'en'
       ? `Choose Battle Position (${prompt.cardName || 'Monster'}):`
       : `เลือกสภาพวางการ์ด (${prompt.cardName || 'มอนสเตอร์'}):`,
@@ -3952,9 +4359,8 @@ function openYgoproCardStrip({ mode = 'ocg-strip', title = '', headerButtons = [
   toggleBtn.className = 'btn btn-secondary btn-mini';
   const syncToggleText = () => {
     const isMin = strip.classList.contains('minimized');
-    toggleBtn.textContent = isMin
-      ? (lang === 'en' ? '👁️ Show Cards' : '👁️ แสดงการ์ด')
-      : (lang === 'en' ? '👁️ View Board' : '👁️ ซ่อนดูสนาม');
+    const lbl = isMin ? t(lang, 'showCardsBtn') : t(lang, 'viewBoardBtn');
+    toggleBtn.innerHTML = `${iconSvg(isMin ? 'cards' : 'peek')}<span class="btn-label">${escapeHtml(lbl)}</span>`;
   };
   syncToggleText();
   toggleBtn.onclick = (ev) => {
@@ -4779,11 +5185,10 @@ function enterOcgFieldPlaceMode(prompt) {
     banner.classList.remove('is-peeking');
     banner.innerHTML = '';
     const head = document.createElement('div');
-    head.className = 'chain-bar-header';
-    head.style.marginBottom = '0';
+    head.className = 'chain-bar-header chain-bar-header-compact';
     const spark = document.createElement('span');
     spark.className = 'chain-spark';
-    spark.textContent = '📍';
+    spark.innerHTML = iconSvg('target');
     const msgEl = document.createElement('div');
     msgEl.className = 'chain-trigger-desc field-pick-msg';
     const peekBtn = createFieldPeekButton(banner);
@@ -4805,11 +5210,25 @@ function enterOcgFieldPlaceMode(prompt) {
     updateBannerText();
   }
 
+  const isCompact = isCompactDuelViewport();
   const listeners = [];
   for (const item of candidates) {
     item.el.classList.add('drop-zone-legal', 'zone-pick-target');
     if (item.owner === 'opp') item.el.classList.add('zone-pick-opp');
-    item.el.setAttribute('data-drop-hint', lang === 'en' ? '📍 Click Zone' : '📍 ลงช่องนี้');
+    if (!isCompact) {
+      item.el.setAttribute('data-drop-hint', lang === 'en' ? 'Place' : 'วาง');
+    } else {
+      item.el.removeAttribute('data-drop-hint');
+    }
+
+    let pinEl = null;
+    if (!item.el.querySelector('.zone-pick-pin')) {
+      pinEl = document.createElement('span');
+      pinEl.className = 'zone-pick-pin';
+      pinEl.setAttribute('aria-hidden', 'true');
+      pinEl.innerHTML = iconSvg('target');
+      item.el.appendChild(pinEl);
+    }
 
     const onPick = (ev) => {
       ev.stopPropagation();
@@ -4835,14 +5254,15 @@ function enterOcgFieldPlaceMode(prompt) {
       updateBannerText();
     };
     item.el.addEventListener('click', onPick, true);
-    listeners.push({ el: item.el, onPick });
+    listeners.push({ el: item.el, onPick, pinEl });
   }
 
   activeZonePickCleanup = () => {
-    for (const { el, onPick } of listeners) {
+    for (const { el, onPick, pinEl } of listeners) {
       el.classList.remove('drop-zone-legal', 'zone-pick-target', 'zone-pick-opp', 'zone-pick-selected');
       el.removeAttribute('data-drop-hint');
       el.removeEventListener('click', onPick, true);
+      pinEl?.remove();
     }
   };
   return true;
@@ -4900,20 +5320,21 @@ function enterZonePickMode(card, actionPayload) {
   }
 
   const lang = appState.lang;
+  const isCompact = isCompactDuelViewport();
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
   cancelBtn.className = 'btn btn-secondary btn-mini';
-  cancelBtn.textContent = lang === 'en' ? '✕ Cancel' : '✕ ยกเลิก';
+  cancelBtn.innerHTML = `${iconSvg('close')}<span class="btn-label">${escapeHtml(t(lang, 'cancelBtn'))}</span>`;
   cancelBtn.onclick = (ev) => {
     ev.stopPropagation();
     clearZonePickMode(true);
   };
 
   openInlinePickBanner({
-    icon: '📍',
+    icon: 'target',
     message: lang === 'en'
-      ? `Click a highlighted slot on the field for "${card.name}"`
-      : `คลิกเลือกช่องบนสนามสำหรับ "${card.nameTh}"`,
+      ? `${isCompact ? 'Tap' : 'Click'} a glowing zone for "${card.name}"`
+      : `${isCompact ? 'แตะ' : 'คลิก'}เลือกช่องที่เรืองแสงสำหรับ "${card.nameTh}"`,
     headerButtons: [cancelBtn],
     mandatory: false,
     mode: 'zone-pick'
@@ -4922,7 +5343,17 @@ function enterZonePickMode(card, actionPayload) {
   const listeners = [];
   for (const slot of emptySlots) {
     slot.classList.add('drop-zone-legal', 'zone-pick-target');
-    slot.setAttribute('data-drop-hint', lang === 'en' ? '📍 Place Here' : '📍 ลงช่องนี้');
+    if (!isCompact) {
+      slot.setAttribute('data-drop-hint', lang === 'en' ? 'Place' : 'วาง');
+    } else {
+      slot.removeAttribute('data-drop-hint');
+    }
+    const pinEl = document.createElement('span');
+    pinEl.className = 'zone-pick-pin';
+    pinEl.setAttribute('aria-hidden', 'true');
+    pinEl.innerHTML = iconSvg('target');
+    slot.appendChild(pinEl);
+
     const onPick = (ev) => {
       ev.stopPropagation();
       ev.preventDefault();
@@ -4931,7 +5362,7 @@ function enterZonePickMode(card, actionPayload) {
       dispatchDuelAction({ ...actionPayload, targetZoneIndex: idx, targetZoneType: isStzGrid ? 'STZ' : 'MMZ' });
     };
     slot.addEventListener('click', onPick, true);
-    listeners.push({ slot, onPick });
+    listeners.push({ slot, onPick, pinEl });
   }
 
   const onEsc = (ev) => {
@@ -4944,13 +5375,15 @@ function enterZonePickMode(card, actionPayload) {
   };
 
   document.addEventListener('keydown', onEsc);
-  setTimeout(() => document.addEventListener('click', onDocClick), 0);
+  const docClickTimer = setTimeout(() => document.addEventListener('click', onDocClick), 0);
 
   activeZonePickCleanup = () => {
-    for (const { slot, onPick } of listeners) {
+    clearTimeout(docClickTimer);
+    for (const { slot, onPick, pinEl } of listeners) {
       slot.classList.remove('drop-zone-legal', 'zone-pick-target');
       slot.removeAttribute('data-drop-hint');
       slot.removeEventListener('click', onPick, true);
+      pinEl.remove();
     }
     document.removeEventListener('keydown', onEsc);
     document.removeEventListener('click', onDocClick);
@@ -4959,6 +5392,7 @@ function enterZonePickMode(card, actionPayload) {
 
 function executeCardAction(card, act) {
   if (!act) return;
+  clearSelectedHandCard();
   if (act.type === 'DECLARE_ATTACK') {
     clearZonePickMode(true);
     dispatchDuelAction({
@@ -4988,7 +5422,7 @@ function executeCardAction(card, act) {
   }
 }
 
-function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
+function showActionPopupForCard(card, actionItems, anchorEl, opts = {}) {
   if (!actionItems || actionItems.length === 0) return;
   document.getElementById('card-action-popup')?.classList.add('hidden');
 
@@ -5005,7 +5439,7 @@ function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
   const inspectBtn = document.createElement('button');
   inspectBtn.type = 'button';
   inspectBtn.className = 'btn-mini chain-option-inspect-btn';
-  inspectBtn.textContent = '🔍';
+  inspectBtn.innerHTML = iconSvg('inspect');
   inspectBtn.title = lang === 'en' ? 'View Card Info' : 'ดูรายละเอียดการ์ด';
   inspectBtn.setAttribute('aria-label', inspectBtn.title);
   inspectBtn.onclick = (ev) => {
@@ -5015,32 +5449,33 @@ function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'btn btn-secondary btn-mini';
-  closeBtn.textContent = '✕';
-  closeBtn.title = lang === 'en' ? 'Close' : 'ปิด';
+  closeBtn.className = 'btn btn-secondary btn-mini card-actions-close-btn';
+  closeBtn.innerHTML = iconSvg('close');
+  closeBtn.title = t(lang, 'closeBtn');
+  closeBtn.setAttribute('aria-label', closeBtn.title);
   closeBtn.onclick = (ev) => {
     ev.stopPropagation();
     clearZonePickMode(true);
   };
 
   const getActionVisualMeta = (act) => {
-    const t = String(act?.type || '');
-    if (t === 'ACTIVATE_EFFECT' || t === 'ACTIVATE_SPELL' || t === 'ACTIVATE_TRAP') {
-      return { kind: 'activate', icon: '⚡' };
+    const typeStr = String(act?.type || '');
+    if (typeStr === 'ACTIVATE_EFFECT' || typeStr === 'ACTIVATE_SPELL' || typeStr === 'ACTIVATE_TRAP') {
+      return { kind: 'activate', icon: 'activate' };
     }
-    if (t === 'NORMAL_SUMMON' || t === 'SPECIAL_SUMMON' || t === 'INHERENT_SPECIAL_SUMMON') {
-      return { kind: 'summon', icon: '⚔️' };
+    if (typeStr === 'NORMAL_SUMMON' || typeStr === 'SPECIAL_SUMMON' || typeStr === 'INHERENT_SPECIAL_SUMMON') {
+      return { kind: 'summon', icon: 'summon' };
     }
-    if (t === 'NORMAL_SET' || t === 'SET_MONSTER' || t === 'SET_SPELL_TRAP') {
-      return { kind: 'set', icon: '🛡️' };
+    if (typeStr === 'NORMAL_SET' || typeStr === 'SET_MONSTER' || typeStr === 'SET_SPELL_TRAP') {
+      return { kind: 'set', icon: 'set' };
     }
-    if (t === 'DECLARE_ATTACK') {
-      return { kind: 'attack', icon: '💥' };
+    if (typeStr === 'DECLARE_ATTACK') {
+      return { kind: 'attack', icon: 'battle' };
     }
-    if (t === 'CHANGE_POSITION') {
-      return { kind: 'position', icon: '🔄' };
+    if (typeStr === 'CHANGE_POSITION') {
+      return { kind: 'position', icon: 'position' };
     }
-    return { kind: 'default', icon: '✦' };
+    return { kind: 'default', icon: 'summon' };
   };
 
   const btns = actionItems.map((act) => {
@@ -5050,8 +5485,8 @@ function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
     btn.className = `inline-prompt-btn action-${kind}`;
     btn.setAttribute('data-action-kind', kind);
     const rawLabel = (lang === 'en' ? (act.label || act.labelTh) : (act.labelTh || act.label)) || '';
-    const hasLeadingEmoji = /^[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/u.test(rawLabel.trim());
-    btn.textContent = hasLeadingEmoji ? rawLabel : `${icon} ${rawLabel}`;
+    const cleanLabel = stripLeadingEmoji(rawLabel) || getShortYgoProCmdLabel(act, lang, actionItems);
+    btn.innerHTML = `${iconSvg(icon)}<span>${escapeHtml(cleanLabel)}</span>`;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
@@ -5061,15 +5496,20 @@ function showActionPopupForCard(card, actionItems, _anchorEl, opts = {}) {
   });
 
   openInlinePickBanner({
-    icon: '🃏',
+    icon: 'cards',
     message: cardTitle,
     headerButtons: [inspectBtn, closeBtn],
     actionButtons: btns,
     mandatory: false,
     mode: 'card-actions',
+    showPeekBtn: false,
     dismissOnOutside: true,
     dismissOnEsc: true
   });
+
+  if (anchorEl?.classList?.contains('duel-card')) {
+    anchorEl.classList.add('is-selected');
+  }
 }
 
 function hideActionPopup(force = false) {
@@ -5078,6 +5518,8 @@ function hideActionPopup(force = false) {
   const banner = document.getElementById('field-pick-banner');
   if (banner?.dataset.mode === 'card-actions') {
     clearZonePickMode(true);
+  } else {
+    clearSelectedHandCard();
   }
 }
 
@@ -5162,9 +5604,14 @@ function appendLinkedLogText(container, text, itemCardDef, extraRefs = []) {
   const rawText = String(text || '');
   if (!rawText) return;
 
+  // Register any newly seen card refs so getLogCardNameMatcher() compiles once per registry size change
+  if (itemCardDef) registerKnownCard(itemCardDef);
+  for (const ref of extraRefs) {
+    if (ref) registerKnownCard(ref);
+  }
+
   const matcher = getLogCardNameMatcher();
   const entryLookup = new Map();
-  const extraNames = [];
   const registerEntryRef = (c) => {
     if (!c) return;
     for (const nm of [c.name, c.nameTh]) {
@@ -5173,28 +5620,14 @@ function appendLinkedLogText(container, text, itemCardDef, extraRefs = []) {
       const key = clean.toLowerCase();
       if (!entryLookup.has(key)) {
         entryLookup.set(key, c);
-        if (!matcher.nameMap.has(key)) {
-          extraNames.push(clean);
-        }
       }
     }
   };
   registerEntryRef(itemCardDef);
   for (const ref of extraRefs) registerEntryRef(ref);
 
-  let activeRegex = matcher.regex;
-  if (extraNames.length > 0) {
-    const combinedNames = [
-      ...extraNames,
-      ...Array.from(matcher.nameMap.values()).map(v => v.name)
-    ].sort((a, b) => b.length - a.length);
-    try {
-      activeRegex = new RegExp(combinedNames.map(escapeRegExp).join('|'), 'gi');
-    } catch {
-      activeRegex = matcher.regex;
-    }
-  }
-
+  // Never recompile the full alternation regex per log item — always reuse cached matcher.regex
+  const activeRegex = matcher.regex;
   if (!activeRegex) {
     container.appendChild(document.createTextNode(` ${rawText}`));
     return;
@@ -5236,59 +5669,128 @@ function appendLinkedLogText(container, text, itemCardDef, extraRefs = []) {
   }
 }
 
+function getDuelLogItemSig(item, idx) {
+  if (!item) return `${idx}:_`;
+  return `${idx}:${item.id ?? ''}:${item.turn ?? ''}:${item.phase ?? ''}:${item.text ?? ''}`;
+}
+
+function buildDuelLogEntryNode(item) {
+  const rawCard =
+    item.card ||
+    item.cardSnapshot ||
+    (item.cardId && getCardById(item.cardId)) ||
+    (item.cardCode && resolveFullCardMeta({ code: item.cardCode })) ||
+    (item.meta || null);
+  const cardDef = rawCard ? resolveFullCardMeta(rawCard, appState.currentState) : null;
+  const extraRefs = Array.isArray(item.cardRefs)
+    ? item.cardRefs.map(r => resolveFullCardMeta(r, appState.currentState)).filter(Boolean)
+    : [];
+
+  const div = document.createElement('div');
+  div.className = `log-entry ${cardDef ? 'log-entry-with-card' : ''}`;
+
+  if (cardDef) {
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = `log-card-thumb ${getCardFrameClass(cardDef)}`;
+    thumbWrap.title = cardDef.nameTh || cardDef.name || '';
+    const img = document.createElement('img');
+    img.className = 'log-card-thumb-img';
+    img.src = getCardArtUrl(cardDef);
+    img.alt = cardDef.nameTh || cardDef.name || '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', () => {
+      img.src = generateProceduralCardSvg(cardDef);
+    }, { once: true });
+    thumbWrap.appendChild(img);
+    div.appendChild(thumbWrap);
+
+    div.addEventListener('click', () => {
+      inspectCardAndFocus(cardDef, { openMobilePreview: true });
+    });
+  }
+
+  const body = document.createElement('div');
+  body.className = 'log-entry-body';
+  const meta = document.createElement('span');
+  meta.className = 'log-turn-tag';
+  meta.textContent = `[T${item.turn}-${item.phase}]`;
+  const textSpan = document.createElement('span');
+  textSpan.className = 'log-entry-text';
+  appendLinkedLogText(textSpan, item.text, cardDef, extraRefs);
+  body.appendChild(meta);
+  body.appendChild(textSpan);
+  div.appendChild(body);
+  return div;
+}
+
 function renderDuelLogs(logs) {
   const list = document.getElementById('duel-log-list');
   if (!list) return;
-  list.innerHTML = '';
-  for (const item of [...logs].reverse()) {
-    const rawCard =
-      item.card ||
-      item.cardSnapshot ||
-      (item.cardId && getCardById(item.cardId)) ||
-      (item.cardCode && resolveFullCardMeta({ code: item.cardCode })) ||
-      (item.meta || null);
-    const cardDef = rawCard ? resolveFullCardMeta(rawCard, appState.currentState) : null;
-    const extraRefs = Array.isArray(item.cardRefs)
-      ? item.cardRefs.map(r => resolveFullCardMeta(r, appState.currentState)).filter(Boolean)
-      : [];
+  const arr = Array.isArray(logs) ? logs : [];
+  const duelId = appState.currentState?.duelId || '';
+  const lang = appState.lang;
 
-    const div = document.createElement('div');
-    div.className = `log-entry ${cardDef ? 'log-entry-with-card' : ''}`;
-
-    if (cardDef) {
-      const thumbWrap = document.createElement('div');
-      thumbWrap.className = `log-card-thumb ${getCardFrameClass(cardDef)}`;
-      thumbWrap.title = cardDef.nameTh || cardDef.name || '';
-      const img = document.createElement('img');
-      img.className = 'log-card-thumb-img';
-      img.src = getCardArtUrl(cardDef);
-      img.alt = cardDef.nameTh || cardDef.name || '';
-      img.loading = 'lazy';
-      img.addEventListener('error', () => {
-        img.src = generateProceduralCardSvg(cardDef);
-      }, { once: true });
-      thumbWrap.appendChild(img);
-      div.appendChild(thumbWrap);
-
-      div.addEventListener('click', () => {
-        inspectCardAndFocus(cardDef, { openMobilePreview: true });
-      });
+  if (arr.length === 0) {
+    if (zoneRenderCache.logCount !== 0 || list.childElementCount > 0) {
+      list.innerHTML = '';
     }
-
-    const body = document.createElement('div');
-    body.className = 'log-entry-body';
-    const meta = document.createElement('span');
-    meta.className = 'log-turn-tag';
-    meta.textContent = `[T${item.turn}-${item.phase}]`;
-    const textSpan = document.createElement('span');
-    textSpan.className = 'log-entry-text';
-    appendLinkedLogText(textSpan, item.text, cardDef, extraRefs);
-    body.appendChild(meta);
-    body.appendChild(textSpan);
-    div.appendChild(body);
-
-    list.appendChild(div);
+    zoneRenderCache.logCount = 0;
+    zoneRenderCache.lastLogSig = '';
+    zoneRenderCache.logDuelId = duelId;
+    zoneRenderCache.logLang = lang;
+    return;
   }
+
+  const sameContext = zoneRenderCache.logDuelId === duelId && zoneRenderCache.logLang === lang;
+  const prevCount = zoneRenderCache.logCount;
+  const latestSig = getDuelLogItemSig(arr[arr.length - 1], arr.length - 1);
+
+  // Skip completely when nothing changed
+  if (sameContext && prevCount === arr.length && zoneRenderCache.lastLogSig === latestSig) {
+    return;
+  }
+
+  // Append-only fast path: prepend ONLY newly arrived log entries (newest-first display)
+  if (
+    sameContext &&
+    prevCount > 0 &&
+    arr.length > prevCount &&
+    getDuelLogItemSig(arr[prevCount - 1], prevCount - 1) === zoneRenderCache.lastLogSig
+  ) {
+    const newItems = arr.slice(prevCount);
+    // Pre-register any new card references once before building fragment so regex compiles at most once
+    for (const item of newItems) {
+      if (item.card) registerKnownCard(item.card);
+      if (item.cardSnapshot) registerKnownCard(item.cardSnapshot);
+      if (item.meta) registerKnownCard(item.meta);
+    }
+    const frag = document.createDocumentFragment();
+    for (let i = newItems.length - 1; i >= 0; i--) {
+      frag.appendChild(buildDuelLogEntryNode(newItems[i]));
+    }
+    list.prepend(frag);
+    zoneRenderCache.logCount = arr.length;
+    zoneRenderCache.lastLogSig = latestSig;
+    return;
+  }
+
+  // Full rebuild (new duel, language switch, or initial load)
+  for (const item of arr) {
+    if (item.card) registerKnownCard(item.card);
+    if (item.cardSnapshot) registerKnownCard(item.cardSnapshot);
+    if (item.meta) registerKnownCard(item.meta);
+  }
+  list.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (let i = arr.length - 1; i >= 0; i--) {
+    frag.appendChild(buildDuelLogEntryNode(arr[i]));
+  }
+  list.appendChild(frag);
+  zoneRenderCache.logCount = arr.length;
+  zoneRenderCache.lastLogSig = latestSig;
+  zoneRenderCache.logDuelId = duelId;
+  zoneRenderCache.logLang = lang;
 }
 
 function renderInDuelComboGuide(deckId) {
@@ -5296,11 +5798,14 @@ function renderInDuelComboGuide(deckId) {
   const pane = document.getElementById('in-duel-combo-guide');
   if (!deck || !pane) return;
   const lang = appState.lang;
+  const sig = `${deckId}:${lang}`;
+  if (zoneRenderCache.comboGuideSig === sig) return;
+  zoneRenderCache.comboGuideSig = sig;
   pane.innerHTML = `
-    <h4 style="color:#facc15;margin-bottom:6px;">${getDeckDisplayTitle(deck, lang)}</h4>
-    <p style="font-size:0.78rem;color:#cbd5e1;margin-bottom:8px;">${getDeckDisplaySummary(deck, lang)}</p>
+    <h4 class="combo-guide-title">${escapeHtml(getDeckDisplayTitle(deck, lang))}</h4>
+    <p class="combo-guide-summary">${escapeHtml(getDeckDisplaySummary(deck, lang))}</p>
     <ul class="combo-steps-list">
-      ${getDeckDisplayGuide(deck, lang).map(s => `<li>${s}</li>`).join('')}
+      ${getDeckDisplayGuide(deck, lang).map(s => `<li>${escapeHtml(s)}</li>`).join('')}
     </ul>
   `;
 }
@@ -5308,7 +5813,16 @@ function renderInDuelComboGuide(deckId) {
 function renderChainStackOverlay(chainStack, myIdx) {
   const container = document.getElementById('chain-stack-overlay');
   if (!container) return;
-  if (!Array.isArray(chainStack) || chainStack.length === 0) {
+  const hasStack = Array.isArray(chainStack) && chainStack.length > 0;
+  const stackSig = hasStack
+    ? `CS:${appState.lang}:${myIdx}:${chainStack.map(item => `${item.chainLink}:${item.playerIndex}:${item.card?.instanceId || item.card?.id || item.card?.passcode || ''}:${item.effect?.id || item.effect?.labelTh || ''}`).join('|')}`
+    : 'CS:EMPTY';
+  if (zoneRenderCache.zones.get('chain-stack') === stackSig) {
+    return;
+  }
+  zoneRenderCache.zones.set('chain-stack', stackSig);
+
+  if (!hasStack) {
     container.classList.add('hidden');
     container.innerHTML = '';
     return;
@@ -5319,7 +5833,7 @@ function renderChainStackOverlay(chainStack, myIdx) {
 
   const header = document.createElement('div');
   header.className = 'chain-stack-header';
-  header.textContent = `⛓️ CHAIN (${chainStack.length})`;
+  header.innerHTML = `${iconSvg('chain')}<span>CHAIN (${chainStack.length})</span>`;
   container.appendChild(header);
 
   const listEl = document.createElement('div');
@@ -5352,13 +5866,14 @@ function renderChainStackOverlay(chainStack, myIdx) {
     img.className = 'chain-stack-thumb';
     img.src = getCardArtUrl(resolvedCard);
     img.alt = cardName;
+    img.decoding = 'async';
     img.addEventListener('error', () => {
       img.src = generateProceduralCardSvg(resolvedCard);
     }, { once: true });
 
     const badge = document.createElement('div');
     badge.className = 'chain-stack-cl-badge';
-    badge.textContent = `⛓️ ${item.chainLink}`;
+    badge.innerHTML = `${iconSvg('chain')}<span>${item.chainLink}</span>`;
 
     const openChainCardDetail = (ev) => {
       ev.stopPropagation();
@@ -5392,6 +5907,8 @@ function clearChainCardHighlights() {
 function openChainPromptBar(chainPrompt) {
   sfx.playChainAlert();
   clearChainCardHighlights();
+  hideActionPopup(true);
+  clearSelectedHandCard();
   document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
 
   const bar = document.getElementById('chain-prompt-bar');
@@ -5402,16 +5919,19 @@ function openChainPromptBar(chainPrompt) {
   }
 
   const descEl = document.getElementById('chain-trigger-desc');
-  const passHint = appState.lang === 'en' ? ' (Right-Click to Pass)' : ' (คลิกขวาเพื่อข้าม)';
+  const isTouchLike = isCoarseTouchPointer() || Boolean(window.matchMedia?.('(hover: none)')?.matches);
+  const passHint = t(appState.lang, isTouchLike ? 'chainTouchHint' : 'chainDesktopHint');
+  const pickVerbEn = isTouchLike ? 'Tap' : 'Click';
+  const pickVerbTh = isTouchLike ? 'แตะ' : 'คลิก';
   if (chainPrompt.isOpenWindow) {
     descEl.innerHTML = appState.lang === 'en'
-      ? `⚡ <strong>Open Timing Window</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — Click glowing card or choose below (Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)})${escapeHtml(passHint)}:`
-      : `⚡ <strong>จังหวะเปิด (Open Timing)</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่าง (<strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>)${escapeHtml(passHint)}:`;
+      ? `<strong>Open Timing Window</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — ${pickVerbEn} glowing card or choose below (Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)})${escapeHtml(passHint)}:`
+      : `<strong>จังหวะเปิด (Open Timing)</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — ${pickVerbTh}การ์ดที่เรืองแสงหรือเลือกด้านล่าง (<strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>)${escapeHtml(passHint)}:`;
   } else {
     const isSelfTrigger = chainPrompt.triggerPlayerIndex === appState.myPlayerIndex;
     descEl.innerHTML = appState.lang === 'en'
-      ? `${isSelfTrigger ? 'You activated' : 'Opponent activated'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — Click glowing card or choose below for <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`
-      : `${isSelfTrigger ? 'คุณสั่งใช้งาน' : 'อีกฝ่ายสั่งใช้งาน'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — คลิกการ์ดที่เรืองแสงหรือเลือกด้านล่างเพื่อเชน <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`;
+      ? `${isSelfTrigger ? 'You activated' : 'Opponent activated'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — ${pickVerbEn} glowing card or choose below for <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`
+      : `${isSelfTrigger ? 'คุณสั่งใช้งาน' : 'อีกฝ่ายสั่งใช้งาน'} <strong>"${escapeHtml(chainPrompt.triggerCardNameTh)}"</strong> (${escapeHtml(chainPrompt.triggerEffectLabelTh)}) — ${pickVerbTh}การ์ดที่เรืองแสงหรือเลือกด้านล่างเพื่อเชน <strong>Chain Link ${escapeHtml(chainPrompt.chainLinkNumber)}</strong>${escapeHtml(passHint)}:`;
   }
 
   const list = document.getElementById('chain-options-list');
@@ -5462,27 +5982,31 @@ function openChainPromptBar(chainPrompt) {
     optEl.setAttribute('tabindex', '0');
 
     const img = document.createElement('img');
+    img.className = 'chain-option-thumb';
     img.src = getCardArtUrl(cardDef);
     img.alt = '';
-    img.style.cssText = 'width:40px;height:40px;border-radius:5px;object-fit:cover;flex-shrink:0;';
+    img.decoding = 'async';
     img.addEventListener('error', () => {
       img.src = generateProceduralCardSvg(cardDef);
     }, { once: true });
 
     const textWrap = document.createElement('div');
-    textWrap.style.cssText = 'flex:1;min-width:0;';
+    textWrap.className = 'chain-option-body';
     const titleLine = document.createElement('div');
-    titleLine.style.cssText = 'color:#facc15;font-weight:800;font-size:0.82rem;';
-    titleLine.textContent = `⚡ ${item.cardNameTh || item.cardName || ''}`;
+    titleLine.className = 'chain-option-title';
+    const displayCardName = appState.lang === 'en'
+      ? (item.cardName || item.cardNameTh || '')
+      : (item.cardNameTh || item.cardName || '');
+    titleLine.innerHTML = `${iconSvg('activate')}<span>${escapeHtml(displayCardName)}</span>`;
     const subLine = document.createElement('div');
-    subLine.style.cssText = 'font-size:0.72rem;color:#cbd5e1;';
-    subLine.textContent = item.labelTh || '';
+    subLine.className = 'chain-option-sub';
+    subLine.textContent = stripLeadingEmoji(item.labelTh || '');
     textWrap.append(titleLine, subLine);
 
     const inspectBtn = document.createElement('button');
     inspectBtn.type = 'button';
     inspectBtn.className = 'chain-option-inspect-btn';
-    inspectBtn.textContent = '🔍';
+    inspectBtn.innerHTML = iconSvg('inspect');
     inspectBtn.title = appState.lang === 'en' ? 'View Card Info' : 'ดูรายละเอียดการ์ด';
     inspectBtn.setAttribute('aria-label', inspectBtn.title);
     inspectBtn.addEventListener('click', (ev) => {
@@ -5513,7 +6037,7 @@ function openChainPromptBar(chainPrompt) {
     const el = document.querySelector(`.duel-card[data-instance-id="${instId}"]`);
     if (!el) continue;
     el.classList.add('chain-pick-target');
-    el.setAttribute('data-pick-badge', '⛓️');
+    el.setAttribute('data-pick-badge', 'CL');
     const onPick = (ev) => {
       ev.stopPropagation();
       ev.preventDefault();
@@ -5544,7 +6068,7 @@ function openPlayerZoneModal(zoneTitle, cardsList, actionMap = {}, isExtraDeck =
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'btn btn-secondary btn-mini';
-  closeBtn.textContent = lang === 'en' ? '✕ Close' : '✕ ปิด';
+  closeBtn.innerHTML = `${iconSvg('close')}<span class="btn-label">${escapeHtml(t(lang, 'closeBtn'))}</span>`;
   closeBtn.onclick = (ev) => {
     ev.stopPropagation();
     closeYgoproCardStrip();
@@ -5555,7 +6079,7 @@ function openPlayerZoneModal(zoneTitle, cardsList, actionMap = {}, isExtraDeck =
 
   if (!cardsList || cardsList.length === 0) {
     const emptyMsg = document.createElement('div');
-    emptyMsg.style.cssText = 'color:#94a3b8;font-size:0.84rem;padding:0.75rem 0.4rem;';
+    emptyMsg.className = 'strip-empty-msg';
     emptyMsg.textContent = lang === 'en' ? 'No cards in this zone.' : 'ยังไม่มีการ์ดในโซนนี้';
     track.appendChild(emptyMsg);
     openYgoproCardStrip({ mode: 'browse', title: zoneTitle, headerButtons: [closeBtn], bodyEl: track, dismissOnEsc: true });
@@ -5652,18 +6176,18 @@ function openExtraMaterialComboPicker(extraCard, combinations, dlg) {
     box.className = 'browser-card-box playable-glow';
     const matNames = combo.map(m => getLocalizedCardName(m, lang)).join(' + ');
     const thumbsHtml = combo.map(m => `
-      <div style="display:flex;align-items:center;gap:0.4rem;">
-        <img src="${getCardArtUrl(m)}" alt="${m.name}" style="width:36px;height:36px;border-radius:4px;object-fit:cover;" />
-        <div style="font-size:0.75rem;color:#e2e8f0;">
-          <div style="font-weight:700;color:#facc15;">${getLocalizedCardName(m, lang)}</div>
-          <div style="font-size:0.68rem;color:#38bdf8;">${getCardSubHeaderBadge(m, lang)} • ${m.zone}${m.zone === 'MMZ' ? `#${(m.zoneIndex ?? 0) + 1}` : ''}</div>
+      <div class="browser-card-head">
+        <img class="browser-card-thumb" src="${getCardArtUrl(m)}" alt="${escapeHtml(m.name)}" loading="lazy" decoding="async" />
+        <div class="browser-card-meta">
+          <div class="browser-card-name">${escapeHtml(getLocalizedCardName(m, lang))}</div>
+          <div class="browser-card-sub">${escapeHtml(getCardSubHeaderBadge(m, lang))} • ${escapeHtml(m.zone)}${m.zone === 'MMZ' ? `#${(m.zoneIndex ?? 0) + 1}` : ''}</div>
         </div>
       </div>
     `).join('');
     box.innerHTML = `
-      <div style="font-size:0.78rem;font-weight:800;color:#38bdf8;margin-bottom:0.35rem;">${lang === 'en' ? `Combination #${idx + 1}` : `รูปแบบที่ ${idx + 1}`}: ${matNames}</div>
-      <div style="display:grid;gap:0.35rem;margin-bottom:0.5rem;">${thumbsHtml}</div>
-      <div class="zone-card-actions" style="display:grid;gap:4px;margin-top:auto;"></div>
+      <div class="browser-card-section">${escapeHtml(lang === 'en' ? `Combination #${idx + 1}` : `รูปแบบที่ ${idx + 1}`)}: ${escapeHtml(matNames)}</div>
+      <div class="browser-card-actions">${thumbsHtml}</div>
+      <div class="zone-card-actions browser-card-actions"></div>
     `;
     box.querySelectorAll('img').forEach((img, mIdx) => {
       img.addEventListener('error', () => {
@@ -5674,8 +6198,7 @@ function openExtraMaterialComboPicker(extraCard, combinations, dlg) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn-gold btn-mini';
-    btn.style.padding = '0.42rem';
-    btn.textContent = lang === 'en' ? `⚡ Summon using Combo #${idx + 1}` : `⚡ อัญเชิญด้วยวัตถุดิบชุดนี้`;
+    btn.innerHTML = `${iconSvg('summon')}<span>${escapeHtml(lang === 'en' ? `Summon using Combo #${idx + 1}` : `อัญเชิญด้วยวัตถุดิบชุดนี้`)}</span>`;
     btn.addEventListener('click', () => {
       dlg.close();
       dispatchDuelAction({
@@ -5848,19 +6371,149 @@ function applyPlaymatTheme() {
   });
 }
 
-function applyLanguage() {
+const MOBILE_ZOOM_SCALES = ['auto', '85', '75'];
+let currentMobileZoomScale = 'auto';
+
+function syncMobileFieldZoomUI(scale = currentMobileZoomScale) {
+  const clean = MOBILE_ZOOM_SCALES.includes(scale) ? scale : 'auto';
+  currentMobileZoomScale = clean;
+  const playmat = document.getElementById('playmat-container');
+  const duelScreen = document.getElementById('screen-duel');
+  const zoomBtn = document.getElementById('btn-mobile-field-zoom');
+  const menuZoomBtn = document.getElementById('btn-menu-zoom');
+  const shortText = clean === 'auto' ? 'Auto' : `${clean}%`;
+
+  if (clean === 'auto') {
+    playmat?.removeAttribute('data-field-scale');
+    duelScreen?.removeAttribute('data-field-scale');
+  } else {
+    playmat?.setAttribute('data-field-scale', clean);
+    duelScreen?.setAttribute('data-field-scale', clean);
+  }
+  if (zoomBtn) {
+    setButtonLabel(zoomBtn, shortText, 'zoom');
+  }
+  if (menuZoomBtn) {
+    setButtonLabel(menuZoomBtn, `${t(appState.lang, 'menuZoom')}: ${shortText}`, 'zoom');
+  }
+}
+
+function cycleMobileFieldZoom() {
+  const nextIdx = (MOBILE_ZOOM_SCALES.indexOf(currentMobileZoomScale) + 1) % MOBILE_ZOOM_SCALES.length;
+  const nextScale = MOBILE_ZOOM_SCALES[nextIdx];
+  syncMobileFieldZoomUI(nextScale);
+  try {
+    localStorage.setItem('ygo_md_mobile_zoom', nextScale);
+  } catch {
+    // ignore storage failure
+  }
+  const st = appState.currentState || appState.lastRenderedState;
+  if (st) {
+    requestAnimationFrame(() => renderEquipArrows(st, true));
+  }
+}
+
+function updatePillWithCount(btnEl, labelText, countId, iconName) {
+  if (!btnEl) return;
+  const existingLabel = btnEl.querySelector('.btn-label');
+  if (existingLabel) {
+    existingLabel.textContent = `${labelText}:`;
+    return;
+  }
+  const countEl = document.getElementById(countId);
+  const countText = countEl ? countEl.textContent : '0';
+  btnEl.innerHTML = `${iconSvg(iconName)}<span class="btn-label">${escapeHtml(labelText)}:</span> <span id="${countId}">${escapeHtml(countText)}</span>`;
+}
+
+function applyI18n() {
   const lang = appState.lang;
   document.documentElement.lang = lang;
+  resetDuelRenderCaches();
+
+  const duelIconMap = {
+    btnBattle: 'battle',
+    btnMp2: 'mp2',
+    btnEndTurn: 'end',
+    btnLeave: 'leave',
+    btnPassChain: 'end',
+    inspTabCard: 'inspect',
+    inspTabLog: 'log',
+    inspTabGuide: 'cards'
+  };
+
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const key = el.getAttribute('data-i18n');
-    if (key) el.textContent = t(lang, key);
+    if (!key) return;
+    const translated = t(lang, key);
+    if (el.querySelector('.btn-label') || el.querySelector('svg')) {
+      setButtonLabel(el, translated);
+    } else if (duelIconMap[key] && (el.tagName === 'BUTTON' || el.classList.contains('insp-tab'))) {
+      setButtonLabel(el, translated, duelIconMap[key]);
+    } else {
+      el.textContent = translated;
+    }
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) el.setAttribute('placeholder', t(lang, key));
   });
+
   const langBtn = document.getElementById('btn-toggle-lang');
-  if (langBtn) langBtn.textContent = t(lang, 'langBtn');
+  if (langBtn) {
+    setButtonLabel(langBtn, langBtn.querySelector('svg, .btn-label') ? stripLeadingEmoji(t(lang, 'langBtn')) : t(lang, 'langBtn'));
+  }
+
+  // Fix Thai-in-EN i18n leaks in Lobby Open Rooms & Opponent HUD & Mobile Drawer
+  const openRoomsTitle = document.querySelector('#open-rooms-section .open-rooms-header > span:not([data-i18n])');
+  if (openRoomsTitle) {
+    openRoomsTitle.textContent = t(lang, 'openRoomsTitle');
+  }
+  const refreshRoomsBtn = document.getElementById('btn-refresh-rooms');
+  if (refreshRoomsBtn) {
+    setButtonLabel(refreshRoomsBtn, t(lang, 'refreshRoomsBtn'), 'position');
+  }
+  const emptyRoomsEl = document.querySelector('#open-rooms-list .empty-rooms-text');
+  if (emptyRoomsEl) {
+    emptyRoomsEl.textContent = t(lang, 'emptyRoomsText');
+  }
+  const roomCodeInput = document.getElementById('input-room-code');
+  if (roomCodeInput) {
+    roomCodeInput.setAttribute('placeholder', t(lang, 'roomCodePlaceholder'));
+  }
+
+  // Opponent HUD zone pills (preserving child count spans!)
+  updatePillWithCount(document.getElementById('btn-opp-gy'), t(lang, 'oppGyLabel'), 'opp-gy-count', 'gy');
+  updatePillWithCount(document.getElementById('btn-opp-banished'), t(lang, 'oppBanishedLabel'), 'opp-banished-count', 'banish');
+  const oppStaticPill = document.querySelector('.opponent-hud .zone-pill-static');
+  if (oppStaticPill && !oppStaticPill.querySelector('[data-i18n]')) {
+    const deckVal = document.getElementById('opp-deck-count')?.textContent ?? '35';
+    const extraVal = document.getElementById('opp-extra-count')?.textContent ?? '10';
+    oppStaticPill.innerHTML = `${iconSvg('cards')}<span>${escapeHtml(t(lang, 'oppDeckLabel'))}:</span> <span id="opp-deck-count">${escapeHtml(deckVal)}</span> <span aria-hidden="true">|</span> <span>${escapeHtml(t(lang, 'oppExtraLabel'))}:</span> <span id="opp-extra-count">${escapeHtml(extraVal)}</span>`;
+  }
+
+  // Waiting room & Mobile Duel Menu Drawer labels
+  const copyCodeBtn = document.getElementById('btn-copy-room-code');
+  if (copyCodeBtn && !copyCodeBtn.hasAttribute('data-i18n')) setButtonLabel(copyCodeBtn, t(lang, 'copyCodeBtn'));
+  const copyInviteBtn = document.getElementById('btn-copy-invite-link');
+  if (copyInviteBtn && !copyInviteBtn.hasAttribute('data-i18n')) setButtonLabel(copyInviteBtn, t(lang, 'copyInviteBtn'));
+  const shareInviteBtn = document.getElementById('btn-share-invite-link');
+  if (shareInviteBtn && !shareInviteBtn.hasAttribute('data-i18n')) setButtonLabel(shareInviteBtn, t(lang, 'shareInviteBtn'));
+  const cancelRoomBtn = document.getElementById('btn-cancel-waiting-room');
+  if (cancelRoomBtn && !cancelRoomBtn.hasAttribute('data-i18n')) setButtonLabel(cancelRoomBtn, t(lang, 'closeRoomBtn'), 'close');
+
+  const menuLangBtn = document.getElementById('btn-menu-lang');
+  if (menuLangBtn) setButtonLabel(menuLangBtn, t(lang, 'menuLang'));
+  const menuGuideBtn = document.getElementById('btn-menu-guide');
+  if (menuGuideBtn) setButtonLabel(menuGuideBtn, t(lang, 'menuGuide'));
+  const menuLeaveBtn = document.getElementById('btn-menu-leave');
+  if (menuLeaveBtn) setButtonLabel(menuLeaveBtn, t(lang, 'menuLeave'), 'leave');
+
+  const rematchBtn = document.getElementById('btn-duel-rematch');
+  if (rematchBtn) setButtonLabel(rematchBtn, stripLeadingEmoji(t(lang, 'rematchBtn')), 'position');
+  const backLobbyBtn = document.getElementById('btn-result-back-lobby');
+  if (backLobbyBtn) setButtonLabel(backLobbyBtn, stripLeadingEmoji(t(lang, 'backLobbyBtn')), 'leave');
+
+  syncMobileFieldZoomUI(currentMobileZoomScale);
 
   populateAiDeckDropdown();
   renderDeckSelector();
@@ -5883,30 +6536,30 @@ function applyLanguage() {
   if (!isLocalOrigin) {
     if (wsTabEl) {
       wsTabEl.textContent = lang === 'en'
-        ? '🌍 Cloud Online — Cross-Wi-Fi / 4G (Recommended)'
-        : '🌍 ออนไลน์ข้าม Wi-Fi / 4G (Cloud Server — แนะนำ)';
+        ? 'Cloud Online — Cross-Wi-Fi / 4G (Recommended)'
+        : 'ออนไลน์ข้าม Wi-Fi / 4G (Cloud Server — แนะนำ)';
     }
     if (p2pTabEl) {
       p2pTabEl.textContent = lang === 'en'
-        ? '⚡ Direct P2P (Fallback)'
-        : '⚡ โหมด P2P สำรอง';
+        ? 'Direct P2P (Fallback)'
+        : 'โหมด P2P สำรอง';
     }
   }
   if (lanLabelEl && lanHintEl) {
     if (!isLocalOrigin) {
       lanLabelEl.textContent = lang === 'en'
-        ? '🌍 Public / Cross-Wi-Fi Server URL:'
-        : '🌍 ลิงก์เข้าเล่นข้าม Wi-Fi / 4G (Public URL):';
+        ? 'Public / Cross-Wi-Fi Server URL:'
+        : 'ลิงก์เข้าเล่นข้าม Wi-Fi / 4G (Public URL):';
       lanHintEl.textContent = lang === 'en'
         ? 'Anyone on any Wi-Fi or cellular network can open this URL and play via Mode 1.'
         : 'เพื่อนอยู่คนละ Wi-Fi หรือ 4G เปิดลิงก์นี้แล้วเข้า Mode 1 ได้ทันที';
     } else {
       lanLabelEl.textContent = lang === 'en'
-        ? '📱 Same-Wi-Fi (LAN) Share Link:'
-        : '📱 ลิงก์เล่นด้วยกันบน Wi-Fi เดียวกัน (LAN):';
+        ? 'Same-Wi-Fi (LAN) Share Link:'
+        : 'ลิงก์เล่นด้วยกันบน Wi-Fi เดียวกัน (LAN):';
       lanHintEl.textContent = lang === 'en'
-        ? '⚠️ Same Wi-Fi / Hotspot only. For Cross-Wi-Fi, switch to Mode 2 (P2P Online) or use a public HTTPS tunnel.'
-        : '⚠️ ใช้ได้เฉพาะ Wi-Fi / Hotspot เดียวกัน — หากอยู่คนละ Wi-Fi ให้ใช้ Mode 2 (P2P Online) หรือรันผ่าน Public HTTPS Tunnel';
+        ? 'Same Wi-Fi / Hotspot only. For Cross-Wi-Fi, switch to Mode 2 (P2P Online) or use a public HTTPS tunnel.'
+        : 'ใช้ได้เฉพาะ Wi-Fi / Hotspot เดียวกัน — หากอยู่คนละ Wi-Fi ให้ใช้ Mode 2 (P2P Online) หรือรันผ่าน Public HTTPS Tunnel';
     }
   }
   if (appState.rpsContext) {
@@ -5914,27 +6567,36 @@ function applyLanguage() {
   }
 }
 
+function applyLanguage() {
+  applyI18n();
+}
+
+function toggleLanguage() {
+  appState.lang = appState.lang === 'th' ? 'en' : 'th';
+  saveLanguage(appState.lang);
+  applyI18n();
+  showToast(appState.lang === 'en' ? 'Language switched to English' : 'เปลี่ยนภาษาเป็นภาษาไทยแล้ว');
+}
+
+function leaveCurrentDuel() {
+  clearTimeout(appState.aiTimer);
+  if (appState.gameMode === 'MULTIPLAYER') {
+    appState.mpManager?.disconnectRoom();
+    appState.activeRoomCode = null;
+    appState.activeRoomMode = null;
+    document.getElementById('waiting-room-banner')?.classList.add('hidden');
+    renderP2PLiveStatus({ stage: 'idle', message: '' });
+  }
+  appState.lastRenderedState = null;
+  appState.lastAutoInspectedEventKey = null;
+  resetDuelRenderCaches();
+  closeMobileCardDetail();
+  switchScreen('screen-lobby');
+}
+
 function setupMobileFieldZoom() {
   const zoomBtn = document.getElementById('btn-mobile-field-zoom');
   const playmat = document.getElementById('playmat-container');
-  if (!zoomBtn || !playmat) return;
-
-  const scales = ['auto', '85', '75'];
-  const applyScale = (scale) => {
-    const clean = scales.includes(scale) ? scale : 'auto';
-    if (clean === 'auto') {
-      playmat.removeAttribute('data-field-scale');
-      zoomBtn.textContent = '🔍 Auto';
-    } else {
-      playmat.setAttribute('data-field-scale', clean);
-      zoomBtn.textContent = `🔍 ${clean}%`;
-    }
-    try {
-      localStorage.setItem('ygo_md_mobile_zoom', clean);
-    } catch {
-      // ignore storage failure
-    }
-  };
 
   let saved = 'auto';
   try {
@@ -5942,47 +6604,120 @@ function setupMobileFieldZoom() {
   } catch {
     saved = 'auto';
   }
-  applyScale(saved);
+  syncMobileFieldZoomUI(saved);
 
-  zoomBtn.addEventListener('click', () => {
-    const current = playmat.getAttribute('data-field-scale') || 'auto';
-    const nextIdx = (scales.indexOf(current) + 1) % scales.length;
-    applyScale(scales[nextIdx]);
-    if (appState.lastRenderedState) {
-      requestAnimationFrame(() => renderEquipArrows(appState.lastRenderedState));
-    }
-  });
+  if (zoomBtn && playmat) {
+    zoomBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      cycleMobileFieldZoom();
+    });
+  }
 
+  let resizeEquipRafId = null;
   window.addEventListener('resize', () => {
-    if (appState.lastRenderedState) {
-      requestAnimationFrame(() => renderEquipArrows(appState.lastRenderedState));
-    }
-  });
+    const st = appState.currentState || appState.lastRenderedState;
+    if (!st || resizeEquipRafId !== null) return;
+    resizeEquipRafId = requestAnimationFrame(() => {
+      resizeEquipRafId = null;
+      const latest = appState.currentState || appState.lastRenderedState;
+      if (latest) renderEquipArrows(latest, true);
+    });
+  }, { passive: true });
 }
 
 function setupMobileHandToggle() {
   const dock = document.querySelector('.player-bottom-dock');
   if (!dock) return;
 
-  const isTouchOrCompact = () =>
-    window.matchMedia('(max-width: 1023px), (hover: none)').matches;
-
-  // First tap on collapsed hand expands the whole hand; subsequent taps interact normally
-  dock.addEventListener('click', (ev) => {
-    if (!isTouchOrCompact()) return;
-    if (!dock.classList.contains('hand-expanded')) {
-      ev.stopPropagation();
-      ev.preventDefault();
-      dock.classList.add('hand-expanded');
-    }
-  }, true);
-
-  // Tap anywhere outside the hand dock (and outside card action popup / inline banner / card preview) collapses it back down
+  // Tap-First Mobile Hand: on coarse/touch pointers we NEVER hijack the first tap to expand
+  // the hand dock — tapping any hand card immediately selects it (.is-selected) and opens
+  // #field-pick-banner[data-mode="card-actions"]. Keep only outside-tap cleanup for legacy expanded state.
   document.addEventListener('pointerdown', (ev) => {
     if (!dock.classList.contains('hand-expanded')) return;
     if (ev.target.closest('.player-bottom-dock, #card-action-popup, #field-pick-banner, #mobile-card-preview, #chain-prompt-bar')) return;
     dock.classList.remove('hand-expanded');
   }, true);
+}
+
+function setupMobileDuelControls() {
+  const menuBtn = document.getElementById('btn-mobile-duel-menu');
+  const menuDrawer = document.getElementById('mobile-duel-menu-drawer');
+  const inspectorToggleBtn = document.getElementById('btn-mobile-inspector-toggle');
+  const inspectorCloseBtn = document.getElementById('btn-close-mobile-inspector');
+  const inspectorSidebar = document.getElementById('inspector-sidebar');
+
+  const closeMenuDrawer = () => {
+    if (!menuDrawer) return;
+    menuDrawer.classList.remove('open');
+    menuBtn?.setAttribute('aria-expanded', 'false');
+  };
+
+  const closeInspectorSheet = () => {
+    if (!inspectorSidebar) return;
+    inspectorSidebar.classList.remove('is-mobile-open');
+    inspectorToggleBtn?.setAttribute('aria-expanded', 'false');
+  };
+
+  menuBtn?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (!menuDrawer) return;
+    const willOpen = !menuDrawer.classList.contains('open');
+    if (willOpen) closeInspectorSheet();
+    menuDrawer.classList.toggle('open', willOpen);
+    menuBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  });
+
+  document.getElementById('btn-menu-lang')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    toggleLanguage();
+    closeMenuDrawer();
+  });
+
+  document.getElementById('btn-menu-zoom')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    cycleMobileFieldZoom();
+  });
+
+  document.getElementById('btn-menu-guide')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeMenuDrawer();
+    document.getElementById('dialog-howto')?.showModal();
+  });
+
+  document.getElementById('btn-menu-leave')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeMenuDrawer();
+    leaveCurrentDuel();
+  });
+
+  inspectorToggleBtn?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (!inspectorSidebar) return;
+    const willOpen = !inspectorSidebar.classList.contains('is-mobile-open');
+    if (willOpen) closeMenuDrawer();
+    inspectorSidebar.classList.toggle('is-mobile-open', willOpen);
+    inspectorToggleBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  });
+
+  inspectorCloseBtn?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeInspectorSheet();
+  });
+
+  document.addEventListener('pointerdown', (ev) => {
+    if (menuDrawer?.classList.contains('open') && !ev.target.closest('#mobile-duel-menu-drawer, #btn-mobile-duel-menu')) {
+      closeMenuDrawer();
+    }
+    if (inspectorSidebar?.classList.contains('is-mobile-open') && !ev.target.closest('#inspector-sidebar, #btn-mobile-inspector-toggle, #mobile-card-preview')) {
+      closeInspectorSheet();
+    }
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    if (menuDrawer?.classList.contains('open')) closeMenuDrawer();
+    if (inspectorSidebar?.classList.contains('is-mobile-open')) closeInspectorSheet();
+  });
 }
 
 // ==================== INITIALIZATION & EVENT BINDINGS ====================
@@ -5991,9 +6726,10 @@ window.addEventListener('DOMContentLoaded', () => {
   setupRpsDialogBindings();
   setupMobileFieldZoom();
   setupMobileHandToggle();
+  setupMobileDuelControls();
   populateAiDeckDropdown();
   renderDeckSelector();
-  applyLanguage();
+  applyI18n();
   initMultiplayerManager();
   setupCrossWifiUiBindings();
   applyInviteQueryParams();
@@ -6016,12 +6752,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Language Toggle Button
-  document.getElementById('btn-toggle-lang')?.addEventListener('click', () => {
-    appState.lang = appState.lang === 'th' ? 'en' : 'th';
-    saveLanguage(appState.lang);
-    applyLanguage();
-    showToast(appState.lang === 'en' ? '🌐 Language switched to English' : '🌐 เปลี่ยนภาษาเป็นภาษาไทยแล้ว');
-  });
+  document.getElementById('btn-toggle-lang')?.addEventListener('click', toggleLanguage);
 
   // Close floating action popup when clicking anywhere else
   document.addEventListener('click', () => {
@@ -6210,20 +6941,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Leave / Surrender
-  document.getElementById('btn-leave-duel')?.addEventListener('click', () => {
-    clearTimeout(appState.aiTimer);
-    if (appState.gameMode === 'MULTIPLAYER') {
-      appState.mpManager?.disconnectRoom();
-      appState.activeRoomCode = null;
-      appState.activeRoomMode = null;
-      document.getElementById('waiting-room-banner')?.classList.add('hidden');
-      renderP2PLiveStatus({ stage: 'idle', message: '' });
-    }
-    appState.lastRenderedState = null;
-    appState.lastAutoInspectedEventKey = null;
-    closeMobileCardDetail();
-    switchScreen('screen-lobby');
-  });
+  document.getElementById('btn-leave-duel')?.addEventListener('click', leaveCurrentDuel);
 
   // Chain Peek Board Button (temporarily minimize chain bar to inspect field)
   const chainPeekBtn = document.getElementById('btn-chain-peek');
@@ -6309,30 +7027,30 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-self-extra')?.addEventListener('click', () => {
     if (!appState.currentState) return;
     const me = appState.currentState.players[appState.myPlayerIndex];
-    openPlayerZoneModal('🌌 Extra Deck ของคุณ (กดปุ่มสีทองเพื่ออัญเชิญ Synchro / Xyz / Link)', me.extra, appState.legalActions?.extraActions || {}, true);
+    openPlayerZoneModal(t(appState.lang, 'zoneSelfExtra'), me.extra, appState.legalActions?.extraActions || {}, true);
   });
 
   document.getElementById('btn-self-gy')?.addEventListener('click', () => {
     if (!appState.currentState) return;
     const me = appState.currentState.players[appState.myPlayerIndex];
-    openPlayerZoneModal('🪦 สุสานของคุณ (Graveyard)', me.gy, appState.legalActions?.gyActions || {});
+    openPlayerZoneModal(t(appState.lang, 'zoneSelfGy'), me.gy, appState.legalActions?.gyActions || {});
   });
 
   document.getElementById('btn-self-banished')?.addEventListener('click', () => {
     if (!appState.currentState) return;
     const me = appState.currentState.players[appState.myPlayerIndex];
-    openPlayerZoneModal('🌀 การ์ดนอกเกมของคุณ (Banished)', me.banished, appState.legalActions?.banishedActions || {});
+    openPlayerZoneModal(t(appState.lang, 'zoneSelfBanished'), me.banished, appState.legalActions?.banishedActions || {});
   });
 
   const openOppGy = () => {
     if (!appState.currentState) return;
     const opp = appState.currentState.players[1 - appState.myPlayerIndex];
-    openPlayerZoneModal(`🪦 สุสานของ ${opp.name}`, opp.gy, {});
+    openPlayerZoneModal(`${t(appState.lang, 'zoneOppGyPrefix')} ${opp.name}`, opp.gy, {});
   };
   const openOppBanished = () => {
     if (!appState.currentState) return;
     const opp = appState.currentState.players[1 - appState.myPlayerIndex];
-    openPlayerZoneModal(`🌀 การ์ดนอกเกมของ ${opp.name}`, opp.banished, {});
+    openPlayerZoneModal(`${t(appState.lang, 'zoneOppBanishedPrefix')} ${opp.name}`, opp.banished, {});
   };
 
   document.getElementById('btn-opp-gy')?.addEventListener('click', openOppGy);
@@ -6355,16 +7073,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-result-back-lobby')?.addEventListener('click', () => {
     document.getElementById('dialog-duel-result')?.close();
-    if (appState.gameMode === 'MULTIPLAYER') {
-      appState.mpManager?.disconnectRoom();
-      appState.activeRoomCode = null;
-      appState.activeRoomMode = null;
-      document.getElementById('waiting-room-banner')?.classList.add('hidden');
-      renderP2PLiveStatus({ stage: 'idle', message: '' });
-    }
-    appState.lastRenderedState = null;
-    appState.lastAutoInspectedEventKey = null;
-    closeMobileCardDetail();
-    switchScreen('screen-lobby');
+    leaveCurrentDuel();
   });
 });

@@ -2,64 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Yu-Gi-Oh! Master Duel Web — 55 Top Meta Decks & Multiplayer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070b14" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#070b14" />
+  <title>Yu-Gi-Oh! Master Duel Web — 55 Top Meta Decks &amp; Multiplayer</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070b14'/%3E%3Cpolygon points='32,8 56,52 8,52' fill='none' stroke='%23f5c542' stroke-width='4' stroke-linejoin='round'/%3E%3Cpolygon points='32,20 46,46 18,46' fill='%23f5c542' opacity='0.22'/%3E%3Ccircle cx='32' cy='36' r='5' fill='%2338bdf8'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oxanium:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Oxanium:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
-  <link rel="stylesheet" href="/css/theme-minimal.css" />
 </head>
 <body>
   <!-- Top Header Bar -->
   <header class="app-header">
     <div class="brand-logo" id="btn-home-logo" role="button" tabindex="0">
-      <span class="logo-emblem">千年</span>
-      <div>
+      <span class="logo-emblem" aria-hidden="true">
+        <svg class="ui-icon ui-icon-lg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="12 3 21 19 3 19" />
+          <circle cx="12" cy="14" r="2.2" fill="currentColor" stroke="none" />
+        </svg>
+      </span>
+      <div class="brand-copy">
         <div class="logo-title">YU-GI-OH! <span class="gold-text">MASTER DUEL</span></div>
-        <div class="logo-subtitle" data-i18n="subtitle">55 เด็คท็อป Master Duel Meta • ระบบเชนเอฟเฟคจริง • เล่นกับเพื่อนข้ามมือถือ/คอม</div>
+        <div class="logo-subtitle" data-i18n="subtitle">55 Master Duel Meta Decks • Authentic Chain System • Cross-Device Multiplayer</div>
       </div>
     </div>
 
-    <nav class="header-nav">
-      <button type="button" class="nav-btn" id="btn-open-deck-viewer" data-i18n="navDecks">📚 คลังการ์ด & คอมโบ 55 เด็ค</button>
-      <button type="button" class="nav-btn accent-ai" id="btn-open-ai-studio" data-i18n="navStudio">🤖 AI Card Studio (เพิ่มการ์ด)</button>
-      <button type="button" class="nav-btn" id="btn-open-howto" data-i18n="navHowto">📖 วิธีเล่นเข้าใจง่าย</button>
-      <button type="button" class="nav-btn lang-toggle-btn" id="btn-toggle-lang" title="Switch Language (EN / TH)">🌐 Lang: EN</button>
+    <nav class="header-nav" aria-label="Main Navigation">
+      <button type="button" class="nav-btn" id="btn-open-deck-viewer" data-i18n="navDecks">55 Decks &amp; Combos</button>
+      <button type="button" class="nav-btn accent-ai" id="btn-open-ai-studio" data-i18n="navStudio">AI Card Studio</button>
+      <button type="button" class="nav-btn" id="btn-open-howto" data-i18n="navHowto">How to Play</button>
+      <button type="button" class="nav-btn lang-toggle-btn" id="btn-toggle-lang" title="Switch Language (EN / TH)">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
+        <span class="btn-label">Lang: EN</span>
+      </button>
     </nav>
   </header>
 
   <!-- ==================== SCREEN 1: LOBBY & DECK SELECT ==================== -->
   <main id="screen-lobby" class="screen active">
     <div class="lobby-grid">
-      <!-- Left Column: Player Profile & 55 Top Decks -->
-      <section class="lobby-panel deck-select-panel">
+      <!-- Step 1: Player Profile & 55 Top Decks -->
+      <section class="lobby-panel deck-select-panel" aria-labelledby="lobby-deck-heading">
         <div class="panel-header-row">
-          <div>
-            <h2 class="panel-title" data-i18n="lobbyDeckTitle">1. เลือกเด็คประจำตัวของคุณ (55 Top Master Duel Meta Decks)</h2>
-            <p class="panel-desc" data-i18n="lobbyDeckDesc">รวม 5 เด็คเริ่มต้น + 50 เด็คท็อปจริงจากเว็บ Master Duel Meta พร้อมภาพการ์ดแท้ & เอฟเฟคครบ</p>
+          <div class="panel-heading-group">
+            <h2 class="panel-title" id="lobby-deck-heading" data-i18n="lobbyDeckTitle">1. Choose Your Deck (55 Top Master Duel Meta Decks)</h2>
+            <p class="panel-desc" data-i18n="lobbyDeckDesc">5 classic starter decks + 50 live competitive decks from Master Duel Meta with real artwork &amp; effects</p>
           </div>
           <div class="player-name-box">
-            <label for="input-player-name" data-i18n="playerNameLabel">ชื่อดูเอลลิสต์:</label>
-            <input type="text" id="input-player-name" value="Duelist 1" maxlength="20" />
+            <label for="input-player-name" data-i18n="playerNameLabel">Duelist Name:</label>
+            <input type="text" id="input-player-name" value="Duelist 1" maxlength="20" autocomplete="nickname" />
           </div>
         </div>
 
         <!-- Deck Search & Style Filter Toolbar -->
         <div class="deck-browser-toolbar">
           <div class="deck-search-row">
-            <input type="search" id="input-deck-search" class="deck-search-input" data-i18n-placeholder="deckSearchPlaceholder" placeholder="🔍 ค้นหาชื่อเด็ค / แอคไทป์ (เช่น Dracotail, Tearlaments, Ryzeal)..." autocomplete="off" />
-            <button type="button" class="btn-gold btn-sm" id="btn-open-ydk-import" title="นำเข้าเด็คจาก YDK / YDKE Clipboard หรือไฟล์ .ydk">📋 Import YDK / YDKE</button>
-            <span id="deck-showing-count" class="deck-count-pill">55 / 55</span>
+            <input type="search" id="input-deck-search" class="deck-search-input" data-i18n-placeholder="deckSearchPlaceholder" placeholder="Search archetype / deck (e.g., Dracotail, Tearlaments, Ryzeal)..." autocomplete="off" enterkeyhint="search" />
+            <div class="deck-search-actions">
+              <button type="button" class="btn-gold btn-sm" id="btn-open-ydk-import" title="Import deck from YDK / YDKE Clipboard or .ydk file">
+                <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span class="btn-label">Import YDK / YDKE</span>
+              </button>
+              <span id="deck-showing-count" class="deck-count-pill">55 / 55</span>
+            </div>
           </div>
-          <div id="deck-filter-tabs" class="deck-filter-tabs">
-            <button type="button" class="deck-filter-chip active" data-deck-filter="all" data-i18n="filterAll">ทั้งหมด (55)</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="meta" data-i18n="filterMeta">🔥 เมต้า Tier</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="FUSION" data-i18n="filterFusion">🟣 ฟิวชั่น</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="SYNCHRO" data-i18n="filterSynchro">⚪ ซิงโคร</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="XYZ" data-i18n="filterXyz">⚫ เอ็กซีส</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="LINK" data-i18n="filterLink">🔵 ลิงก์</button>
-            <button type="button" class="deck-filter-chip" data-deck-filter="CONTROL" data-i18n="filterControl">🛡️ คอนโทรล</button>
+          <div id="deck-filter-tabs" class="deck-filter-tabs" role="tablist" aria-label="Deck Archetype Filters">
+            <button type="button" class="deck-filter-chip active" data-deck-filter="all" data-i18n="filterAll">All (55)</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="meta" data-i18n="filterMeta">Meta Tiered</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="FUSION" data-i18n="filterFusion">Fusion</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="SYNCHRO" data-i18n="filterSynchro">Synchro</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="XYZ" data-i18n="filterXyz">Xyz</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="LINK" data-i18n="filterLink">Link</button>
+            <button type="button" class="deck-filter-chip" data-deck-filter="CONTROL" data-i18n="filterControl">Control</button>
           </div>
         </div>
 
@@ -70,115 +86,123 @@
         <div id="selected-deck-summary" class="selected-deck-summary"></div>
       </section>
 
-      <!-- Right Column: Game Modes & Multiplayer -->
-      <section class="lobby-panel mode-select-panel">
-        <h2 class="panel-title" data-i18n="lobbyModeTitle">2. เลือกโหมดการดูเอล</h2>
+      <!-- Step 2: Game Modes & Multiplayer -->
+      <section class="lobby-panel mode-select-panel" aria-labelledby="lobby-mode-heading">
+        <h2 class="panel-title" id="lobby-mode-heading" data-i18n="lobbyModeTitle">2. Select Duel Mode</h2>
+
+        <!-- Solo vs AI Mode (Primary Fast-Start Entry) -->
+        <div class="mode-card featured-solo">
+          <div class="mode-card-header">
+            <span class="mode-icon" aria-hidden="true">
+              <svg class="ui-icon ui-icon-xl" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/><path d="M9.5 6.5L21 18v3h-3L6.5 9.5"/></svg>
+            </span>
+            <div>
+              <h3 data-i18n="soloTitle">Solo vs AI Bot (Master Duel Mode)</h3>
+              <p data-i18n="soloDesc">Practice combos and test decks against an AI that Synchro, Fusion, Link summons &amp; chains</p>
+            </div>
+          </div>
+          <div class="solo-controls">
+            <label for="select-ai-deck" data-i18n="soloAiLabel">AI Opponent Deck:</label>
+            <select id="select-ai-deck"></select>
+            <button type="button" class="btn-gold btn-large" id="btn-start-solo" data-i18n="startSoloBtn">Start Solo Duel vs AI</button>
+          </div>
+        </div>
 
         <!-- Multiplayer Mode (Phone / Other PC) -->
         <div class="mode-card featured-multiplayer">
           <div class="mode-card-header">
-            <span class="mode-icon">📱💻</span>
+            <span class="mode-icon" aria-hidden="true">
+              <svg class="ui-icon ui-icon-xl" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
             <div>
-              <h3 data-i18n="mpTitle">เล่นกับเพื่อน (มือถือ / คอมพิวเตอร์เครื่องอื่น)</h3>
-              <p data-i18n="mpDesc">รองรับทั้งการเล่นผ่าน Wi-Fi เดียวกัน (สแกน QR เข้าห้องทันที) และออนไลน์ข้ามเครือข่าย 4G/5G</p>
+              <h3 data-i18n="mpTitle">Play with Friends (Mobile / Other PC)</h3>
+              <p data-i18n="mpDesc">Supports local Wi-Fi / LAN (QR scan) and same-server cross-device rooms</p>
             </div>
           </div>
 
           <!-- Connection Type Tabs -->
           <div class="mp-tabs">
-            <button type="button" class="mp-tab active" data-mp-tab="ws" id="tab-mp-ws" data-i18n="mpTabWs">
-              🌐 โหมด Wi-Fi / เซิร์ฟเวอร์เดียวกัน (แนะนำ)
-            </button>
+            <button type="button" class="mp-tab active" data-mp-tab="ws" id="tab-mp-ws" data-i18n="mpTabWs">Wi-Fi / Same Server (Recommended)</button>
           </div>
 
-          <!-- LAN / Server Info Banner (Tab 1: WS) -->
+          <!-- LAN / Server Info Banner -->
           <div id="lan-info-box" class="lan-info-box">
             <div class="lan-url-col">
-              <div class="lan-label" id="lan-box-label">📲 ลิงก์สำหรับให้เพื่อนเปิดบนมือถือ/คอมอีกเครื่อง:</div>
-              <div id="lan-urls-list" class="lan-urls-list">กำลังตรวจสอบ IP...</div>
+              <div class="lan-label" id="lan-box-label">Same-Wi-Fi (LAN) Share Link:</div>
+              <div id="lan-urls-list" class="lan-urls-list">Detecting network IP...</div>
               <div id="lan-scope-hint" class="lan-scope-hint"></div>
             </div>
-            <div class="qr-box" id="lan-qr-container" title="สแกนด้วยกล้องมือถือเพื่อเข้าเกม"></div>
+            <div class="qr-box" id="lan-qr-container" title="Scan with your phone camera to open"></div>
           </div>
 
-          <!-- 1-Click Invite Banner (shown when opening ?room=XXXX or ?p2p=XXXXXX link) -->
+          <!-- 1-Click Invite Banner -->
           <div id="invite-join-banner" class="invite-join-banner hidden">
             <div class="invite-join-info">
-              <strong id="invite-join-title">⚔️ คุณได้รับคำเชิญเข้าห้องดวล!</strong>
-              <div class="invite-join-sub" id="invite-join-sub">เลือกเด็คด้านซ้าย แล้วกดเข้าร่วมได้ทันทีในคลิกเดียว</div>
+              <strong id="invite-join-title">You were invited to a Duel Room!</strong>
+              <div class="invite-join-sub" id="invite-join-sub">Choose your deck above, then join in one click.</div>
             </div>
             <div class="invite-join-actions">
-              <button type="button" class="btn-gold" id="btn-invite-quick-join">⚔️ เข้าร่วมห้องทันที</button>
-              <button type="button" class="btn-mini" id="btn-invite-dismiss">✕</button>
+              <button type="button" class="btn-gold" id="btn-invite-quick-join">Join Room Now</button>
+              <button type="button" class="btn-mini" id="btn-invite-dismiss" aria-label="Dismiss invite">✕</button>
             </div>
           </div>
 
           <div class="mp-actions-row">
-            <button type="button" class="btn-gold" id="btn-create-room" data-i18n="createRoomBtn">➕ สร้างห้องดวลใหม่</button>
+            <button type="button" class="btn-primary" id="btn-create-room" data-i18n="createRoomBtn">Create Duel Room</button>
             <div class="join-code-group">
-              <input type="text" id="input-room-code" placeholder="รหัสห้อง" maxlength="12" />
-              <button type="button" class="btn-secondary" id="btn-join-room" data-i18n="joinRoomBtn">เข้าร่วมห้อง</button>
+              <input type="text" id="input-room-code" placeholder="Room Code" maxlength="12" autocapitalize="characters" autocorrect="off" autocomplete="off" enterkeyhint="go" />
+              <button type="button" class="btn-secondary" id="btn-join-room" data-i18n="joinRoomBtn">Join Room</button>
             </div>
           </div>
 
           <!-- Waiting Room Status -->
           <div id="waiting-room-banner" class="waiting-room-banner hidden">
-            <div class="waiting-spinner"></div>
+            <div class="waiting-spinner" aria-hidden="true"></div>
             <div class="waiting-content-col">
               <div class="waiting-title">
-                สร้างห้องสำเร็จ! รหัสห้องของคุณคือ:
+                <span>Room created! Code:</span>
                 <span id="display-room-code" class="room-code-pill">----</span>
-                <button type="button" class="btn-mini" id="btn-copy-room-code">📋 คัดลอกรหัส</button>
-                <button type="button" class="btn-mini" id="btn-copy-invite-link">🔗 คัดลอกลิงก์เชิญ</button>
-                <button type="button" class="btn-mini" id="btn-share-invite-link">📤 แชร์ให้เพื่อน</button>
-                <button type="button" class="btn-mini" id="btn-cancel-waiting-room">✕ ปิดห้อง</button>
+                <button type="button" class="btn-mini" id="btn-copy-room-code">Copy Code</button>
+                <button type="button" class="btn-mini" id="btn-copy-invite-link">Copy Link</button>
+                <button type="button" class="btn-mini" id="btn-share-invite-link">Share</button>
+                <button type="button" class="btn-mini" id="btn-cancel-waiting-room">Close Room</button>
               </div>
-              <div class="waiting-sub" id="waiting-room-sub">บอกรหัสนี้ให้เพื่อนกรอก หรือกดเข้าร่วมจากรายการห้องที่เปิดอยู่ด้านล่าง</div>
+              <div class="waiting-sub" id="waiting-room-sub">Share this code with your friend or let them join from Open Rooms below.</div>
             </div>
           </div>
 
           <!-- Open Rooms List -->
           <div class="open-rooms-section" id="open-rooms-section">
             <div class="open-rooms-header">
-              <span>🟢 ห้องที่กำลังเปิดรอผู้เล่น:</span>
-              <button type="button" class="btn-mini" id="btn-refresh-rooms">🔄 รีเฟรช</button>
+              <div class="open-rooms-title">
+                <span class="status-dot-live" aria-hidden="true"></span>
+                <span data-i18n="openRoomsTitle">Open Rooms:</span>
+              </div>
+              <button type="button" class="btn-mini" id="btn-refresh-rooms">
+                <svg class="ui-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                <span class="btn-label" data-i18n="refreshRoomsBtn">Refresh</span>
+              </button>
             </div>
             <div id="open-rooms-list" class="open-rooms-list">
-              <div class="empty-rooms-text">ยังไม่มีห้องที่เปิดรอ — กด "สร้างห้องดวลใหม่" ได้เลย!</div>
+              <div class="empty-rooms-text" data-i18n="emptyRoomsText">No open rooms yet — click "Create Duel Room" to start!</div>
             </div>
           </div>
+        </div>
+
+        <!-- Playmat Theme Picker -->
+        <div class="lobby-playmat-box">
+          <div class="playmat-picker-label" data-i18n="playmatTitle">Playmat Theme (Duel Field):</div>
+          <div id="lobby-playmat-picker" class="playmat-picker-row"></div>
         </div>
 
         <!-- Sandbox 2-Player Local Mode -->
         <div class="mode-card sandbox-card">
           <div class="sandbox-row">
             <div>
-              <h4 data-i18n="sandboxTitle">🧪 โหมดทดสอบ 2 ฝั่งในจอเดียว (Sandbox / Pass & Play)</h4>
-              <p data-i18n="sandboxDesc">สลับมุมมองบังคับได้ทั้งผู้เล่น 1 และผู้เล่น 2 เหมาะสำหรับทดสอบการ์ดใหม่ที่ AI เพิ่มเข้ามา</p>
+              <h4 data-i18n="sandboxTitle">2-Player Local Sandbox (Pass &amp; Play)</h4>
+              <p data-i18n="sandboxDesc">Switch control between P1 and P2 on one screen — ideal for testing custom AI cards</p>
             </div>
-            <button type="button" class="btn-outline" id="btn-start-sandbox" data-i18n="startSandboxBtn">เปิดโหมดทดสอบ 2 ฝั่ง</button>
-          </div>
-        </div>
-
-        <!-- Playmat Theme Picker -->
-        <div class="lobby-playmat-box">
-          <div class="playmat-picker-label" data-i18n="playmatTitle">🎨 ธีมสนามดวล (Playmat Theme):</div>
-          <div id="lobby-playmat-picker" class="playmat-picker-row"></div>
-        </div>
-
-        <!-- Solo vs AI Mode -->
-        <div class="mode-card featured-solo">
-          <div class="mode-card-header">
-            <span class="mode-icon">🤖</span>
-            <div>
-              <h3 data-i18n="soloTitle">ดวลกับบอท AI (Solo Master Duel Mode)</h3>
-              <p data-i18n="soloDesc">ฝึกฝนคอมโบและทดสอบเด็คกับ AI ที่สามารถซิงโคร, ฟิวชั่น, ลิงก์ และเชนเอฟเฟคได้</p>
-            </div>
-          </div>
-          <div class="solo-controls">
-            <label for="select-ai-deck" data-i18n="soloAiLabel">เด็คของ AI คู่ต่อสู้:</label>
-            <select id="select-ai-deck"></select>
-            <button type="button" class="btn-primary btn-large" id="btn-start-solo" data-i18n="startSoloBtn">⚔️ เริ่มดูเอลกับ AI ทันที</button>
+            <button type="button" class="btn-outline" id="btn-start-sandbox" data-i18n="startSandboxBtn">Open Sandbox Mode</button>
           </div>
         </div>
       </section>
@@ -187,17 +211,58 @@
 
   <!-- ==================== SCREEN 2: MASTER DUEL BATTLEFIELD ==================== -->
   <main id="screen-duel" class="screen">
+    <!-- Mobile Fullscreen Quick-Access Controls (nested cleanly into topbar on Portrait & right rail top on Landscape; hidden on Desktop) -->
+    <div class="duel-mobile-topbar">
+      <button type="button" class="mobile-icon-btn" id="btn-mobile-inspector-toggle" aria-label="Card Info &amp; Duel Log" aria-controls="inspector-sidebar" aria-expanded="false" title="Card Info &amp; Duel Log">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button type="button" class="mobile-icon-btn" id="btn-mobile-duel-menu" aria-label="Duel Menu" aria-controls="mobile-duel-menu-drawer" aria-expanded="false" title="Duel Menu">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Mobile Fullscreen Duel Menu Drawer -->
+    <div id="mobile-duel-menu-drawer" class="mobile-duel-menu-drawer" role="menu" aria-label="Duel Menu">
+      <button type="button" class="drawer-action-btn" id="btn-menu-lang" role="menuitem">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
+        <span class="btn-label" data-i18n="menuLang">Language: EN</span>
+      </button>
+      <button type="button" class="drawer-action-btn" id="btn-menu-zoom" role="menuitem">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <span class="btn-label" data-i18n="menuZoom">Field Zoom: Auto</span>
+      </button>
+      <button type="button" class="drawer-action-btn" id="btn-menu-guide" role="menuitem">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="btn-label" data-i18n="menuGuide">How to Play</span>
+      </button>
+      <button type="button" class="drawer-action-btn drawer-action-danger" id="btn-menu-leave" role="menuitem">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="btn-label" data-i18n="menuLeave">Leave Duel</span>
+      </button>
+    </div>
+
     <div class="duel-layout">
-      <!-- Left Sidebar: Card Inspector & Combo Helper -->
-      <aside class="inspector-sidebar" id="inspector-sidebar">
-        <div class="inspector-tabs">
-          <button type="button" class="insp-tab active" data-insp="card" id="tab-insp-card" data-i18n="inspTabCard">🔍 ข้อมูลการ์ด</button>
-          <button type="button" class="insp-tab" data-insp="log" id="tab-insp-log" data-i18n="inspTabLog">📜 ประวัติการดูเอล</button>
+      <!-- Left Sidebar (Desktop) / Off-Canvas Overlay Sheet (Mobile): Card Inspector & Duel Log -->
+      <aside class="inspector-sidebar" id="inspector-sidebar" aria-label="Card Inspector and Duel Log">
+        <div class="inspector-header-bar">
+          <div class="inspector-tabs">
+            <button type="button" class="insp-tab active" data-insp="card" id="tab-insp-card">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span class="btn-label" data-i18n="inspTabCard">Card Info</span>
+            </button>
+            <button type="button" class="insp-tab" data-insp="log" id="tab-insp-log">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span class="btn-label" data-i18n="inspTabLog">Duel Log</span>
+            </button>
+          </div>
+          <button type="button" class="btn-close-inspector" id="btn-close-mobile-inspector" aria-label="Close Card Inspector">
+            <svg class="ui-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
         <div id="inspector-card-pane" class="inspector-pane active">
           <div id="inspector-content" class="inspector-content">
-            <div class="inspector-placeholder" data-i18n="inspPlaceholder">แตะหรือชี้ที่การ์ดใบใดก็ได้เพื่ออ่านชื่อภาษาไทย ค่าพลัง และรายละเอียดเอฟเฟค</div>
+            <div class="inspector-placeholder" data-i18n="inspPlaceholder">Hover or tap any card to view its stats and full effect text</div>
           </div>
         </div>
 
@@ -209,98 +274,95 @@
       <!-- Center & Right: Duel Field -->
       <section class="battlefield-area">
         <aside id="chain-stack-overlay" class="chain-stack-overlay hidden" aria-label="Chain Link Order"></aside>
+
         <!-- Opponent Top Status HUD -->
         <div class="player-hud opponent-hud">
           <div class="hud-left">
-            <div class="avatar-circle opp-avatar">對手</div>
-            <div>
-              <div class="hud-player-name" id="opp-name">ผู้เล่น 2</div>
+            <div class="avatar-circle opp-avatar" aria-hidden="true">OPP</div>
+            <div class="hud-identity">
+              <div class="hud-player-name" id="opp-name">Opponent</div>
             </div>
             <div class="lp-wrapper">
               <div class="lp-label">LP <span id="opp-lp-value" aria-live="polite">8000</span></div>
             </div>
-            <div class="turn-elapsed-pill" id="turn-elapsed-pill" title="จำนวนเทิร์นของการดูเอล">⏳ เทิร์น 1 (ผ่านมา 0 เทิร์น)</div>
+            <span class="turn-elapsed-pill" id="turn-elapsed-pill" title="Current duel turn">Turn 1 (0 elapsed)</span>
           </div>
 
           <!-- Opponent Hand Preview -->
-          <div class="opp-hand-bar" id="opp-hand-bar" title="การ์ดบนมือของฝ่ายตรงข้าม"></div>
+          <div class="opp-hand-bar" id="opp-hand-bar" title="Opponent Hand"></div>
 
+          <!-- Opponent Zone Pills (Desktop only — hidden on mobile to avoid duplicating playmat zones) -->
           <div class="hud-right-zones">
-            <button type="button" class="zone-pill-btn" id="btn-opp-gy" title="ดูสุสานฝ่ายตรงข้าม">
-              🪦 สุสานคู่ต่อสู้: <span id="opp-gy-count">0</span>
+            <button type="button" class="zone-pill-btn" id="btn-opp-gy" title="View Opponent Graveyard">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h14"/><path d="M7 20v-9a5 5 0 0 1 10 0v9"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+              <span class="btn-label" data-i18n="oppGyLabel">Opp GY:</span>
+              <span id="opp-gy-count">0</span>
             </button>
-            <button type="button" class="zone-pill-btn" id="btn-opp-banished" title="ดูการ์ดนอกเกมฝ่ายตรงข้าม">
-              🌌 นอกเกม: <span id="opp-banished-count">0</span>
+            <button type="button" class="zone-pill-btn" id="btn-opp-banished" title="View Opponent Banished">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+              <span class="btn-label" data-i18n="oppBanishedLabel">Banished:</span>
+              <span id="opp-banished-count">0</span>
             </button>
-            <div class="zone-pill-static">📚 เด็ค: <span id="opp-deck-count">35</span> | Extra: <span id="opp-extra-count">10</span></div>
+            <span class="zone-pill-static">
+              <span>Deck:</span> <span id="opp-deck-count">35</span> | <span>Extra:</span> <span id="opp-extra-count">10</span>
+            </span>
           </div>
         </div>
 
-        <!-- The Master Duel Playmat (Authentic Master Duel Layout) -->
-        <div class="playmat-container playmat-ruins" id="playmat-container">
-          <!-- Opponent Spell/Trap Row: [Deck (8-opp)] [STZ x5] [Extra Deck (7-opp)] -->
+        <!-- The Master Duel Playmat -->
+        <section class="playmat-container playmat-ruins" id="playmat-container" aria-label="Duel Playmat">
+          <!-- Opponent Spell/Trap Row: [Deck] [STZ x5] [Extra Deck] -->
           <div class="field-row opp-stz-row">
             <div class="side-col left-side-col">
-              <div class="deck-pile-slot opp-deck-pile" title="เด็คคู่ต่อสู้">
+              <div class="deck-pile-slot opp-deck-pile" title="Opponent Main Deck">
                 <span class="pile-label">DECK</span>
                 <span class="zone-count" id="opp-deck-mat-count">35</span>
               </div>
             </div>
             <div class="five-zones-grid" id="opp-stz-grid"></div>
             <div class="side-col right-side-col">
-              <div class="deck-pile-slot opp-extra-pile" title="Extra Deck คู่ต่อสู้">
+              <div class="deck-pile-slot opp-extra-pile" title="Opponent Extra Deck">
                 <span class="pile-label">EXTRA</span>
                 <span class="zone-count" id="opp-extra-mat-count">10</span>
               </div>
             </div>
           </div>
 
-          <!-- Opponent Main Monster Row: [Banished(9-opp) + GY(6-opp)] [MMZ x5] [Field Spell(5-opp)] -->
+          <!-- Opponent Main Monster Row: [Banished + GY] [MMZ x5] [Field Spell] -->
           <div class="field-row opp-mmz-row">
             <div class="side-col left-side-col dual-oct-col">
-              <button type="button" class="oct-zone-btn" id="btn-opp-banished-mat" title="ดูการ์ดนอกเกมคู่ต่อสู้">
-                <span class="oct-label" data-i18n="zoneBanished">นอกเกม</span>
+              <button type="button" class="oct-zone-btn" id="btn-opp-banished-mat" title="Opponent Banished">
+                <span class="oct-label" data-i18n="zoneBanished">Banished</span>
                 <span class="oct-count" id="opp-banished-mat-count">0</span>
               </button>
-              <button type="button" class="oct-zone-btn" id="btn-opp-gy-mat" title="ดูสุสานคู่ต่อสู้">
-                <span class="oct-label" data-i18n="zoneGy">สุสาน</span>
+              <button type="button" class="oct-zone-btn gy-oct" id="btn-opp-gy-mat" title="Opponent Graveyard">
+                <span class="oct-label" data-i18n="zoneGy">GY</span>
                 <span class="oct-count" id="opp-gy-mat-count">0</span>
               </button>
             </div>
             <div class="five-zones-grid" id="opp-mmz-grid"></div>
             <div class="side-col right-side-col">
-              <div class="card-zone-box" id="opp-field-spell-slot" data-zone-label="เวทสนามอีกฝ่าย"></div>
+              <div class="card-zone-box" id="opp-field-spell-slot" data-zone-label="Opp Field"></div>
             </div>
           </div>
 
-          <!-- Center Row: [Utility] [EMZ aligned to Col 2 & Col 4] [Master Duel Circular Turn/Phase Orb] -->
+          <!-- Center Row: [Symmetry Spacer] [EMZ aligned to Col 2 & Col 4] [Master Duel Circular Turn Orb] -->
           <div class="field-row center-emz-row">
-            <div class="side-col left-side-col center-utils-col">
-              <button type="button" class="btn-chain-toggle chain-auto" id="btn-chain-toggle" title="สลับโหมดถามเชนเอฟเฟค (AUTO / ON / OFF)">
-                ⛓️ Chain: <strong id="chain-mode-text">AUTO</strong>
-              </button>
-              <button type="button" class="btn-surrender" id="btn-leave-duel" data-i18n="btnLeave">🏳️ ออก</button>
-              <button type="button" class="btn-mobile-zoom" id="btn-mobile-field-zoom" title="ปรับขนาดสนามให้พอดีจอ / ซูมออก">🔍 Auto</button>
-            </div>
+            <div class="side-col left-side-col center-emz-spacer" aria-hidden="true"></div>
 
             <!-- 5-column alignment track so EMZs sit directly above Col 2 and Col 4 -->
             <div class="five-zones-grid emz-track-grid">
               <div class="emz-spacer"></div>
-              <div class="emz-slot" id="self-emz-slot" data-zone-label="EMZ ซ้าย"></div>
+              <div class="emz-slot" id="self-emz-slot" data-zone-label="Left EMZ"></div>
               <div class="emz-connector-bar"></div>
-              <div class="emz-slot" id="opp-emz-slot" data-zone-label="EMZ ขวา"></div>
+              <div class="emz-slot" id="opp-emz-slot" data-zone-label="Right EMZ"></div>
               <div class="emz-spacer"></div>
             </div>
 
-            <!-- Master Duel Circular Phase Orb & Action Buttons -->
+            <!-- Master Duel Circular Phase Orb -->
             <div class="side-col right-side-col phase-orb-col">
               <div class="phase-orb-stack">
                 <div class="phase-orb" id="turn-indicator-pill">Turn 1</div>
-                <div class="phase-action-buttons">
-                  <button type="button" class="btn-phase btn-battle" id="btn-go-battle" data-i18n="btnBattle">⚔️ Battle</button>
-                  <button type="button" class="btn-phase btn-mp2 hidden" id="btn-go-mp2" data-i18n="btnMp2">🔮 MP2</button>
-                  <button type="button" class="btn-phase btn-end-turn" id="btn-end-turn" data-i18n="btnEndTurn">⏭️ จบเทิร์น</button>
-                </div>
               </div>
             </div>
           </div>
@@ -318,57 +380,100 @@
             </div>
           </div>
 
-          <!-- Player Main Monster Row: [Field Spell (5)] [MMZ x5 (1)] [Banished (9) + GY (6)] -->
+          <!-- Player Main Monster Row: [Field Spell] [MMZ x5] [Banished + GY] -->
           <div class="field-row self-mmz-row">
             <div class="side-col left-side-col">
-              <div class="card-zone-box" id="self-field-spell-slot" data-zone-label="เวทสนาม (5)"></div>
+              <div class="card-zone-box" id="self-field-spell-slot" data-zone-label="Field Spell"></div>
             </div>
             <div class="five-zones-grid" id="self-mmz-grid"></div>
             <div class="side-col right-side-col dual-oct-col">
-              <button type="button" class="oct-zone-btn" id="btn-self-banished" title="การ์ดนอกเกมของคุณ (9)">
-                <span class="oct-label" data-i18n="zoneBanished">นอกเกม</span>
+              <button type="button" class="oct-zone-btn" id="btn-self-banished" title="Your Banished">
+                <span class="oct-label" data-i18n="zoneBanished">Banished</span>
                 <span class="oct-count" id="self-banished-count">0</span>
                 <span class="activate-circle-ring" aria-hidden="true"></span>
               </button>
-              <button type="button" class="oct-zone-btn gy-oct" id="btn-self-gy" title="สุสานของคุณ (6)">
-                <span class="oct-label" data-i18n="zoneGy">สุสาน (GY)</span>
+              <button type="button" class="oct-zone-btn gy-oct" id="btn-self-gy" title="Your Graveyard">
+                <span class="oct-label" data-i18n="zoneGy">GY</span>
                 <span class="oct-count" id="self-gy-count">0</span>
                 <span class="activate-circle-ring" aria-hidden="true"></span>
               </button>
             </div>
           </div>
 
-          <!-- Player Spell/Trap Row: [Extra Deck (7)] [STZ x5 (3)] [Main Deck (8)] -->
+          <!-- Player Spell/Trap Row: [Extra Deck] [STZ x5] [Main Deck] -->
           <div class="field-row self-stz-row">
             <div class="side-col left-side-col">
-              <button type="button" class="deck-pile-slot clickable-zone extra-deck-slot" id="btn-self-extra" title="Extra Deck (7)">
+              <button type="button" class="deck-pile-slot clickable-zone extra-deck-slot" id="btn-self-extra" title="Extra Deck">
                 <span class="pile-label">EXTRA</span>
                 <span class="zone-count" id="self-extra-count">0</span>
               </button>
             </div>
             <div class="five-zones-grid" id="self-stz-grid"></div>
             <div class="side-col right-side-col">
-              <div class="deck-pile-slot self-deck-pile" title="Main Deck (8)">
+              <div class="deck-pile-slot self-deck-pile" title="Main Deck">
                 <span class="pile-label">DECK</span>
                 <span class="zone-count" id="self-deck-count">35</span>
               </div>
             </div>
           </div>
+        </section>
+
+        <!-- Dedicated Duel Command Rail (Desktop strip / Mobile Portrait thumb bar / Mobile Landscape dedicated right rail) -->
+        <div class="duel-command-rail" id="duel-command-rail" role="toolbar" aria-label="Duel Controls">
+          <div class="command-rail-group rail-utils">
+            <button type="button" class="btn-chain-toggle chain-auto" id="btn-chain-toggle" title="Cycle Chain Response Mode (AUTO / ON / OFF)">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <span class="chain-label-wrap">Chain: <strong id="chain-mode-text">AUTO</strong></span>
+            </button>
+            <button type="button" class="btn-mobile-zoom" id="btn-mobile-field-zoom" title="Cycle Playmat Scale (Auto / 85% / 75%)">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span class="btn-label">Auto</span>
+            </button>
+            <button type="button" class="btn-surrender" id="btn-leave-duel" title="Leave Duel">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span class="btn-label" data-i18n="btnLeave">Leave</span>
+            </button>
+          </div>
+
+          <div class="command-rail-group rail-phases phase-action-buttons">
+            <button type="button" class="btn-phase btn-battle" id="btn-go-battle">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/></svg>
+              <span class="btn-label" data-i18n="btnBattle">Battle</span>
+            </button>
+            <button type="button" class="btn-phase btn-mp2 hidden" id="btn-go-mp2">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              <span class="btn-label" data-i18n="btnMp2">MP2</span>
+            </button>
+            <button type="button" class="btn-phase btn-end-turn" id="btn-end-turn">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+              <span class="btn-label" data-i18n="btnEndTurn">End Turn</span>
+            </button>
+          </div>
         </div>
 
         <!-- Non-blocking YGOPro Horizontal Card Selector / Zone Strip -->
-        <div id="ygopro-card-strip" class="ygopro-card-strip hidden" role="region" aria-label="ตัวเลือกการ์ดแบบ YGOPro"></div>
+        <div id="ygopro-card-strip" class="ygopro-card-strip hidden" role="region" aria-label="Card Selection Strip"></div>
 
-        <!-- Non-blocking Direct Field Zone Selection Banner -->
-        <div id="field-pick-banner" class="chain-prompt-bar hidden" role="region" aria-label="เลือกช่องบนสนาม"></div>
+        <!-- Non-blocking Direct Field Zone Selection & Card Action Banner -->
+        <div id="field-pick-banner" class="chain-prompt-bar hidden" role="region" aria-label="Field Selection and Card Actions"></div>
 
-        <!-- Bottom Non-Blurring Master Duel Chain Selection Bar -->
-        <div id="chain-prompt-bar" class="chain-prompt-bar hidden" role="region" aria-label="จังหวะเชนเอฟเฟค">
+        <!-- Bottom Master Duel Chain Selection Bar -->
+        <div id="chain-prompt-bar" class="chain-prompt-bar hidden" role="region" aria-label="Chain Effect Prompt">
           <div class="chain-bar-header">
-            <span class="chain-spark">⚡</span>
+            <span class="chain-spark" aria-hidden="true">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </span>
             <div id="chain-trigger-desc" class="chain-trigger-desc"></div>
-            <button type="button" class="btn-mini btn-chain-peek" id="btn-chain-peek" aria-pressed="false" title="Temporarily view the board">👁️ View Board</button>
-            <button type="button" class="btn-secondary btn-chain-pass" id="btn-chain-pass" data-i18n="btnPassChain">⏭️ ไม่ใช้เอฟเฟค (Pass)</button>
+            <div class="chain-bar-actions">
+              <button type="button" class="btn-mini btn-chain-peek" id="btn-chain-peek" aria-pressed="false" title="Temporarily view the board">
+                <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="btn-label">View Board</span>
+              </button>
+              <button type="button" class="btn-secondary btn-chain-pass" id="btn-chain-pass">
+                <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                <span class="btn-label" data-i18n="btnPassChain">Pass Priority</span>
+              </button>
+            </div>
           </div>
           <div id="chain-options-list" class="chain-options-list"></div>
         </div>
@@ -376,7 +481,7 @@
         <!-- Player Bottom HUD & Hand Dock -->
         <div class="player-bottom-dock">
           <div class="self-hud-summary">
-            <span class="self-name-badge" id="self-name">คุณ (Player 1)</span>
+            <span class="self-name-badge" id="self-name">Player 1</span>
             <div class="lp-label">LP <span id="self-lp-value" aria-live="polite">8000</span></div>
           </div>
 
@@ -398,8 +503,8 @@
   <dialog id="dialog-zone-browser" closedby="any" aria-labelledby="zone-browser-title" class="md-dialog zone-dialog">
     <div class="dialog-inner">
       <div class="dialog-header">
-        <h3 id="zone-browser-title">รายการการ์ด</h3>
-        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-zone-browser">✕ ปิด</button>
+        <h3 id="zone-browser-title">Card List</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-zone-browser">✕ Close</button>
       </div>
       <p id="zone-browser-subtitle" class="dialog-subtitle"></p>
       <div id="zone-browser-grid" class="zone-browser-grid"></div>
@@ -410,22 +515,22 @@
   <dialog id="dialog-ai-studio" closedby="any" aria-labelledby="ai-studio-title" class="md-dialog studio-dialog">
     <div class="dialog-inner">
       <div class="dialog-header">
-        <h3 id="ai-studio-title">🤖 AI Card Studio — ระบบเพิ่มการ์ดใหม่เข้าสู่เกม</h3>
-        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ai-studio">✕ ปิด</button>
+        <h3 id="ai-studio-title">AI Card Studio — Custom Card Importer</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ai-studio">✕ Close</button>
       </div>
       <div class="studio-body">
         <div class="studio-info-callout">
-          <strong>โครงสร้างเกมนี้ออกแบบให้ AI ตัวอื่นเพิ่มการ์ดได้ทันที 2 ช่องทาง:</strong>
+          <strong>Add new cards into the engine in 2 ways:</strong>
           <ol>
-            <li><strong>สำหรับ AI Coding Agent:</strong> ให้ AI อ่านไฟล์ <code>AI_CARD_DEVELOPMENT_GUIDE.md</code> ในโปรเจกต์ แล้วเพิ่มไฟล์การ์ดลงใน <code>src/cards/decks/</code> หรือ <code>src/cards/custom_cards.json</code></li>
-            <li><strong>วาง JSON การ์ดตรงนี้:</strong> ให้ ChatGPT / Claude / Gemini สร้าง JSON การ์ดตามเทมเพลตด้านล่าง แล้วกด <strong>"ตรวจสอบและบันทึกเข้าเกม"</strong> ได้ทันที!</li>
+            <li><strong>For AI Coding Agents:</strong> Follow <code>AI_CARD_DEVELOPMENT_GUIDE.md</code> and add card files under <code>src/cards/decks/</code> or <code>src/cards/custom_cards.json</code>.</li>
+            <li><strong>Paste Card JSON Below:</strong> Generate a card JSON template and click <strong>Validate &amp; Save Card</strong> immediately.</li>
           </ol>
         </div>
 
         <div class="studio-toolbar">
-          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-monster">📋 โหลดตัวอย่าง JSON มอนสเตอร์เอฟเฟค</button>
-          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-spell">📋 โหลดตัวอย่าง JSON การ์ดเวทมนตร์</button>
-          <button type="button" class="btn-gold btn-sm" id="btn-validate-and-save-card">✅ ตรวจสอบ Schema & บันทึกการ์ดเข้าเกม</button>
+          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-monster">Load Monster Sample</button>
+          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample-spell">Load Spell Sample</button>
+          <button type="button" class="btn-gold btn-sm" id="btn-validate-and-save-card">Validate &amp; Save Card</button>
         </div>
 
         <textarea id="textarea-custom-card-json" rows="14" spellcheck="false" class="code-textarea"></textarea>
@@ -438,26 +543,26 @@
   <dialog id="dialog-ydk-import" closedby="any" aria-labelledby="ydk-import-title" class="md-dialog studio-dialog">
     <div class="dialog-inner">
       <div class="dialog-header">
-        <h3 id="ydk-import-title">📋 นำเข้าเด็คจาก YDK / YDKE Clipboard (Import YDK / YDKE)</h3>
-        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ydk-import">✕ ปิด</button>
+        <h3 id="ydk-import-title">Import Deck from YDK / YDKE Clipboard</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-ydk-import">✕ Close</button>
       </div>
       <div class="studio-body">
         <div class="studio-info-callout">
-          <strong>รองรับทั้งโค้ด YDK และลิงก์ YDKE (<code>ydke://...</code>) จาก Master Duel Meta / EDOPro / YGOPro / Omega / YGOPRODeck:</strong>
-          <span>คัดลอก <code>ydke://...</code> หรือโค้ด <code>#main ... #extra ...</code> แล้วกดปุ่ม <strong>"📋 วางจาก Clipboard"</strong> หรือวางลงในช่องด้านล่าง (รองรับการ์ดทุกใบใน <code>cards.cdb</code> กว่า 13,000+ ใบ)</span>
+          <strong>Supports both YDK text and YDKE links (<code>ydke://...</code>) from Master Duel Meta / EDOPro / YGOPro / Omega / YGOPRODeck:</strong>
+          <span>Copy a <code>ydke://...</code> link or <code>#main ... #extra ...</code> list, then paste from clipboard or open a <code>.ydk</code> file (13,000+ cards supported from <code>cards.cdb</code>).</span>
         </div>
 
-        <div class="studio-toolbar" style="align-items:center;">
-          <input type="text" id="input-ydk-deck-name" placeholder="ตั้งชื่อเด็ค (ไม่ใส่จะตั้งให้อัตโนมัติ)" maxlength="48" style="flex:1;min-width:180px;padding:0.45rem 0.65rem;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(15,23,42,0.85);color:#f8fafc;font-size:0.85rem;" />
-          <button type="button" class="btn-secondary btn-sm" id="btn-paste-ydk-clipboard">📋 วางจาก Clipboard</button>
-          <label class="btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:0.25rem;">
-            📂 เปิดไฟล์ .ydk
-            <input type="file" id="input-ydk-file" accept=".ydk,.txt" style="display:none;" />
+        <div class="studio-toolbar ydk-toolbar">
+          <input type="text" id="input-ydk-deck-name" class="ydk-name-input" placeholder="Deck name (optional — auto-named if empty)" maxlength="48" />
+          <button type="button" class="btn-secondary btn-sm" id="btn-paste-ydk-clipboard">Paste Clipboard</button>
+          <label class="btn-secondary btn-sm ydk-file-label">
+            Open .ydk File
+            <input type="file" id="input-ydk-file" class="sr-file-input" accept=".ydk,.txt" />
           </label>
-          <button type="button" class="btn-gold btn-sm" id="btn-confirm-ydk-import">✅ นำเข้าเด็คนี้</button>
+          <button type="button" class="btn-gold btn-sm" id="btn-confirm-ydk-import">Import Deck</button>
         </div>
 
-        <textarea id="textarea-ydk-input" rows="12" spellcheck="false" class="code-textarea" placeholder="วางลิงก์ ydke://... หรือโค้ด YDK เช่น:&#10;ydke://s6BXBbOgVwWzoFcF!8o5uAQ==!!&#10;&#10;หรือ&#10;#main&#10;89631139&#10;#extra&#10;23995346"></textarea>
+        <textarea id="textarea-ydk-input" rows="12" spellcheck="false" class="code-textarea" placeholder="Paste ydke://... or YDK code, e.g.:&#10;ydke://s6BXBbOgVwWzoFcF!8o5uAQ==!!&#10;&#10;or&#10;#main&#10;89631139&#10;#extra&#10;23995346"></textarea>
         <div id="ydk-import-status" class="studio-status-msg"></div>
       </div>
     </div>
@@ -467,26 +572,26 @@
   <dialog id="dialog-howto" closedby="any" aria-labelledby="howto-title" class="md-dialog howto-dialog">
     <div class="dialog-inner">
       <div class="dialog-header">
-        <h3 id="howto-title">📖 คู่มือวิธีเล่น Yu-Gi-Oh! Master Duel (ฉบับเข้าใจง่ายใน 1 นาที)</h3>
-        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-howto">✕ ปิด</button>
+        <h3 id="howto-title">How to Play Yu-Gi-Oh! Master Duel Web</h3>
+        <button type="button" class="btn-close-dialog" data-close-dialog="dialog-howto">✕ Close</button>
       </div>
       <div class="howto-content">
         <div class="howto-grid">
           <div class="howto-box">
-            <h4>1. สังเกตขอบการ์ดเรืองแสง ✨</h4>
-            <p>การ์ดใบไหนบนมือ บนสนาม ในสุสาน หรือใน Extra Deck ที่สามารถทำแอคชั่นได้ จะมี <strong>ขอบสีทอง/ฟ้าเรืองแสง</strong> คลิกที่การ์ดเพื่อเลือกคำสั่งได้ทันที!</p>
+            <h4>1. Follow the Gold &amp; Cyan Playable Frames</h4>
+            <p>Cards in your hand, field, GY, or Extra Deck with legal plays show a crisp <strong>gold or cyan frame</strong>. Tap or click any highlighted card to view actions and choose a zone.</p>
           </div>
           <div class="howto-box">
-            <h4>2. การอัญเชิญจาก Extra Deck 🌌</h4>
-            <p>เมื่อบนสนามมีวัตถุดิบครบ (เช่น จูนเนอร์ + มอนสเตอร์รวมเลเวลเท่ากับมอนสเตอร์ซิงโคร หรือมอนสเตอร์เลเวลเท่ากัน 2 ตัวสำหรับ Xyz) ปุ่ม <strong>Extra Deck</strong> ซ้ายล่างจะเรืองแสง กดเพื่ออัญเชิญบอสได้เลย!</p>
+            <h4>2. Extra Deck Summoning</h4>
+            <p>When valid materials are on the field (Synchro, Xyz, Fusion, or Link), the <strong>Extra Deck</strong> pile lights up — tap it to summon your boss monster.</p>
           </div>
           <div class="howto-box">
-            <h4>3. ระบบเชนเอฟเฟค (Chain Link) ⚡</h4>
-            <p>เมื่ออีกฝ่ายใช้การ์ด และคุณมี Hand Trap (เช่น <em>ฮารุ อุราระ / Ash Blossom</em>) หรือการ์ดความเร็วสูง ระบบจะเด้งหน้าต่างถามว่าต้องการ <strong>เชนเอฟเฟคตอบโต้</strong> หรือไม่ เหมือนใน Master Duel!</p>
+            <h4>3. Authentic Chain Link Priority</h4>
+            <p>When your opponent activates a card and you hold a Quick Effect or Hand Trap (such as <em>Ash Blossom</em> or <em>Effect Veiler</em>), the Chain Bar prompts you to respond or pass.</p>
           </div>
           <div class="howto-box">
-            <h4>4. การเล่นกับเพื่อนผ่านมือถือ/คอมอีกเครื่อง 📱</h4>
-            <p>หากใช้ Wi-Fi เดียวกัน ให้เพื่อนสแกน QR Code หรือพิมพ์ IP ที่แสดงในหน้าแรก หากอยู่คนละที่กัน (เช่น มือถือใช้ 4G/5G) ให้เลือกแท็บ <strong>"โหมดออนไลน์ข้ามเน็ต (P2P)"</strong> แล้วส่งรหัสห้อง 4 หลักให้เพื่อน!</p>
+            <h4>4. Multiplayer Across Devices</h4>
+            <p>On the same Wi-Fi, let your friend scan the Lobby QR code or open the LAN URL, create a room, and duel live with synchronized OCG rules.</p>
           </div>
         </div>
       </div>
@@ -498,7 +603,7 @@
     <div class="dialog-inner rps-dialog-inner">
       <div class="dialog-header">
         <div class="rps-title-group">
-          <h3 id="rps-dialog-title" data-i18n="rpsTitle">✊✋✌️ Rock · Paper · Scissors</h3>
+          <h3 id="rps-dialog-title" data-i18n="rpsTitle">Rock · Paper · Scissors</h3>
           <span class="rps-round-badge" id="rps-round-badge">Round 1</span>
         </div>
         <button type="button" class="btn-close-dialog" id="btn-rps-cancel" data-i18n="rpsCancelBtn">✕ Cancel</button>
@@ -507,7 +612,7 @@
       <div class="rps-arena">
         <div class="rps-fighter is-self" id="rps-p1-card">
           <div class="rps-fighter-name" id="rps-p1-name">Player 1</div>
-          <div class="rps-hand-orb" id="rps-p1-hand" aria-hidden="true">❔</div>
+          <div class="rps-hand-orb" id="rps-p1-hand" aria-hidden="true">?</div>
           <div class="rps-fighter-tag" id="rps-p1-tag">Choose your move</div>
         </div>
 
@@ -518,7 +623,7 @@
 
         <div class="rps-fighter is-opp" id="rps-p2-card">
           <div class="rps-fighter-name" id="rps-p2-name">Opponent</div>
-          <div class="rps-hand-orb" id="rps-p2-hand" aria-hidden="true">❔</div>
+          <div class="rps-hand-orb" id="rps-p2-hand" aria-hidden="true">?</div>
           <div class="rps-fighter-tag" id="rps-p2-tag">Ready</div>
         </div>
       </div>
@@ -543,14 +648,14 @@
       </div>
 
       <div class="rps-turn-panel hidden" id="rps-turn-panel">
-        <div class="rps-turn-prompt" id="rps-turn-prompt">🏆 You won! Choose who starts first:</div>
+        <div class="rps-turn-prompt" id="rps-turn-prompt">You won! Choose who starts first:</div>
         <div class="rps-turn-row">
           <button type="button" class="btn-gold rps-turn-btn" id="btn-rps-go-first" data-rps-order="FIRST">
-            <span class="rps-turn-title" data-i18n="rpsGoFirst">⚡ Go First</span>
+            <span class="rps-turn-title" data-i18n="rpsGoFirst">Go First</span>
             <span class="rps-turn-sub" data-i18n="rpsGoFirstSub">You start Turn 1</span>
           </button>
           <button type="button" class="btn-secondary rps-turn-btn" id="btn-rps-go-second" data-rps-order="SECOND">
-            <span class="rps-turn-title" data-i18n="rpsGoSecond">🛡️ Go Second</span>
+            <span class="rps-turn-title" data-i18n="rpsGoSecond">Go Second</span>
             <span class="rps-turn-sub" data-i18n="rpsGoSecondSub">Opponent starts Turn 1</span>
           </button>
         </div>
@@ -561,18 +666,26 @@
   <!-- ==================== MODAL 5: DUEL RESULT BANNER ==================== -->
   <dialog id="dialog-duel-result" closedby="any" aria-labelledby="duel-result-title" class="md-dialog result-dialog">
     <div class="dialog-inner result-inner">
-      <div class="result-badge" id="result-badge-icon">🏆</div>
+      <div class="result-badge" id="result-badge-icon" aria-hidden="true">
+        <svg class="ui-icon ui-icon-trophy" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+      </div>
       <h2 id="duel-result-title" class="result-title">VICTORY</h2>
       <p id="duel-result-reason" class="result-reason"></p>
       <div class="result-actions">
-        <button type="button" class="btn-gold btn-large" id="btn-duel-rematch">🔄 ดวลใหม่อีกครั้ง (Rematch)</button>
-        <button type="button" class="btn-secondary btn-large" id="btn-result-back-lobby">🏠 กลับสู่หน้าเลือกเด็ค</button>
+        <button type="button" class="btn-gold btn-large" id="btn-duel-rematch">
+          <svg class="ui-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span class="btn-label" data-i18n="rematchBtn">Rematch</span>
+        </button>
+        <button type="button" class="btn-secondary btn-large" id="btn-result-back-lobby">
+          <svg class="ui-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span class="btn-label" data-i18n="backLobbyBtn">Back to Lobby</span>
+        </button>
       </div>
     </div>
   </dialog>
 
   <!-- Toast Notification Container -->
-  <div id="toast-container" class="toast-container"></div>
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <script type="module" src="/js/app.js"></script>
 </body>

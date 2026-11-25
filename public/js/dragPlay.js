@@ -5,9 +5,22 @@
  */
 
 let activeSuppressClickUntil = 0;
+let activeDragCleanup = null;
 
 export function shouldSuppressCardClick() {
   return Date.now() < activeSuppressClickUntil;
+}
+
+export function cancelActiveCardDrag() {
+  if (typeof activeDragCleanup === 'function') {
+    activeDragCleanup();
+  }
+}
+
+function isCoarseTouchPointer(ev) {
+  if (ev?.pointerType === 'touch') return true;
+  if (ev?.pointerType === 'mouse' || ev?.pointerType === 'pen') return false;
+  return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
 }
 
 function getSvgArrowOverlay() {
@@ -89,10 +102,20 @@ export function enableCardDragToPlay(cardEl, config) {
     // Only start drag for primary pointer button (drag guide requirement)
     if (downEvent.button !== 0) return;
     if (downEvent.target.closest('button, a, input, select, .card-pick-target, .card-pick-selected, .card-pick-locked, .zone-pick-target')) return;
+
+    // On coarse/touch pointers, respect Tap-First hand mode so horizontal hand swipes
+    // and single-tap card selection never race with touch-action: pan-x or trigger pointercancel.
+    const isCoarseTouch = isCoarseTouchPointer(downEvent);
+    if (isCoarseTouch && card.zone === 'HAND') return;
+
+    // Ensure no stale drag session survives if a previous gesture was interrupted
+    cancelActiveCardDrag();
+
     if (downEvent.pointerType === 'mouse') {
       downEvent.preventDefault();
     }
 
+    const activePointerId = downEvent.pointerId;
     const startX = downEvent.clientX;
     const startY = downEvent.clientY;
     const startRect = cardEl.getBoundingClientRect();
@@ -101,13 +124,18 @@ export function enableCardDragToPlay(cardEl, config) {
     const originCx = startRect.left + startRect.width / 2;
     const originCy = startRect.top + startRect.height / 2;
 
-    const isTouchHandCard = downEvent.pointerType !== 'mouse' && card.zone === 'HAND';
     let isDragging = false;
-    let gestureAborted = false;
+    let isCleanedUp = false;
     let dragMode = null; // 'ATTACK' | 'CARD_MOVE'
     let ghostEl = null;
     let currentHoverEl = null;
     let markedElements = [];
+    let rafId = null;
+    let latestX = startX;
+    let latestY = startY;
+    let cachedSvg = null;
+    let cachedGlowLine = null;
+    let cachedCoreLine = null;
 
     const markTarget = (el, className, attrs = {}) => {
       if (!el) return;
@@ -125,7 +153,7 @@ export function enableCardDragToPlay(cardEl, config) {
         const originSlot = cardEl.closest('.zone-slot, .emz-slot') || cardEl;
         markTarget(originSlot, 'drop-target-attack-cancel', {
           'data-drop-kind': 'ATTACK_CANCEL',
-          'data-drop-hint': lang === 'en' ? '✕ Drop here to Cancel' : '✕ ลากกลับตรงนี้เพื่อยกเลิก'
+          'data-drop-hint': lang === 'en' ? 'Cancel' : 'ยกเลิก'
         });
         // Highlight opponent monsters
         for (const targetId of normalizedAttackInfo.targets || []) {
@@ -135,7 +163,7 @@ export function enableCardDragToPlay(cardEl, config) {
             markTarget(oppSlot, 'drop-target-attack', {
               'data-drop-kind': 'ATTACK_MONSTER',
               'data-drop-target-id': targetId,
-              'data-drop-hint': lang === 'en' ? '⚔️ Attack' : '⚔️ โจมตี'
+              'data-drop-hint': lang === 'en' ? 'Attack' : 'โจมตี'
             });
           }
         }
@@ -144,11 +172,11 @@ export function enableCardDragToPlay(cardEl, config) {
           const oppGrid = document.getElementById('opp-mmz-grid');
           markTarget(oppHud, 'drop-target-attack-direct', {
             'data-drop-kind': 'ATTACK_DIRECT',
-            'data-drop-hint': lang === 'en' ? '⚔️ Direct Attack!' : '⚔️ โจมตีโดยตรง!'
+            'data-drop-hint': lang === 'en' ? 'Direct Attack' : 'โจมตีโดยตรง'
           });
           markTarget(oppGrid, 'drop-target-attack-direct', {
             'data-drop-kind': 'ATTACK_DIRECT',
-            'data-drop-hint': lang === 'en' ? '⚔️ Direct Attack!' : '⚔️ โจมตีโดยตรง!'
+            'data-drop-hint': lang === 'en' ? 'Direct Attack' : 'โจมตีโดยตรง'
           });
         }
         return;
@@ -167,10 +195,10 @@ export function enableCardDragToPlay(cardEl, config) {
         // 1. Empty MMZ Slots for Monster Summon / Set
         if (summonActs.length > 0) {
           const hint = summonActs.length > 1
-            ? (lang === 'en' ? '⚔️ Summon / 🛡️ Set' : '⚔️ อัญเชิญ / 🛡️ หมอบ')
+            ? (lang === 'en' ? 'Summon / Set' : 'อัญเชิญ / หมอบ')
             : ((summonActs[0].type === 'NORMAL_SET' || summonActs[0].type === 'SET_MONSTER')
-              ? (lang === 'en' ? '🛡️ Set' : '🛡️ หมอบ')
-              : (lang === 'en' ? '⚔️ Summon' : '⚔️ อัญเชิญ'));
+              ? (lang === 'en' ? 'Set' : 'หมอบ')
+              : (lang === 'en' ? 'Summon' : 'อัญเชิญ'));
           document.querySelectorAll('#self-mmz-grid .zone-slot').forEach((slotEl) => {
             if (slotEl.querySelector('.duel-card')) return;
             markTarget(slotEl, 'drop-zone-legal', {
@@ -185,7 +213,7 @@ export function enableCardDragToPlay(cardEl, config) {
           const fSlot = document.getElementById('self-field-spell-slot');
           markTarget(fSlot, 'drop-zone-legal', {
             'data-drop-kind': 'SELF_FIELD',
-            'data-drop-hint': lang === 'en' ? '❖ Field Spell' : '❖ เวทสนาม'
+            'data-drop-hint': lang === 'en' ? 'Field' : 'เวทสนาม'
           });
         }
 
@@ -196,12 +224,12 @@ export function enableCardDragToPlay(cardEl, config) {
           const hasAct = spellActivateActs.length > 0 || pendulumScaleActs.length > 0;
           const hasSet = setStActs.length > 0;
           const hint = pendulumScaleActs.length > 0 && !hasSet && spellActivateActs.length === 0
-            ? (lang === 'en' ? '🔶 Pendulum Scale' : '🔶 วางโซนเพนดูลัม')
+            ? (lang === 'en' ? 'Scale' : 'เพนดูลัม')
             : hasAct && hasSet
-              ? (lang === 'en' ? '✨ Use / 🂠 Set' : '✨ ใช้ / 🂠 หมอบ')
+              ? (lang === 'en' ? 'Use / Set' : 'ใช้ / หมอบ')
               : (hasAct
-                ? (lang === 'en' ? '✨ Activate' : '✨ สั่งใช้')
-                : (lang === 'en' ? '🂠 Set' : '🂠 หมอบ'));
+                ? (lang === 'en' ? 'Activate' : 'สั่งใช้')
+                : (lang === 'en' ? 'Set' : 'หมอบ'));
           document.querySelectorAll('#self-stz-grid .zone-slot').forEach((slotEl) => {
             if (slotEl.querySelector('.duel-card')) return;
             const zIdx = Number(slotEl.getAttribute('data-zone-index'));
@@ -218,7 +246,7 @@ export function enableCardDragToPlay(cardEl, config) {
           const playmat = document.getElementById('playmat-container');
           markTarget(playmat, 'drop-arena-activate', {
             'data-drop-kind': 'ARENA_ACTIVATE',
-            'data-drop-hint': lang === 'en' ? '⚡ Activate Effect' : '⚡ สั่งใช้งานเอฟเฟค'
+            'data-drop-hint': lang === 'en' ? 'Activate Effect' : 'สั่งใช้งานเอฟเฟค'
           });
         }
       } else if (hasHandOrFieldActions) {
@@ -226,8 +254,29 @@ export function enableCardDragToPlay(cardEl, config) {
         const playmat = document.getElementById('playmat-container');
         markTarget(playmat, 'drop-arena-activate', {
           'data-drop-kind': 'ARENA_ACTIVATE',
-          'data-drop-hint': lang === 'en' ? '⚡ Activate / Position' : '⚡ ใช้เอฟเฟค / เปลี่ยนท่า'
+          'data-drop-hint': lang === 'en' ? 'Activate / Position' : 'ใช้เอฟเฟค / เปลี่ยนท่า'
         });
+      }
+    };
+
+    const moveGhost = (left, top) => {
+      if (!ghostEl) return;
+      // Write transform directly on ghost element (never via inherited CSS custom properties on a parent)
+      ghostEl.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1.09)`;
+    };
+
+    const updateAttackArrow = (x1, y1, x2, y2) => {
+      if (cachedGlowLine) {
+        cachedGlowLine.setAttribute('x1', x1);
+        cachedGlowLine.setAttribute('y1', y1);
+        cachedGlowLine.setAttribute('x2', x2);
+        cachedGlowLine.setAttribute('y2', y2);
+      }
+      if (cachedCoreLine) {
+        cachedCoreLine.setAttribute('x1', x1);
+        cachedCoreLine.setAttribute('y1', y1);
+        cachedCoreLine.setAttribute('x2', x2);
+        cachedCoreLine.setAttribute('y2', y2);
       }
     };
 
@@ -236,51 +285,34 @@ export function enableCardDragToPlay(cardEl, config) {
       onHidePopup?.();
       onInspect?.(card);
       document.body.classList.add('is-card-dragging');
-      if (isTouchHandCard) {
-        document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
-      }
       cardEl.classList.add('drag-source-dim');
+
+      try {
+        cardEl.setPointerCapture?.(activePointerId);
+      } catch {
+        // Ignore if element cannot capture this pointer (e.g. synthetic test events)
+      }
 
       prepareLegalDropTargets();
 
       if (dragMode === 'ATTACK') {
         cardEl.classList.add('drag-attacking-source');
-        const svg = getSvgArrowOverlay();
-        svg.classList.remove('hidden');
+        cachedSvg = getSvgArrowOverlay();
+        cachedGlowLine = document.getElementById('atk-arrow-glow');
+        cachedCoreLine = document.getElementById('atk-arrow-core');
+        cachedSvg.classList.remove('hidden');
         updateAttackArrow(originCx, originCy, clientX, clientY);
       } else {
         const layer = getFloatingDragGhostLayer();
         layer.innerHTML = '';
         ghostEl = cardEl.cloneNode(true);
-        ghostEl.classList.remove('drag-source-dim', 'playable-glow', 'hand-card-item', 'def-position');
+        ghostEl.classList.remove('drag-source-dim', 'playable-glow', 'hand-card-item', 'def-position', 'is-selected');
         ghostEl.classList.add('dragging-card-ghost');
         ghostEl.style.width = `${startRect.width}px`;
         ghostEl.style.height = `${startRect.height}px`;
         layer.appendChild(ghostEl);
         layer.classList.remove('hidden');
         moveGhost(clientX - offsetX, clientY - offsetY);
-      }
-    };
-
-    const moveGhost = (left, top) => {
-      if (!ghostEl) return;
-      ghostEl.style.transform = `translate3d(${left}px, ${top}px, 0) scale(1.09)`;
-    };
-
-    const updateAttackArrow = (x1, y1, x2, y2) => {
-      const glowLine = document.getElementById('atk-arrow-glow');
-      const coreLine = document.getElementById('atk-arrow-core');
-      if (glowLine) {
-        glowLine.setAttribute('x1', x1);
-        glowLine.setAttribute('y1', y1);
-        glowLine.setAttribute('x2', x2);
-        glowLine.setAttribute('y2', y2);
-      }
-      if (coreLine) {
-        coreLine.setAttribute('x1', x1);
-        coreLine.setAttribute('y1', y1);
-        coreLine.setAttribute('x2', x2);
-        coreLine.setAttribute('y2', y2);
       }
     };
 
@@ -311,26 +343,38 @@ export function enableCardDragToPlay(cardEl, config) {
       }
       currentHoverEl = target;
 
-      if (dragMode === 'ATTACK') {
-        const svg = document.getElementById('duel-attack-arrow-svg');
+      if (dragMode === 'ATTACK' && cachedSvg) {
         const isCancelHover = target?.getAttribute('data-drop-kind') === 'ATTACK_CANCEL';
-        svg?.classList.toggle('is-cancel-hover', Boolean(isCancelHover));
-      }
-    };
-
-    const handleTouchMoveGuard = (touchEvent) => {
-      if (isDragging && touchEvent.cancelable) {
-        touchEvent.preventDefault();
+        cachedSvg.classList.toggle('is-cancel-hover', Boolean(isCancelHover));
       }
     };
 
     const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
       isDragging = false;
+      if (activeDragCleanup === cleanup) {
+        activeDragCleanup = null;
+      }
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
       document.removeEventListener('pointermove', handleMove);
       document.removeEventListener('pointerup', handleUp);
       document.removeEventListener('pointercancel', handleCancel);
-      document.removeEventListener('touchmove', handleTouchMoveGuard);
       document.removeEventListener('keydown', handleKeyDown);
+      cardEl.removeEventListener('lostpointercapture', handleCancel);
+      window.removeEventListener('blur', handleCancel);
+
+      try {
+        if (cardEl.hasPointerCapture?.(activePointerId)) {
+          cardEl.releasePointerCapture(activePointerId);
+        }
+      } catch {
+        // Ignore capture release errors on detached elements
+      }
 
       document.body.classList.remove('is-card-dragging');
       cardEl.classList.remove('drag-source-dim', 'drag-attacking-source');
@@ -352,9 +396,12 @@ export function enableCardDragToPlay(cardEl, config) {
         layer.innerHTML = '';
       }
 
-      const svg = document.getElementById('duel-attack-arrow-svg');
+      const svg = cachedSvg || document.getElementById('duel-attack-arrow-svg');
       svg?.classList.add('hidden');
       svg?.classList.remove('is-cancel-hover');
+      cachedSvg = null;
+      cachedGlowLine = null;
+      cachedCoreLine = null;
       ghostEl = null;
     };
 
@@ -481,47 +528,59 @@ export function enableCardDragToPlay(cardEl, config) {
       }
     };
 
-    const handleMove = (moveEvent) => {
-      if (gestureAborted) return;
+    const flushMoveFrame = () => {
+      rafId = null;
+      if (isCleanedUp) return;
+      // Guard against stale source node if a WebSocket state update replaced the card mid-drag
+      if (!cardEl.isConnected) {
+        cleanup();
+        return;
+      }
+
       if (!isDragging) {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
-        if (isTouchHandCard) {
-          const upward = -dy;
-          const absX = Math.abs(dx);
-          // Yield to native horizontal hand scroll if swiping sideways or downward
-          if ((absX >= 10 && absX >= upward * 1.1) || dy >= 10) {
-            gestureAborted = true;
-            cleanup();
-            return;
-          }
-          // Only trigger drag-to-play on mobile hand cards when dragged clearly UPWARD (forward)
-          if (upward < 18 || upward <= absX * 1.35) return;
-        } else {
-          const dist = Math.hypot(dx, dy);
-          if (dist < 6) return;
-        }
-        startVisualDrag(moveEvent.clientX, moveEvent.clientY);
+        const dist = Math.hypot(latestX - startX, latestY - startY);
+        if (dist < 6) return;
+        startVisualDrag(latestX, latestY);
       }
 
       if (dragMode === 'ATTACK') {
-        updateAttackArrow(originCx, originCy, moveEvent.clientX, moveEvent.clientY);
+        updateAttackArrow(originCx, originCy, latestX, latestY);
       } else {
-        moveGhost(moveEvent.clientX - offsetX, moveEvent.clientY - offsetY);
+        moveGhost(latestX - offsetX, latestY - offsetY);
       }
-      updateHoverHighlight(moveEvent.clientX, moveEvent.clientY);
+      updateHoverHighlight(latestX, latestY);
+    };
+
+    const handleMove = (moveEvent) => {
+      if (isCleanedUp || moveEvent.pointerId !== activePointerId) return;
+      if (!cardEl.isConnected) {
+        cleanup();
+        return;
+      }
+      latestX = moveEvent.clientX;
+      latestY = moveEvent.clientY;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(flushMoveFrame);
+      }
     };
 
     const handleUp = (upEvent) => {
+      if (isCleanedUp || upEvent.pointerId !== activePointerId) return;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       const wasDragging = isDragging;
-      if (wasDragging) {
+      if (wasDragging && cardEl.isConnected) {
         activeSuppressClickUntil = Date.now() + 200;
         resolveDrop(upEvent.clientX, upEvent.clientY);
       }
       cleanup();
     };
 
-    const handleCancel = () => {
+    const handleCancel = (cancelEvent) => {
+      if (isCleanedUp) return;
+      if (cancelEvent?.pointerId !== undefined && cancelEvent.pointerId !== activePointerId) return;
       if (isDragging) activeSuppressClickUntil = Date.now() + 200;
       cleanup();
     };
@@ -532,12 +591,12 @@ export function enableCardDragToPlay(cardEl, config) {
       }
     };
 
+    activeDragCleanup = cleanup;
     document.addEventListener('pointermove', handleMove);
     document.addEventListener('pointerup', handleUp);
     document.addEventListener('pointercancel', handleCancel);
-    if (isTouchHandCard) {
-      document.addEventListener('touchmove', handleTouchMoveGuard, { passive: false });
-    }
     document.addEventListener('keydown', handleKeyDown);
+    cardEl.addEventListener('lostpointercapture', handleCancel);
+    window.addEventListener('blur', handleCancel);
   });
 }

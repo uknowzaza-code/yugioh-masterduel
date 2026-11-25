@@ -725,6 +725,7 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
     const img = document.createElement('img');
     img.src = getCardArtUrl(cardMeta);
     img.alt = '';
+    img.decoding = 'async';
     img.className = 'vfx-ghost-img';
     ghost.appendChild(img);
     layer.appendChild(ghost);
@@ -745,15 +746,25 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
   }
 
   if (isField) {
-    const playmat = document.getElementById('playmat-container');
-    playmat?.animate(
-      [
-        { boxShadow: '0 0 0 rgba(45,212,191,0)' },
-        { boxShadow: '0 0 28px rgba(45,212,191,0.75), inset 0 0 28px rgba(16,185,129,0.35)', offset: 0.4 },
-        { boxShadow: '0 0 0 rgba(45,212,191,0)' }
-      ],
-      { duration: 640, delay, easing: 'ease-out' }
-    );
+    const playmatRect = getRectIfVisible('#playmat-container');
+    if (playmatRect) {
+      const pulse = document.createElement('div');
+      pulse.className = 'vfx-field-spell-pulse';
+      pulse.style.left = `${playmatRect.left}px`;
+      pulse.style.top = `${playmatRect.top}px`;
+      pulse.style.width = `${playmatRect.width}px`;
+      pulse.style.height = `${playmatRect.height}px`;
+      layer.appendChild(pulse);
+      const pAnim = pulse.animate(
+        [
+          { transform: 'scale(0.985)', opacity: 0 },
+          { transform: 'scale(1)', opacity: 0.85, offset: 0.38 },
+          { transform: 'scale(1.015)', opacity: 0 }
+        ],
+        { duration: 640, delay, easing: 'ease-out', fill: 'both' }
+      );
+      pAnim.finished.catch(() => {}).finally(() => pulse.remove());
+    }
   }
 }
 
@@ -775,6 +786,7 @@ function spawn3dFlipStage(rect, cardMeta, destPileRect, themeColor, delay = 0) {
   const img = document.createElement('img');
   img.src = getCardArtUrl(cardMeta);
   img.alt = '';
+  img.decoding = 'async';
   img.className = 'vfx-ghost-img';
   front.appendChild(img);
 
@@ -917,6 +929,7 @@ function spawnPileActivationCutin(pileRect, cardMeta, chainLink, delay = 0) {
   const img = document.createElement('img');
   img.src = getCardArtUrl(cardMeta);
   img.alt = '';
+  img.decoding = 'async';
   img.className = 'vfx-ghost-img';
   cutin.appendChild(img);
   layer.appendChild(cutin);
@@ -978,6 +991,7 @@ function spawnCardSendGhost(cardInfo, prevRect, targetRect, cardDef, delay = 0) 
     const img = document.createElement('img');
     img.src = cardInfo?.artSrc || getCardArtUrl(cardDef);
     img.alt = '';
+    img.decoding = 'async';
     img.className = 'vfx-ghost-img';
     ghost.appendChild(img);
   }
