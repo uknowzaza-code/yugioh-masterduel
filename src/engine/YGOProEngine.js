@@ -1380,6 +1380,32 @@ export class YGOProEngine {
       response = action.response;
       if (response.type === OcgResponseType.ANNOUNCE_RACE && Array.isArray(response.races)) {
         response = { ...response, races: response.races.map(r => BigInt(r)) };
+      } else if (
+        response.type === OcgResponseType.SORT_CARD &&
+        Array.isArray(response.order) &&
+        response.order.length > 0
+      ) {
+        // Workaround for ocgcore-wasm@0.1.6 bug: case 15 (SORT_CARD) erroneously prepends a length byte
+        // before the int8 rank array, causing ygopro-core MSG_RETRY on every manual sort (e.g. SPYRAL, Pot of Prosperity).
+        // Also convert UI click-order (order[rank] = cardIdx) to ygopro-core's bvalue[cardIdx] = rank.
+        const count = m.cards?.length || response.order.length;
+        const bvalues = new Array(count).fill(0);
+        for (let rank = 0; rank < response.order.length; rank++) {
+          const cardIdx = Number(response.order[rank]);
+          if (cardIdx >= 0 && cardIdx < count) {
+            bvalues[cardIdx] = rank;
+          }
+        }
+        // Pack raw int8 bytes into int16 little-endian pairs via SELECT_COUNTER (no length prefix)
+        const counters = [];
+        for (let i = 0; i < bvalues.length; i += 2) {
+          const lo = bvalues[i] & 0xff;
+          const hi = (i + 1 < bvalues.length ? bvalues[i + 1] : 0) & 0xff;
+          let val = lo | (hi << 8);
+          if (val >= 0x8000) val -= 0x10000;
+          counters.push(val);
+        }
+        response = { type: OcgResponseType.SELECT_COUNTER, counters };
       }
     } else if (m.type === OcgMessageType.SELECT_IDLECMD) {
       const isEnterBattle = action.type === 'ENTER_BATTLE' || (action.type === 'CHANGE_PHASE' && action.targetPhase === PHASES.BP);

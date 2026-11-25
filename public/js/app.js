@@ -4151,14 +4151,12 @@ function enterOcgCardStripMode(prompt) {
     confirmBtn.onclick = () => sendOcgPromptResponse({ type: 15, order });
 
     const headerButtons = [confirmBtn];
-    if (isChainSort) {
-      const autoBtn = document.createElement('button');
-      autoBtn.type = 'button';
-      autoBtn.className = 'btn btn-secondary btn-mini';
-      autoBtn.textContent = lang === 'en' ? '⚡ Auto Order' : '⚡ เรียงอัตโนมัติ';
-      autoBtn.onclick = () => sendOcgPromptResponse({ type: 15, order: null });
-      headerButtons.push(autoBtn);
-    }
+    const autoBtn = document.createElement('button');
+    autoBtn.type = 'button';
+    autoBtn.className = 'btn btn-secondary btn-mini';
+    autoBtn.textContent = lang === 'en' ? '⚡ Auto Order' : '⚡ เรียงอัตโนมัติ';
+    autoBtn.onclick = () => sendOcgPromptResponse({ type: 15, order: null });
+    headerButtons.push(autoBtn);
 
     cards.forEach((c, idx) => {
       const { col, cardEl } = buildYgoproStripCardNode(c, c.zone || 'DECK', pIdx);
@@ -4191,8 +4189,8 @@ function enterOcgCardStripMode(prompt) {
     return Boolean(openYgoproCardStrip({
       mode: 'ocg-strip',
       title: isChainSort
-        ? (lang === 'en' ? 'Order Trigger Chain Links' : 'จัดลำดับเชนเอฟเฟกต์')
-        : (lang === 'en' ? 'Sort Cards in Order' : 'เรียงลำดับการ์ด'),
+        ? (lang === 'en' ? 'Order Trigger Chain Links (#1 = CL1)' : 'จัดลำดับเชนเอฟเฟกต์ (#1 = CL1)')
+        : (lang === 'en' ? 'Sort Cards in Order (#1 = Top / First)' : 'เรียงลำดับการ์ด (#1 = ใบบนสุด / ใบแรก)'),
       headerButtons,
       bodyEl: track
     }));
