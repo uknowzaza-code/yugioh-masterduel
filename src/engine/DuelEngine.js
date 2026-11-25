@@ -1573,7 +1573,13 @@ export class DuelEngine {
     }
 
     if (type === 'SURRENDER') {
+      if (playerIndex !== 0 && playerIndex !== 1) {
+        return { ok: false, errorTh: 'รหัสผู้เล่นไม่ถูกต้อง' };
+      }
+      this.state.pendingChainPrompt = null;
+      this.state.chainStack = [];
       this.state.winner = 1 - playerIndex;
+      this.state.winReason = 'surrender';
       this.state.winReasonTh = `${this.state.players[playerIndex].name} ขอยอมแพ้ (Surrender)`;
       this.log(`🏳️ ${this.state.winReasonTh}`);
       return { ok: true };

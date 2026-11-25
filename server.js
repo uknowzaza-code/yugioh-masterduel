@@ -14,6 +14,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { getSharedOcgCore, YGOProEngine } from './src/engine/YGOProEngine.js';
+import { normalizeAiDifficulty, formatAiDisplayName } from './src/engine/YgoProAi.js';
 import { RpsSession } from './src/engine/RpsSession.js';
 import { MqttWssClient } from './src/engine/CloudRelay.js';
 import { getUiCardMeta } from './src/engine/OcgCardDb.js';
@@ -154,9 +155,11 @@ async function createYgoProEngineForDecks({
   p1Name,
   p1DeckId,
   isSoloVsAi = false,
-  humanStartsFirst = true
+  humanStartsFirst = true,
+  aiDifficulty = 'normal'
 }) {
   const core = await getSharedOcgCore();
+  const normDifficulty = normalizeAiDifficulty(aiDifficulty);
   const d0 = getPresetDeckById(p0DeckId) || PRESET_DECKS[0];
   const d1 = getPresetDeckById(p1DeckId) || PRESET_DECKS[1] || PRESET_DECKS[0];
   const humanCards = [...expandDeckRecipe(d0.mainDeckRecipe || []), ...expandDeckRecipe(d0.extraDeckRecipe || [])];
@@ -165,23 +168,25 @@ async function createYgoProEngineForDecks({
   if (isSoloVsAi && !humanStartsFirst) {
     return new YGOProEngine({
       core,
-      player1Name: p1Name || 'YGOPro AI',
+      player1Name: p1Name || formatAiDisplayName(normDifficulty),
       player2Name: p0Name || 'Player 1',
       deck1Cards: oppCards,
       deck2Cards: humanCards,
       isSoloVsAi: true,
-      aiIndex: 0
+      aiIndex: 0,
+      aiDifficulty: normDifficulty
     });
   }
 
   return new YGOProEngine({
     core,
     player1Name: p0Name || 'Player 1',
-    player2Name: p1Name || (isSoloVsAi ? 'YGOPro AI' : 'Player 2'),
+    player2Name: p1Name || (isSoloVsAi ? formatAiDisplayName(normDifficulty) : 'Player 2'),
     deck1Cards: humanCards,
     deck2Cards: oppCards,
     isSoloVsAi,
-    aiIndex: 1
+    aiIndex: 1,
+    aiDifficulty: normDifficulty
   });
 }
 
@@ -1184,13 +1189,15 @@ async function handleClientMessage(ws, msg) {
           const prev = soloDuels.get(ws);
           if (prev) prev.destroy();
           const humanStartsFirst = msg.firstPlayer !== 'ai' && msg.humanStartsFirst !== false;
+          const aiDifficulty = normalizeAiDifficulty(msg.aiDifficulty);
           const engine = await createYgoProEngineForDecks({
             p0Name: msg.playerName || 'Player 1',
             p0DeckId: msg.playerDeckId || 'blue_eyes_meta',
-            p1Name: 'YGOPro AI',
+            p1Name: formatAiDisplayName(aiDifficulty),
             p1DeckId: msg.aiDeckId || 'swordsoul_tenyi',
             isSoloVsAi: true,
-            humanStartsFirst
+            humanStartsFirst,
+            aiDifficulty
           });
           soloDuels.set(ws, engine);
           const humanIdx = engine.humanIndex ?? 0;

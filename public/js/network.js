@@ -559,7 +559,7 @@ export class MultiplayerManager {
   /**
    * เริ่มโหมดเล่นคนเดียว (Solo vs AI) ผ่าน YGOPro Core (ocgcore-wasm) บนเซิร์ฟเวอร์
    */
-  startSoloDuel({ playerName, playerDeckId, aiDeckId, firstPlayer = 'human', customDeck = null, customCards = [] }) {
+  startSoloDuel({ playerName, playerDeckId, aiDeckId, aiDifficulty = 'normal', firstPlayer = 'human', customDeck = null, customCards = [] }) {
     this.destroyPeer();
     this.wsSession = null;
     this.intentionalDisconnect = false;
@@ -569,6 +569,7 @@ export class MultiplayerManager {
       playerName,
       playerDeckId,
       aiDeckId,
+      aiDifficulty,
       firstPlayer,
       customDeck,
       customCards

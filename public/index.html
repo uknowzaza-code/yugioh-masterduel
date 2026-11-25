@@ -101,6 +101,15 @@
               <p data-i18n="soloDesc">Practice combos and test decks against an AI that Synchro, Fusion, Link summons &amp; chains</p>
             </div>
           </div>
+          <div class="solo-difficulty-row">
+            <span class="solo-diff-label" id="solo-diff-label" data-i18n="soloDiffLabel">AI Difficulty:</span>
+            <div class="solo-difficulty-group" id="solo-difficulty-group" role="radiogroup" aria-labelledby="solo-diff-label">
+              <button type="button" class="solo-diff-btn" data-difficulty="easy" role="radio" aria-checked="false" data-i18n="diffEasy">Easy</button>
+              <button type="button" class="solo-diff-btn active" data-difficulty="normal" role="radio" aria-checked="true" data-i18n="diffNormal">Normal</button>
+              <button type="button" class="solo-diff-btn" data-difficulty="hard" role="radio" aria-checked="false" data-i18n="diffHard">Hard</button>
+            </div>
+            <p class="solo-diff-hint" id="solo-diff-hint"></p>
+          </div>
           <div class="solo-controls">
             <label for="select-ai-deck" data-i18n="soloAiLabel">AI Opponent Deck:</label>
             <select id="select-ai-deck"></select>
@@ -235,7 +244,11 @@
         <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span class="btn-label" data-i18n="menuGuide">How to Play</span>
       </button>
-      <button type="button" class="drawer-action-btn drawer-action-danger" id="btn-menu-leave" role="menuitem">
+      <button type="button" class="drawer-action-btn drawer-action-danger" id="btn-menu-surrender" data-action="surrender" role="menuitem">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h11l-1.5 4L15 12H4"/></svg>
+        <span class="btn-label" data-i18n="menuSurrender">Surrender Duel</span>
+      </button>
+      <button type="button" class="drawer-action-btn" id="btn-menu-leave" role="menuitem">
         <svg class="ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         <span class="btn-label" data-i18n="menuLeave">Leave Duel</span>
       </button>
@@ -429,9 +442,13 @@
               <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <span class="btn-label">Auto</span>
             </button>
-            <button type="button" class="btn-surrender" id="btn-leave-duel" title="Leave Duel">
+            <button type="button" class="btn-leave-duel" id="btn-leave-duel" title="Leave Duel">
               <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               <span class="btn-label" data-i18n="btnLeave">Leave</span>
+            </button>
+            <button type="button" class="btn-surrender" id="btn-surrender-duel" data-action="surrender" title="Surrender Duel">
+              <svg class="ui-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h11l-1.5 4L15 12H4"/></svg>
+              <span class="btn-label" data-i18n="btnSurrender">Surrender</span>
             </button>
           </div>
 
@@ -659,6 +676,21 @@
             <span class="rps-turn-sub" data-i18n="rpsGoSecondSub">Opponent starts Turn 1</span>
           </button>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== MODAL 4B: SURRENDER CONFIRMATION ==================== -->
+  <dialog id="dialog-surrender-confirm" closedby="any" aria-labelledby="surrender-dialog-title" aria-describedby="surrender-dialog-body" class="md-dialog surrender-dialog">
+    <div class="dialog-inner surrender-dialog-inner">
+      <div class="surrender-dialog-icon" aria-hidden="true">
+        <svg class="ui-icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h11l-1.5 4L15 12H4"/></svg>
+      </div>
+      <h2 id="surrender-dialog-title" class="surrender-dialog-title" data-i18n="surrenderTitle">Surrender this duel?</h2>
+      <p id="surrender-dialog-body" class="surrender-dialog-body" data-i18n="surrenderBody">You will lose immediately. This cannot be undone.</p>
+      <div class="surrender-dialog-actions">
+        <button type="button" class="btn-secondary btn-large" id="btn-surrender-cancel" data-i18n="surrenderKeepPlaying">Keep Playing</button>
+        <button type="button" class="btn-danger-outline btn-large btn-surrender-confirm" id="btn-surrender-confirm" data-i18n="surrenderConfirm">Surrender</button>
       </div>
     </div>
   </dialog>

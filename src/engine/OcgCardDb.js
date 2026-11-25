@@ -9,6 +9,16 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { OcgAttribute, OcgType, cardMatchesOpcode } from 'ocgcore-wasm';
 import { CARD_REGISTRY } from '../cards/index.js';
+import {
+  OCG_SYSTEM_STRINGS,
+  OCG_SYSTEM_STRINGS_TH,
+  getLocalizedOcgSystemString,
+  loadStringsConf,
+  createDescriptionResolver,
+  genericOptionLabel
+} from './ocgSystemStrings.js';
+
+export { OCG_SYSTEM_STRINGS, OCG_SYSTEM_STRINGS_TH, getLocalizedOcgSystemString, genericOptionLabel };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, '..', '..');
@@ -295,202 +305,63 @@ export function getUiCardMeta(code) {
   return meta;
 }
 
-const OCG_SYSTEM_STRINGS = {
-  // Core actions
-  0: 'Activate Effect',
-  1: 'Normal Summon',
-  2: 'Special Summon',
-  10: 'Set',
-  11: 'Flip Summon',
-  12: 'Change Position',
-  // Coin toss
-  60: 'Heads',
-  61: 'Tails',
-  // Card types (e.g. SPYRAL Super Agent, Crush Card, Prohibition, etc.)
-  70: 'Monster',
-  71: 'Spell',
-  72: 'Trap',
-  // Phases
-  80: 'Main Phase 1',
-  81: 'Battle Phase',
-  82: 'Main Phase 2',
-  83: 'End Phase',
-  // Yes / No
-  90: 'Yes',
-  91: 'No',
-  // Common card/zone choices
-  100: 'Face-up Attack Position',
-  101: 'Face-up Defense Position',
-  102: 'Face-down Defense Position',
-  200: 'Apply Effect',
-  201: 'Yes',
-  202: 'No',
-  // Attributes (1010..1016)
-  1010: 'EARTH',
-  1011: 'WATER',
-  1012: 'FIRE',
-  1013: 'WIND',
-  1014: 'LIGHT',
-  1015: 'DARK',
-  1016: 'DIVINE',
-  // Monster Types / Races (1020..1045)
-  1020: 'Warrior',
-  1021: 'Spellcaster',
-  1022: 'Fairy',
-  1023: 'Fiend',
-  1024: 'Zombie',
-  1025: 'Machine',
-  1026: 'Aqua',
-  1027: 'Pyro',
-  1028: 'Rock',
-  1029: 'Winged Beast',
-  1030: 'Plant',
-  1031: 'Insect',
-  1032: 'Thunder',
-  1033: 'Dragon',
-  1034: 'Beast',
-  1035: 'Beast-Warrior',
-  1036: 'Dinosaur',
-  1037: 'Fish',
-  1038: 'Sea Serpent',
-  1039: 'Reptile',
-  1040: 'Psychic',
-  1041: 'Divine-Beast',
-  1042: 'Creator God',
-  1043: 'Wyrm',
-  1044: 'Cyberse',
-  1045: 'Illusion',
-  // Card categories / subtypes (1050..1082)
-  1050: 'Monster',
-  1051: 'Spell',
-  1052: 'Trap',
-  1054: 'Normal',
-  1055: 'Effect',
-  1056: 'Fusion',
-  1057: 'Ritual',
-  1058: 'Trap Monster',
-  1059: 'Spirit',
-  1060: 'Union',
-  1061: 'Gemini',
-  1062: 'Tuner',
-  1063: 'Synchro',
-  1064: 'Token',
-  1066: 'Quick-Play',
-  1067: 'Continuous',
-  1068: 'Equip',
-  1069: 'Field',
-  1070: 'Counter',
-  1071: 'Flip',
-  1072: 'Toon',
-  1073: 'Xyz',
-  1074: 'Pendulum',
-  1075: 'Special Summon',
-  1076: 'Link',
-  // Common SelectOption / effect labels (1100..1230)
-  1100: 'Destroy',
-  1101: 'Send to GY',
-  1102: 'Banish',
-  1103: 'Return to Deck',
-  1104: 'Return to Hand',
-  1105: 'Add to Hand',
-  1106: 'Draw',
-  1107: 'Discard',
-  1108: 'Special Summon',
-  1109: 'Normal Summon',
-  1110: 'Flip Summon',
-  1111: 'Set',
-  1112: 'Activate',
-  1113: 'Equip',
-  1114: 'Tribute',
-  1115: 'Target',
-  1150: 'Activate Effect',
-  1151: 'Normal Summon',
-  1152: 'Special Summon',
-  1153: 'Set',
-  1154: 'Flip Summon',
-  1155: 'Change Position',
-  1156: 'Attack',
-  1157: 'Direct Attack',
-  1158: 'Destroy',
-  1159: 'Banish',
-  1160: 'Activate Pendulum Scale',
-  1161: 'Apply Effect',
-  1162: 'Fusion Summon',
-  1163: 'Ritual Summon',
-  1164: 'Synchro Summon',
-  1165: 'Xyz Summon',
-  1166: 'Link Summon',
-  1167: 'Pendulum Summon',
-  1190: 'Add to Hand',
-  1191: 'Send to GY',
-  1192: 'Banish',
-  1193: 'Shuffle into Deck',
-  1194: 'Place on Top of Deck',
-  1195: 'Place on Bottom of Deck',
-  1200: 'Yes',
-  1201: 'No',
-  1210: 'Add to Hand',
-  1211: 'Special Summon',
-  1212: 'Send to GY',
-  1213: 'Banish',
-  1300: 'Heads',
-  1301: 'Tails',
-  1370: 'Increase Level',
-  1371: 'Decrease Level',
-  1372: 'Keep Level'
-};
+loadStringsConf(path.join(ROOT_DIR, 'data', 'ygopro', 'strings.conf'), 'en', true);
+loadStringsConf(path.join(ROOT_DIR, 'data', 'ygopro', 'strings.th.conf'), 'th', true);
 
-/**
- * แปลง desc id ของ ocgcore เป็นข้อความภาษาอังกฤษจาก cards.cdb หรือ system strings
- */
-export function resolveOcgDescription(descId, fallbackCardCode = null) {
+const resolveRawDescription = createDescriptionResolver((code, idx) => {
+  const meta = getUiCardMeta(code);
+  return meta?.strings?.[idx] ?? null;
+});
+
+function resolveCardNameFallback(descId, fallbackCardCode) {
   let big = 0n;
   try {
     big = BigInt(descId || 0);
   } catch {
     big = 0n;
   }
-  if (big === 0n) {
-    if (fallbackCardCode) {
-      const meta = getUiCardMeta(fallbackCardCode);
-      if (meta?.name) return `Activate ${meta.name}`;
-    }
-    return 'Activate Effect';
-  }
-
-  // System strings (0..65535) must be checked before classic 4-bit card Stringid to avoid collisions
-  if (big > 0n && big < 0x10000n) {
-    const sysNum = Number(big);
-    if (OCG_SYSTEM_STRINGS[sysNum]) return OCG_SYSTEM_STRINGS[sysNum];
-  }
-
-  // EDOPro / ocgcore-wasm 64-bit Stringid: (code << 20) + strIdx
   if (big >= 0x100000n) {
-    const code20 = Number(big >> 20n);
-    const idx20 = Number(big & 0xfffffn);
-    const meta20 = getUiCardMeta(code20);
-    if (meta20) {
-      if (meta20.strings?.[idx20]) return meta20.strings[idx20];
-      if (meta20.name) return `Activate ${meta20.name}`;
-    }
+    const meta20 = getUiCardMeta(Number(big >> 20n));
+    if (meta20?.name) return `Activate ${meta20.name}`;
   }
-
-  // Classic YGOPro Stringid: (code << 4) + strIdx
   if (big >= 16n && big < 0x100000000n) {
-    const code4 = Number(big >> 4n);
-    const idx4 = Number(big & 0xfn);
-    const meta4 = getUiCardMeta(code4);
-    if (meta4) {
-      if (meta4.strings?.[idx4]) return meta4.strings[idx4];
-      if (meta4.name) return `Activate ${meta4.name}`;
-    }
+    const meta4 = getUiCardMeta(Number(big >> 4n));
+    if (meta4?.name) return `Activate ${meta4.name}`;
   }
-
   if (fallbackCardCode) {
-    const meta = getUiCardMeta(fallbackCardCode);
-    if (meta?.name) return `Activate ${meta.name}`;
+    const metaFb = getUiCardMeta(fallbackCardCode);
+    if (metaFb?.name) return `Activate ${metaFb.name}`;
   }
+  return null;
+}
+
+/**
+ * Resolve an ocgcore description ID (system string or card Stringid) into readable text.
+ */
+export function resolveOcgDescription(descId, fallbackCardCode = null, lang = 'en') {
+  const resolved = resolveRawDescription(descId, fallbackCardCode, lang);
+  if (resolved) return resolved;
+  const fallbackName = resolveCardNameFallback(descId, fallbackCardCode);
+  if (fallbackName) return fallbackName;
+  let big = 0n;
+  try {
+    big = BigInt(descId || 0);
+  } catch {
+    big = 0n;
+  }
+  if (big === 0n) return getLocalizedOcgSystemString(0, lang) || 'Activate Effect';
   return `Option #${Number(big)}`;
+}
+
+/**
+ * Resolve a SELECT_OPTION item into a user-friendly label (never exposes raw "Option #573").
+ */
+export function resolveOcgOptionLabel(descId, index = 0, lang = 'en', fallbackCardCode = 0) {
+  const resolved = resolveRawDescription(descId, fallbackCardCode, lang);
+  if (resolved) return resolved;
+  const fallbackName = resolveCardNameFallback(descId, fallbackCardCode);
+  if (fallbackName) return fallbackName;
+  return genericOptionLabel(index, lang);
 }
 
 let allDbCodes = null;

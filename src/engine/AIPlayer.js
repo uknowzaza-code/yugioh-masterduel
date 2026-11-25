@@ -11,17 +11,22 @@ export class AIPlayer {
    * คำนวณแอคชั่นถัดไปที่ดีที่สุดสำหรับ AI (1 ก้าวต่อการเรียก เพื่อให้ UI แสดงแอนิเมชันทีละจังหวะอย่างเป็นธรรมชาติ)
    * @param {Object} engine - DuelEngine instance
    * @param {number} aiIndex - 0 หรือ 1 (ปกติคือ 1)
+   * @param {'easy'|'normal'|'hard'} [difficulty='normal']
    * @returns {Object|null} payload สำหรับส่งเข้า `engine.executeAction(aiIndex, payload)`
    */
-  static chooseNextAction(engine, aiIndex = 1) {
+  static chooseNextAction(engine, aiIndex = 1, difficulty = 'normal') {
     if (!engine.state || engine.state.winner !== null) return null;
 
+    const diff = difficulty === 'easy' || difficulty === 'hard' ? difficulty : 'normal';
     const legal = engine.getLegalActions(aiIndex);
     const aiPlayer = engine.state.players[aiIndex];
     const oppPlayer = engine.state.players[1 - aiIndex];
 
     // 1. Handle Chain Response Window (if AI is prompted to chain)
     if (legal.canChainRespond && legal.chainPrompt) {
+      if (diff === 'easy') {
+        return { type: 'CHAIN_RESPONSE', respond: false };
+      }
       const options = (legal.chainPrompt.respondableCards || []).filter(o => !o.isManualFallback);
       if (options.length > 0) {
         const picked = options[0];
@@ -156,16 +161,18 @@ export class AIPlayer {
       }
 
       // 2g. Set Traps or Quick-Play Spells in Main Phase before ending
-      for (const [instanceId, actList] of Object.entries(legal.handActions)) {
-        const card = aiPlayer.hand.find(c => c.instanceId === instanceId);
-        if (!card) continue;
-        if (card.kind === 'TRAP' || card.subType === 'QUICK_PLAY') {
-          const setAct = actList.find(a => a.type === 'SET_SPELL_TRAP');
-          if (setAct) {
-            return {
-              type: 'SET_SPELL_TRAP',
-              instanceId
-            };
+      if (diff !== 'easy') {
+        for (const [instanceId, actList] of Object.entries(legal.handActions)) {
+          const card = aiPlayer.hand.find(c => c.instanceId === instanceId);
+          if (!card) continue;
+          if (card.kind === 'TRAP' || card.subType === 'QUICK_PLAY') {
+            const setAct = actList.find(a => a.type === 'SET_SPELL_TRAP');
+            if (setAct) {
+              return {
+                type: 'SET_SPELL_TRAP',
+                instanceId
+              };
+            }
           }
         }
       }

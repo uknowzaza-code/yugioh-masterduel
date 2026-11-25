@@ -127,10 +127,32 @@ class DuelSoundFX {
 
 const sfx = new DuelSoundFX();
 
+const AI_DIFFICULTY_STORAGE_KEY = 'ygo_md_ai_difficulty';
+
+function getSavedAiDifficulty() {
+  try {
+    const saved = localStorage.getItem(AI_DIFFICULTY_STORAGE_KEY);
+    return saved === 'easy' || saved === 'hard' ? saved : 'normal';
+  } catch {
+    return 'normal';
+  }
+}
+
+function saveAiDifficulty(level) {
+  const norm = level === 'easy' || level === 'hard' ? level : 'normal';
+  try {
+    localStorage.setItem(AI_DIFFICULTY_STORAGE_KEY, norm);
+  } catch {
+    // Ignore storage restriction
+  }
+  return norm;
+}
+
 // ==================== APPLICATION STATE ====================
 const appState = {
   lang: getSavedLanguage(),
   playmatId: getSavedPlaymat(),
+  aiDifficulty: getSavedAiDifficulty(),
   selectedDeckId: PRESET_DECKS[0].id,
   deckSearch: '',
   deckCategory: 'all',
@@ -180,6 +202,7 @@ const UI_ICON_PATHS = {
   zoom: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6"/><path d="M8 11h6"/>',
   end: '<path d="m5 5 8 7-8 7V5Z"/><path d="M19 5v14"/>',
   leave: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  flag: '<path d="M4 22V4"/><path d="M4 4h11l-1.5 4L15 12H4"/>',
   mp2: '<path d="M12 3 4 12l8 9 8-9-8-9Z"/>',
   log: '<path d="M8 6h12"/><path d="M8 12h12"/><path d="M8 18h12"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/>',
   trophy: '<path d="M6 9H4a2 2 0 0 1-2-2V5h4"/><path d="M18 9h2a2 2 0 0 0 2-2V5h-4"/><path d="M6 4h12v6a6 6 0 0 1-12 0V4Z"/><path d="M12 16v5"/><path d="M8 21h8"/>',
@@ -1662,6 +1685,7 @@ function launchSoloAfterRps(ctx, firstPlayer = 'human') {
     playerName: ctx.playerName,
     playerDeckId: ctx.playerDeckId,
     aiDeckId: ctx.aiDeckId,
+    aiDifficulty: ctx.aiDifficulty || appState.aiDifficulty,
     firstPlayer,
     customDeck: ctx.customPayload?.customDeck || null,
     customCards: ctx.customPayload?.customCards || []
@@ -1808,12 +1832,44 @@ function setupRpsDialogBindings() {
   });
 }
 
+function updateAiDifficultyUI() {
+  const diff = appState.aiDifficulty || 'normal';
+  document.querySelectorAll('#solo-difficulty-group .solo-diff-btn').forEach((btn) => {
+    const btnDiff = btn.getAttribute('data-difficulty');
+    const isActive = btnDiff === diff;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  });
+  const hintEl = document.getElementById('solo-diff-hint');
+  if (hintEl) {
+    const descKey = diff === 'easy' ? 'diffEasyDesc' : diff === 'hard' ? 'diffHardDesc' : 'diffNormalDesc';
+    hintEl.textContent = t(appState.lang, descKey);
+  }
+}
+
+function setupAiDifficultySelector() {
+  const group = document.getElementById('solo-difficulty-group');
+  if (!group) return;
+  group.addEventListener('click', (event) => {
+    const btn = event.target.closest('.solo-diff-btn');
+    if (!btn) return;
+    const next = btn.getAttribute('data-difficulty');
+    if (!next) return;
+    appState.aiDifficulty = saveAiDifficulty(next);
+    updateAiDifficultyUI();
+    sfx.playClick();
+  });
+  updateAiDifficultyUI();
+}
+
 // ==================== STARTING DUELS (SOLO & SANDBOX VIA RPS) ====================
 function startSoloDuel() {
   clearRpsTimers();
   const playerName = document.getElementById('input-player-name').value.trim() || 'Player 1';
   const aiDeckId = resolveOpponentDeckId();
-  const aiName = appState.lang === 'en' ? 'YGOPro AI' : 'YGOPro AI';
+  const aiDifficulty = appState.aiDifficulty || 'normal';
+  const diffSuffix = aiDifficulty === 'easy' ? 'Easy' : aiDifficulty === 'hard' ? 'Hard' : 'Normal';
+  const aiName = `YGOPro AI (${diffSuffix})`;
   const customPayload = buildSelectedCustomDeckPayload(appState.selectedDeckId);
 
   const session = new RpsSession([playerName, aiName]);
@@ -1825,6 +1881,7 @@ function startSoloDuel() {
     playerName,
     playerDeckId: appState.selectedDeckId,
     aiDeckId,
+    aiDifficulty,
     customPayload,
     aiChosenOrder: null,
     lastRenderedRoundKey: null,
@@ -1865,7 +1922,7 @@ function syncLocalEngineToUI() {
       engine.state.pendingChainPrompt &&
       engine.state.pendingChainPrompt.responderIndex === 1) {
     setTimeout(() => {
-      const aiChainMove = AIPlayer.chooseNextAction(engine, 1);
+      const aiChainMove = AIPlayer.chooseNextAction(engine, 1, appState.aiDifficulty);
       if (aiChainMove) {
         engine.executeAction(1, aiChainMove);
         syncLocalEngineToUI();
@@ -1891,7 +1948,7 @@ function syncLocalEngineToUI() {
       !engine.state.pendingChainPrompt) {
     clearTimeout(appState.aiTimer);
     appState.aiTimer = setTimeout(() => {
-      const aiMove = AIPlayer.chooseNextAction(engine, 1);
+      const aiMove = AIPlayer.chooseNextAction(engine, 1, appState.aiDifficulty);
       if (aiMove) {
         engine.executeAction(1, aiMove);
         syncLocalEngineToUI();
@@ -2547,12 +2604,22 @@ function renderDuelScreen() {
 
   // 7. Check Win Condition Banner
   const resDlg = document.getElementById('dialog-duel-result');
+  const isEnded = state.winner !== null;
+  document.querySelectorAll('[data-action="surrender"]').forEach((btn) => {
+    btn.disabled = isEnded;
+  });
+
   if (state.winner !== null) {
+    const surrenderDlg = document.getElementById('dialog-surrender-confirm');
+    if (surrenderDlg?.open) surrenderDlg.close();
     const isWin = state.winner === myIdx;
     const badgeEl = document.getElementById('result-badge-icon');
     if (badgeEl) badgeEl.innerHTML = iconSvg(isWin ? 'trophy' : 'defeat', 'result-badge-svg');
     document.getElementById('duel-result-title').textContent = t(lang, isWin ? 'victoryTitle' : 'defeatTitle');
-    document.getElementById('duel-result-reason').textContent = state.winReasonTh || '';
+    const reasonText = state.winReason === 'surrender'
+      ? t(lang, isWin ? 'surrenderOppReason' : 'surrenderSelfReason')
+      : (state.winReasonTh || state.winReason || '');
+    document.getElementById('duel-result-reason').textContent = reasonText;
     if (!resDlg.open) resDlg.showModal();
   } else if (resDlg?.open) {
     resDlg.close();
@@ -3182,7 +3249,7 @@ function renderOcgPromptModal(prompt) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn-primary';
-      btn.textContent = opt.label || `Option ${opt.index + 1}`;
+      btn.textContent = (appState.lang === 'th' ? (opt.labelTh || opt.label) : (opt.labelEn || opt.label)) || `Option ${opt.index + 1}`;
       btn.onclick = () => sendOcgPromptResponse({ type: 4, index: opt.index });
       wrap.appendChild(btn);
     });
@@ -4252,13 +4319,13 @@ function enterOcgOptionBanner(prompt) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'inline-prompt-btn primary';
-    btn.textContent = opt.label || `Option ${opt.index + 1}`;
+    btn.textContent = (lang === 'th' ? (opt.labelTh || opt.label) : (opt.labelEn || opt.label)) || `Option ${opt.index + 1}`;
     btn.onclick = () => sendOcgPromptResponse({ type: 4, index: opt.index });
     return btn;
   });
 
   return Boolean(openInlinePickBanner({
-    icon: '🔀',
+    icon: 'activate',
     message: lang === 'en' ? 'Choose an option to apply:' : 'เลือกเอฟเฟกต์/ตัวเลือกที่ต้องการ:',
     actionButtons: btns,
     mandatory: true,
@@ -6509,8 +6576,12 @@ function applyI18n() {
   if (menuLangBtn) setButtonLabel(menuLangBtn, t(lang, 'menuLang'));
   const menuGuideBtn = document.getElementById('btn-menu-guide');
   if (menuGuideBtn) setButtonLabel(menuGuideBtn, t(lang, 'menuGuide'));
+  const menuSurrenderBtn = document.getElementById('btn-menu-surrender');
+  if (menuSurrenderBtn) setButtonLabel(menuSurrenderBtn, t(lang, 'menuSurrender'), 'flag');
   const menuLeaveBtn = document.getElementById('btn-menu-leave');
   if (menuLeaveBtn) setButtonLabel(menuLeaveBtn, t(lang, 'menuLeave'), 'leave');
+  const railSurrenderBtn = document.getElementById('btn-surrender-duel');
+  if (railSurrenderBtn) setButtonLabel(railSurrenderBtn, t(lang, 'btnSurrender'), 'flag');
 
   const rematchBtn = document.getElementById('btn-duel-rematch');
   if (rematchBtn) setButtonLabel(rematchBtn, stripLeadingEmoji(t(lang, 'rematchBtn')), 'position');
@@ -6518,6 +6589,7 @@ function applyI18n() {
   if (backLobbyBtn) setButtonLabel(backLobbyBtn, stripLeadingEmoji(t(lang, 'backLobbyBtn')), 'leave');
 
   syncMobileFieldZoomUI(currentMobileZoomScale);
+  updateAiDifficultyUI();
 
   populateAiDeckDropdown();
   renderDeckSelector();
@@ -6580,6 +6652,57 @@ function toggleLanguage() {
   saveLanguage(appState.lang);
   applyI18n();
   showToast(appState.lang === 'en' ? 'Language switched to English' : 'เปลี่ยนภาษาเป็นภาษาไทยแล้ว');
+}
+
+function setupSurrenderControls() {
+  const dlg = document.getElementById('dialog-surrender-confirm');
+  const cancelBtn = document.getElementById('btn-surrender-cancel');
+  const confirmBtn = document.getElementById('btn-surrender-confirm');
+  if (!dlg || !cancelBtn || !confirmBtn) return;
+
+  let armTimer = null;
+
+  const closeConfirm = () => {
+    clearTimeout(armTimer);
+    armTimer = null;
+    if (dlg.open) dlg.close();
+  };
+
+  const openConfirm = () => {
+    const state = appState.currentState;
+    if (!state || state.winner !== null || dlg.open) return;
+    document.getElementById('mobile-duel-menu-drawer')?.classList.remove('open');
+    document.getElementById('btn-mobile-duel-menu')?.setAttribute('aria-expanded', 'false');
+    confirmBtn.disabled = true;
+    dlg.showModal();
+    cancelBtn.focus();
+    clearTimeout(armTimer);
+    // 400ms ghost-tap protection prevents accidental double-tap surrender on mobile
+    armTimer = setTimeout(() => {
+      if (appState.currentState?.winner == null) {
+        confirmBtn.disabled = false;
+      }
+    }, 400);
+  };
+
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target?.closest?.('[data-action="surrender"]');
+    if (!btn || btn.disabled) return;
+    ev.stopPropagation();
+    openConfirm();
+  });
+
+  cancelBtn.addEventListener('click', closeConfirm);
+  dlg.addEventListener('cancel', () => clearTimeout(armTimer));
+  dlg.addEventListener('click', (ev) => {
+    if (ev.target === dlg) closeConfirm();
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (confirmBtn.disabled) return;
+    closeConfirm();
+    dispatchDuelAction({ type: 'SURRENDER' });
+  });
 }
 
 function leaveCurrentDuel() {
@@ -6868,6 +6991,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Lobby Start Buttons
+  setupAiDifficultySelector();
   document.getElementById('btn-start-solo')?.addEventListener('click', startSoloDuel);
   document.getElementById('btn-start-sandbox')?.addEventListener('click', startSandboxDuel);
 
@@ -6946,6 +7070,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Leave / Surrender
   document.getElementById('btn-leave-duel')?.addEventListener('click', leaveCurrentDuel);
+  setupSurrenderControls();
 
   // Chain Peek Board Button (temporarily minimize chain bar to inspect field)
   const chainPeekBtn = document.getElementById('btn-chain-peek');

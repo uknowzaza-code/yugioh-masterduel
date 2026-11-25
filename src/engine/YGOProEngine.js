@@ -7,6 +7,7 @@ import { randomInt } from 'node:crypto';
 import createCore, {
   OcgDuelMode,
   OcgHintTiming,
+  OcgHintType,
   OcgLocation,
   OcgMessageType,
   OcgPhase,
@@ -23,8 +24,14 @@ import {
   readOcgCardData,
   readOcgScript,
   resolveOcgDescription,
+  resolveOcgOptionLabel,
   findAnnounceCardCodes
 } from './OcgCardDb.js';
+import {
+  normalizeAiDifficulty,
+  createAiTurnState,
+  computeYgoProAiResponse
+} from './YgoProAi.js';
 import { getCardById } from '../cards/index.js';
 import { POSITIONS, PHASES } from '../constants/gameConstants.js';
 
@@ -153,6 +160,7 @@ export class YGOProEngine {
     this.core = opts.core;
     this.isSoloVsAi = Boolean(opts.isSoloVsAi);
     this.aiIndex = opts.aiIndex ?? 1;
+    this.aiDifficulty = normalizeAiDifficulty(opts.aiDifficulty);
     this.humanIndex = this.isSoloVsAi ? (this.aiIndex === 0 ? 1 : 0) : 0;
     this.onAiStep = typeof opts.onAiStep === 'function' ? opts.onAiStep : null;
     this.playerNames = [opts.player1Name || 'Player 1', opts.player2Name || 'Master Duel AI'];
@@ -166,6 +174,7 @@ export class YGOProEngine {
     this.phase = PHASES.DP;
     this.winner = null;
     this.winReason = null;
+    this.winReasonTh = null;
     this.battleSeq = 0;
     this.eventSeq = 0;
     this.recentEvents = [];
@@ -173,6 +182,8 @@ export class YGOProEngine {
     this.pendingMessage = null;
     this._lastResponse = null;
     this.lastRetryError = false;
+    this.lastHintMsgByPlayer = [0, 0];
+    this._aiState = createAiTurnState();
     this._aiChainKeysThisTurn = new Set();
     this._confirmedCards = new Set();
     this._pendingPreferredPlace = [null, null];
@@ -398,15 +409,28 @@ export class YGOProEngine {
           continue;
         }
         if (this.isSoloVsAi && this.pendingMessage && this.pendingMessage.player === this.aiIndex && this.winner === null) {
-          const aiResp = this._computeAiResponse(this.pendingMessage);
+          const msgType = this.pendingMessage.type;
+          const needsBoardSync =
+            msgType === OcgMessageType.SELECT_IDLECMD ||
+            msgType === OcgMessageType.SELECT_BATTLECMD ||
+            msgType === OcgMessageType.SELECT_CHAIN ||
+            msgType === OcgMessageType.SELECT_CARD ||
+            msgType === OcgMessageType.SELECT_TRIBUTE ||
+            msgType === OcgMessageType.SELECT_UNSELECT_CARD ||
+            msgType === OcgMessageType.SELECT_POSITION ||
+            msgType === OcgMessageType.SELECT_PLACE ||
+            msgType === OcgMessageType.SELECT_DISFIELD;
+          if (needsBoardSync) {
+            this._syncStateFromCore();
+          }
+          const aiResp = this._computeAiResponse(this.pendingMessage, consecutiveRetries);
           if (aiResp) {
-            const msgType = this.pendingMessage.type;
             const isVisibleAiStep =
               msgType === OcgMessageType.SELECT_IDLECMD ||
               msgType === OcgMessageType.SELECT_BATTLECMD ||
               (msgType === OcgMessageType.SELECT_CHAIN && aiResp.index !== null && aiResp.index !== undefined);
             if (this.onAiStep && isVisibleAiStep) {
-              this._syncStateFromCore();
+              if (!needsBoardSync) this._syncStateFromCore();
               this.onAiStep(structuredClone(this.state));
             }
             this._lastResponse = aiResp;
@@ -495,9 +519,15 @@ export class YGOProEngine {
         case OcgMessageType.RETRY:
           console.warn('[ygopro-core RETRY] invalid response was sent:', JSON.stringify(this._lastResponse));
           break;
+        case OcgMessageType.HINT:
+          if (m.hint_type === OcgHintType.SELECTMSG && typeof m.player === 'number') {
+            this.lastHintMsgByPlayer[m.player] = Number(m.hint || 0);
+          }
+          break;
         case OcgMessageType.NEW_TURN:
           this.turnCount++;
           this.turnPlayerIndex = m.player;
+          this._aiState = createAiTurnState();
           this._aiChainKeysThisTurn.clear();
           this._aiActionCount = 0;
           this._pendingPreferredPlace = [null, null];
@@ -992,6 +1022,7 @@ export class YGOProEngine {
       phase: this.phase,
       winner: this.winner,
       winReason: this.winReason,
+      winReasonTh: this.winReasonTh,
       battleSeq: this.battleSeq,
       eventSeq: this.eventSeq,
       recentEvents: this.recentEvents.slice(-40),
@@ -1000,6 +1031,7 @@ export class YGOProEngine {
       logs: this.logs,
       pendingChainPrompt: this._buildPendingChainPrompt(),
       pendingOcgPrompt: this._buildPendingOcgPrompt(),
+      aiDifficulty: this.aiDifficulty,
       isYgoProCore: true
     };
   }
@@ -1156,7 +1188,9 @@ export class YGOProEngine {
           player: m.player,
           options: (m.options || []).map((opt, idx) => ({
             index: idx,
-            label: resolveOcgDescription(opt)
+            label: resolveOcgOptionLabel(opt, idx, 'en'),
+            labelEn: resolveOcgOptionLabel(opt, idx, 'en'),
+            labelTh: resolveOcgOptionLabel(opt, idx, 'th')
           }))
         };
       case OcgMessageType.SORT_CARD:
@@ -1366,6 +1400,31 @@ export class YGOProEngine {
       this._syncStateFromCore();
       return { ok: true, state: this.state };
     }
+    if (action?.type === 'SURRENDER') {
+      if (playerIndex !== 0 && playerIndex !== 1) {
+        return { ok: false, error: 'Invalid player index.' };
+      }
+      if (this.winner !== null) {
+        return { ok: false, error: 'Duel already finished.' };
+      }
+      const loserName = this.playerNames?.[playerIndex] || `Player ${playerIndex + 1}`;
+      const winnerIdx = 1 - playerIndex;
+      const winnerName = this.playerNames?.[winnerIdx] || `Player ${winnerIdx + 1}`;
+      if (this.chainStack.length > 0) {
+        this.log(`⛓️ Chain (${this.chainStack.length}) cancelled by surrender.`);
+      }
+      this.chainStack = [];
+      this.pendingMessage = null;
+      this.winner = winnerIdx;
+      this.winReason = 'surrender';
+      this.winReasonTh = `${loserName} ขอยอมแพ้ (Surrender)`;
+      this.log(`🏳️ ${loserName} surrendered! ${winnerName} wins.`);
+      this._syncStateFromCore();
+      return { ok: true, state: this.state };
+    }
+    if (this.winner !== null) {
+      return { ok: false, error: 'Duel already finished.' };
+    }
     if (!this.pendingMessage) {
       return { ok: false, error: 'No pending prompt in duel engine.' };
     }
@@ -1498,148 +1557,23 @@ export class YGOProEngine {
     return { ok: true, state: this.state };
   }
 
-  _computeAiResponse(m) {
-    switch (m.type) {
-      case OcgMessageType.SELECT_IDLECMD: {
-        if (m.special_summons?.length > 0) {
-          return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.SELECT_SPECIAL_SUMMON, index: 0 };
-        }
-        if (m.summons?.length > 0) {
-          return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.SELECT_SUMMON, index: 0 };
-        }
-        if (m.activates?.length > 0 && (this._aiActionCount = (this._aiActionCount || 0) + 1) <= 4) {
-          return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.SELECT_ACTIVATE, index: 0 };
-        }
-        this._aiActionCount = 0;
-        if (m.to_bp) {
-          return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.TO_BP, index: null };
-        }
-        if (m.to_ep) {
-          return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.TO_EP, index: null };
-        }
-        return { type: OcgResponseType.SELECT_IDLECMD, action: SelectIdleCMDAction.TO_EP, index: null };
-      }
-      case OcgMessageType.SELECT_BATTLECMD: {
-        if (m.attacks?.length > 0) {
-          return { type: OcgResponseType.SELECT_BATTLECMD, action: SelectBattleCMDAction.SELECT_BATTLE, index: 0 };
-        }
-        if (m.to_m2) {
-          return { type: OcgResponseType.SELECT_BATTLECMD, action: SelectBattleCMDAction.TO_M2, index: null };
-        }
-        return { type: OcgResponseType.SELECT_BATTLECMD, action: SelectBattleCMDAction.TO_EP, index: null };
-      }
-      case OcgMessageType.SELECT_CHAIN: {
-        const selects = m.selects || [];
-        if (m.forced && selects.length > 0) {
-          return { type: OcgResponseType.SELECT_CHAIN, index: 0 };
-        }
-        if (selects.length === 0 || this._aiChainKeysThisTurn.size >= 8) {
-          return { type: OcgResponseType.SELECT_CHAIN, index: null };
-        }
-        const topChain = this.chainStack[this.chainStack.length - 1];
-        const respondingToOpp = Boolean(topChain && topChain.playerIndex !== m.player);
-        const openOnOppTurn = this.chainStack.length === 0 && this.turnPlayerIndex !== m.player;
-        if (respondingToOpp || openOnOppTurn) {
-          for (let i = 0; i < selects.length; i++) {
-            const sel = selects[i];
-            const key = respondingToOpp
-              ? `${this.turnCount}:cl${this.chainStack.length}:${sel.controller}:${sel.location}:${sel.sequence}:${sel.code}:${sel.description}`
-              : `${this.turnCount}:open:${sel.code}:${sel.description}`;
-            if (!this._aiChainKeysThisTurn.has(key)) {
-              this._aiChainKeysThisTurn.add(key);
-              return { type: OcgResponseType.SELECT_CHAIN, index: i };
-            }
-          }
-        }
-        return { type: OcgResponseType.SELECT_CHAIN, index: null };
-      }
-      case OcgMessageType.SELECT_EFFECTYN:
-        return { type: OcgResponseType.SELECT_EFFECTYN, yes: true };
-      case OcgMessageType.SELECT_YESNO:
-        return { type: OcgResponseType.SELECT_YESNO, yes: true };
-      case OcgMessageType.SELECT_OPTION:
-        return { type: OcgResponseType.SELECT_OPTION, index: 0 };
-      case OcgMessageType.SELECT_POSITION: {
-        const pos = (m.positions & OcgPosition.FACEUP_ATTACK)
-          ? OcgPosition.FACEUP_ATTACK
-          : (m.positions & OcgPosition.FACEUP_DEFENSE)
-            ? OcgPosition.FACEUP_DEFENSE
-            : (m.positions & OcgPosition.FACEDOWN_DEFENSE)
-              ? OcgPosition.FACEDOWN_DEFENSE
-              : OcgPosition.FACEUP_ATTACK;
-        return { type: OcgResponseType.SELECT_POSITION, position: pos };
-      }
-      case OcgMessageType.SELECT_PLACE:
-      case OcgMessageType.SELECT_DISFIELD: {
-        const places = this._pickFirstAvailablePlaces(m.field_mask, m.count || 1, m.player);
-        return m.type === OcgMessageType.SELECT_DISFIELD
-          ? { type: OcgResponseType.SELECT_DISFIELD, places }
-          : { type: OcgResponseType.SELECT_PLACE, places };
-      }
-      case OcgMessageType.SELECT_CARD: {
-        const count = Math.min(m.min || 1, m.selects?.length || 0);
-        return {
-          type: OcgResponseType.SELECT_CARD,
-          indicies: Array.from({ length: count }, (_, i) => i)
-        };
-      }
-      case OcgMessageType.SELECT_TRIBUTE: {
-        const count = Math.min(m.min || 1, m.selects?.length || 0);
-        return {
-          type: OcgResponseType.SELECT_TRIBUTE,
-          indicies: Array.from({ length: count }, (_, i) => i)
-        };
-      }
-      case OcgMessageType.SELECT_SUM:
-        return {
-          type: OcgResponseType.SELECT_SUM,
-          indicies: this._solveSelectSum(m)
-        };
-      case OcgMessageType.SELECT_UNSELECT_CARD:
-        if (m.can_finish) return { type: OcgResponseType.SELECT_UNSELECT_CARD, index: null };
-        if (m.select_cards?.length > 0) return { type: OcgResponseType.SELECT_UNSELECT_CARD, index: 0 };
-        return { type: OcgResponseType.SELECT_UNSELECT_CARD, index: null };
-      case OcgMessageType.SORT_CARD:
-      case OcgMessageType.SORT_CHAIN:
-        return { type: OcgResponseType.SORT_CARD, order: null };
-      case OcgMessageType.SELECT_COUNTER: {
-        let remaining = m.count || 0;
-        const counters = (m.cards || []).map((c) => {
-          const take = Math.min(remaining, c.count || 0);
-          remaining -= take;
-          return take;
-        });
-        return { type: OcgResponseType.SELECT_COUNTER, counters };
-      }
-      case OcgMessageType.ROCK_PAPER_SCISSORS:
-        return { type: OcgResponseType.ROCK_PAPER_SCISSORS, value: 1 };
-      case OcgMessageType.ANNOUNCE_NUMBER:
-        return { type: OcgResponseType.ANNOUNCE_NUMBER, value: m.values?.[0] ?? 1 };
-      case OcgMessageType.ANNOUNCE_RACE: {
-        const avail = BigInt(m.available || 1n);
-        let chosen = 1n;
-        for (let b = 0n; b < 32n; b++) {
-          const bit = 1n << b;
-          if ((avail & bit) !== 0n) { chosen = bit; break; }
-        }
-        return { type: OcgResponseType.ANNOUNCE_RACE, races: [chosen] };
-      }
-      case OcgMessageType.ANNOUNCE_ATTRIB: {
-        const avail = Number(m.available || 1);
-        let chosen = 1;
-        for (let b = 0; b < 16; b++) {
-          const bit = 1 << b;
-          if ((avail & bit) !== 0) { chosen = bit; break; }
-        }
-        return { type: OcgResponseType.ANNOUNCE_ATTRIB, attributes: [chosen] };
-      }
-      case OcgMessageType.ANNOUNCE_CARD: {
-        const matches = findAnnounceCardCodes(m.opcodes || [], 1);
-        return { type: OcgResponseType.ANNOUNCE_CARD, card: matches[0] || 14558127 };
-      }
-      default:
-        return null;
-    }
+  _computeAiResponse(m, retryAttempt = 0) {
+    return computeYgoProAiResponse(m, {
+      aiIndex: this.aiIndex,
+      difficulty: this.aiDifficulty,
+      state: this.state,
+      phase: this.phase,
+      turnCount: this.turnCount,
+      turnPlayerIndex: this.turnPlayerIndex,
+      chainStack: this.chainStack,
+      lastHintMsg: this.lastHintMsgByPlayer?.[this.aiIndex] || 0,
+      retryAttempt,
+      aiState: this._aiState,
+      getCardMeta: getUiCardMeta,
+      solveSelectSum: (msg) => this._solveSelectSum(msg),
+      pickFirstAvailablePlaces: (mask, count, player) => this._pickFirstAvailablePlaces(mask, count, player),
+      findAnnounceCardCodes
+    });
   }
 
   _solveSelectSum(m) {

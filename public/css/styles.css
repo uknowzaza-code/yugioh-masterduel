@@ -1038,6 +1038,71 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.solo-difficulty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.solo-diff-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.solo-difficulty-group {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.solo-diff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-2);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.solo-diff-btn:hover {
+  border-color: var(--border-gold);
+  color: var(--text-main);
+}
+
+.solo-diff-btn[data-difficulty="easy"].active {
+  background-color: rgba(16, 185, 129, 0.16);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+.solo-diff-btn[data-difficulty="normal"].active {
+  background-color: rgba(56, 189, 248, 0.16);
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+
+.solo-diff-btn[data-difficulty="hard"].active {
+  background-color: rgba(244, 63, 94, 0.18);
+  border-color: #f43f5e;
+  color: #fda4af;
+}
+
+.solo-diff-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .solo-controls {
   display: flex;
   align-items: center;
@@ -2487,6 +2552,7 @@ textarea:focus {
 }
 
 .btn-chain-toggle,
+.btn-leave-duel,
 .btn-surrender,
 .btn-mobile-zoom,
 .btn-phase {
@@ -2507,6 +2573,7 @@ textarea:focus {
 }
 
 .btn-chain-toggle:active,
+.btn-leave-duel:active,
 .btn-surrender:active,
 .btn-mobile-zoom:active,
 .btn-phase:active {
@@ -2538,10 +2605,22 @@ textarea:focus {
   border: 1px solid var(--border-subtle);
 }
 
+.btn-leave-duel {
+  background-color: var(--bg-surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
 .btn-surrender {
-  background-color: rgba(185, 28, 28, 0.24);
+  background-color: rgba(185, 28, 28, 0.28);
   color: #fecdd3;
-  border: 1px solid rgba(251, 113, 133, 0.48);
+  border: 1px solid rgba(251, 113, 133, 0.56);
+}
+
+.btn-surrender:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-battle {
@@ -2573,8 +2652,15 @@ textarea:focus {
     border-color: var(--gold-accent);
   }
 
-  .btn-surrender:hover {
+  .btn-leave-duel:hover {
+    background-color: var(--bg-surface-3);
+    border-color: var(--gold-accent);
+    color: var(--text-main);
+  }
+
+  .btn-surrender:hover:not(:disabled) {
     background-color: var(--crimson-btn);
+    border-color: var(--crimson-accent);
     color: #ffffff;
   }
 
@@ -5678,8 +5764,9 @@ dialog.rps-dialog::backdrop {
     display: inline-flex;
   }
 
-  /* Leave Duel lives inside #mobile-duel-menu-drawer on mobile to prevent accidental taps & save width */
-  .duel-command-rail #btn-leave-duel {
+  /* Leave & Surrender live inside #mobile-duel-menu-drawer on narrow portrait phones to save width & prevent accidental taps */
+  .duel-command-rail #btn-leave-duel,
+  .duel-command-rail #btn-surrender-duel {
     display: none;
   }
 
@@ -5914,6 +6001,17 @@ dialog.rps-dialog::backdrop {
   .solo-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .solo-difficulty-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .solo-diff-btn {
+    min-height: 44px;
+    padding: 6px 8px;
   }
 
   .mp-actions-row > button,
@@ -6228,6 +6326,70 @@ dialog.rps-dialog::backdrop {
 
 /* ==================== 19. ACCESSIBILITY: REDUCED MOTION ==================== */
 /* Preserves meaningful opacity/color feedback while removing spatial travel and continuous pulses */
+/* Surrender Confirmation Dialog (matches Arcade-Gold theme, >= 44px touch targets) */
+.surrender-dialog {
+  width: min(92vw, 390px);
+}
+
+.surrender-dialog-inner {
+  padding: 22px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.surrender-dialog-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background-color: rgba(185, 28, 28, 0.24);
+  border: 1.5px solid rgba(251, 113, 133, 0.65);
+  color: #fecdd3;
+}
+
+.surrender-dialog-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.surrender-dialog-body {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.surrender-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.surrender-dialog-actions > button {
+  flex: 1 1 130px;
+  min-height: 44px;
+}
+
+.btn-surrender-confirm:not(:disabled) {
+  background-color: var(--crimson-btn);
+  color: #ffffff;
+  border-color: rgba(251, 113, 133, 0.65);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-surrender-confirm:hover:not(:disabled) {
+    background-color: var(--crimson-btn-hover);
+    border-color: var(--crimson-accent);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .duel-card,
   .zone-slot,
