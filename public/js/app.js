@@ -1717,9 +1717,19 @@ function syncLocalEngineToUI() {
   }
 }
 
+function collapseHandDock() {
+  const dock = document.querySelector('.player-bottom-dock');
+  if (!dock) return;
+  dock.classList.remove('hand-expanded');
+  if (document.activeElement && dock.contains(document.activeElement)) {
+    document.activeElement.blur?.();
+  }
+}
+
 function dispatchDuelAction(actionPayload) {
   hideActionPopup(true);
   clearZonePickMode(true);
+  collapseHandDock();
 
   // Interactive Master Rule target/cost/search selection before activating effect
   if (!actionPayload.choices &&
