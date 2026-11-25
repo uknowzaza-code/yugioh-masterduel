@@ -1721,9 +1721,20 @@ function collapseHandDock() {
   const dock = document.querySelector('.player-bottom-dock');
   if (!dock) return;
   dock.classList.remove('hand-expanded');
+  dock.classList.add('hand-suppressed');
   if (document.activeElement && dock.contains(document.activeElement)) {
     document.activeElement.blur?.();
   }
+  const clearSuppressed = () => {
+    dock.classList.remove('hand-suppressed');
+    dock.removeEventListener('pointerleave', clearSuppressed);
+    dock.removeEventListener('pointerdown', clearSuppressed, true);
+  };
+  dock.addEventListener('pointerleave', clearSuppressed, { once: true });
+  // On touch or intentional re-click, allow re-opening hand after current click finishes
+  setTimeout(() => {
+    dock.addEventListener('pointerdown', clearSuppressed, { once: true, capture: true });
+  }, 120);
 }
 
 function dispatchDuelAction(actionPayload) {
@@ -3712,6 +3723,7 @@ function clearZonePickMode(force = false) {
     activeZonePickCleanup = null;
   }
   activeZonePickMandatory = false;
+  document.body.classList.remove('is-zone-picking');
   const banner = document.getElementById('field-pick-banner');
   if (banner) {
     banner.classList.add('hidden');
@@ -4725,7 +4737,8 @@ function enterOcgFieldPlaceMode(prompt) {
   }
 
   clearZonePickMode(true);
-  document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
+  collapseHandDock();
+  document.body.classList.add('is-zone-picking');
   activeZonePickMandatory = true;
 
   const onlyOpp = candidates.every(c => c.owner === 'opp');
@@ -4838,7 +4851,8 @@ function enterOcgFieldPlaceMode(prompt) {
 function enterZonePickMode(card, actionPayload) {
   clearZonePickMode(true);
   document.getElementById('card-action-popup')?.classList.add('hidden');
-  document.querySelector('.player-bottom-dock')?.classList.remove('hand-expanded');
+  collapseHandDock();
+  document.body.classList.add('is-zone-picking');
 
   const cardSubtype = card.subType || card.subtype;
   if (cardSubtype === 'FIELD' && (actionPayload.type === 'ACTIVATE_EFFECT' || actionPayload.type === 'SET_SPELL_TRAP')) {

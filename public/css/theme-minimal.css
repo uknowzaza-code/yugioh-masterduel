@@ -1311,9 +1311,20 @@ textarea:focus {
     transition: transform var(--dur) var(--ease);
   }
 
-  .player-bottom-dock:hover .self-hand-container,
-  .player-bottom-dock:focus-within .self-hand-container {
+  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container,
+  .player-bottom-dock:not(.hand-suppressed):focus-within .self-hand-container {
     transform: translateY(-22px) scale(1.14);
+  }
+
+  /* Force hand down immediately after activating/playing a card or while choosing a field zone */
+  .player-bottom-dock.hand-suppressed .self-hand-container,
+  body.is-zone-picking .player-bottom-dock .self-hand-container {
+    transform: translateY(22px) scale(0.72) !important;
+  }
+
+  body.is-zone-picking .player-bottom-dock {
+    pointer-events: none;
+    opacity: 0.65;
   }
 
   .self-hand-container .hand-card-item {
@@ -1333,18 +1344,18 @@ textarea:focus {
   }
 
   /* Fan out & straighten cleanly when hovering the hand */
-  .player-bottom-dock:hover .self-hand-container .hand-card-item + .hand-card-item,
-  .player-bottom-dock:focus-within .self-hand-container .hand-card-item + .hand-card-item {
+  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container .hand-card-item + .hand-card-item,
+  .player-bottom-dock:not(.hand-suppressed):focus-within .self-hand-container .hand-card-item + .hand-card-item {
     margin-left: -4px;
   }
 
-  .player-bottom-dock:hover .self-hand-container .hand-card-item,
-  .player-bottom-dock:focus-within .self-hand-container .hand-card-item {
+  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container .hand-card-item,
+  .player-bottom-dock:not(.hand-suppressed):focus-within .self-hand-container .hand-card-item {
     transform: translateY(0) rotate(0deg);
   }
 
   /* Highlighted hovered card pops up above neighbours */
-  .player-bottom-dock:hover .self-hand-container .hand-card-item:hover {
+  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container .hand-card-item:hover {
     transform: translateY(-16px) scale(1.1) rotate(0deg);
     z-index: 50;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
@@ -2151,6 +2162,15 @@ textarea:focus {
   /* Tap once on mobile/iPad -> expand hand smoothly without scaling the scroll container */
   .player-bottom-dock.hand-expanded {
     z-index: 45;
+  }
+
+  body.is-zone-picking .player-bottom-dock {
+    pointer-events: none;
+    opacity: 0.65;
+  }
+
+  body.is-zone-picking .player-bottom-dock .self-hand-container {
+    transform: translateY(10px) !important;
   }
 
   .player-bottom-dock.hand-expanded .self-hand-container {
