@@ -59,7 +59,8 @@ import {
   captureBoardSnapshot,
   playBoardDiffAnimations,
   enqueueTurnChangeBanners,
-  resetTurnChangeBannerQueue
+  resetTurnChangeBannerQueue,
+  clearDuelVfxLayer
 } from '/js/cardAnimations.js';
 import {
   enableCardDragToPlay,
@@ -406,6 +407,8 @@ function switchScreen(screenId) {
   clearSelectedHandCard();
 
   if (!isDuel) {
+    cancelStateSyncPlayback({ clearDuelId: true });
+    clearDuelVfxLayer();
     resetTurnChangeBannerQueue();
     resetDuelRenderCaches();
   }
@@ -1330,8 +1333,11 @@ function initMultiplayerManager() {
       appState.activeRoomCode = roomCode;
       appState.gameMode = 'MULTIPLAYER';
       appState.myPlayerIndex = playerIndex;
+      appState.currentState = null;
       appState.lastRenderedState = null;
       appState.lastRenderedPlayerIndex = playerIndex;
+      cancelStateSyncPlayback({ clearDuelId: true });
+      clearDuelVfxLayer();
       resetTurnChangeBannerQueue();
       const orderNote = rpsSummary && typeof appState.lastRpsSeat === 'number'
         ? (rpsSummary.firstSeat === appState.lastRpsSeat
@@ -1674,8 +1680,11 @@ function launchSoloAfterRps(ctx, firstPlayer = 'human') {
   appState.gameMode = 'SOLO';
   appState.myPlayerIndex = firstPlayer === 'ai' ? 1 : 0;
   appState.localEngine = null;
+  appState.currentState = null;
   appState.lastRenderedState = null;
   appState.lastRenderedPlayerIndex = appState.myPlayerIndex;
+  cancelStateSyncPlayback({ clearDuelId: true });
+  clearDuelVfxLayer();
   resetTurnChangeBannerQueue();
 
   const dlg = document.getElementById('dialog-rps');
@@ -1702,8 +1711,11 @@ function launchSandboxAfterRps(ctx, firstSeat = 0) {
 
   appState.gameMode = 'SANDBOX';
   appState.myPlayerIndex = firstSeat === 1 ? 1 : 0;
+  appState.currentState = null;
   appState.lastRenderedState = null;
   appState.lastRenderedPlayerIndex = appState.myPlayerIndex;
+  cancelStateSyncPlayback({ clearDuelId: true });
+  clearDuelVfxLayer();
   resetTurnChangeBannerQueue();
   appState.localEngine = new DuelEngine({
     p0Name: ctx.p0Name,
@@ -2034,6 +2046,11 @@ function dispatchDuelAction(actionPayload) {
     sfx.playAttack();
   }
 
+  if (actionPayload?.type === 'SURRENDER') {
+    cancelStateSyncPlayback();
+    clearDuelVfxLayer();
+  }
+
   if (appState.gameMode === 'MULTIPLAYER' || (appState.gameMode === 'SOLO' && !appState.localEngine)) {
     appState.mpManager.sendDuelAction(actionPayload);
   } else if (appState.localEngine) {
@@ -2169,15 +2186,98 @@ function openEffectChoiceModal(sourceCard, effect, steps, baseActionPayload) {
   }
 }
 
-const CARD_ACTION_PACE_MS = 1000;
+const AI_STEP_IMPACT_PACE_MS = 440;
+const AI_STEP_MINOR_PACE_MS = 380;
+const AI_STEP_PHASE_ONLY_PACE_MS = 250;
+const AI_STEP_FAST_PACE_MS = 320;
+const AI_STEP_TURBO_PACE_MS = 240;
+const AI_STEP_REDUCED_MOTION_PACE_MS = 180;
+const MAX_STATE_SYNC_QUEUE = 40;
+
 const stateSyncPacer = {
   queue: [],
   timer: null,
   lastApplyAt: 0,
-  duelId: null
+  duelId: null,
+  epoch: 0,
+  isPlayingAiSteps: false,
+  lastAppliedWasAiStep: false
 };
 
-function applyDuelStateSync({ mode, state, playerIndex, legalActions }) {
+function cancelStateSyncPlayback({ clearDuelId = false } = {}) {
+  stateSyncPacer.epoch++;
+  if (stateSyncPacer.timer) {
+    clearTimeout(stateSyncPacer.timer);
+    stateSyncPacer.timer = null;
+  }
+  stateSyncPacer.queue = [];
+  stateSyncPacer.isPlayingAiSteps = false;
+  stateSyncPacer.lastAppliedWasAiStep = false;
+  if (clearDuelId) {
+    stateSyncPacer.duelId = null;
+  }
+}
+
+function buildClientStateSyncSig(state) {
+  if (!state) return '';
+  const p0 = state.players?.[0];
+  const p1 = state.players?.[1];
+  return [
+    state.duelId ?? '',
+    state.turnCount ?? 0,
+    state.turnPlayer ?? 0,
+    state.phase ?? '',
+    state.eventSeq ?? 0,
+    state.battleSeq ?? 0,
+    p0?.lp ?? 0,
+    p1?.lp ?? 0,
+    p0?.hand?.length ?? 0,
+    p1?.hand?.length ?? 0,
+    state.chainStack?.length ?? 0,
+    state.winner ?? ''
+  ].join('|');
+}
+
+function computeStepPaceMs(prevState, nextPayload, remainingQueueLen) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+    return AI_STEP_REDUCED_MOTION_PACE_MS;
+  }
+  const nextState = nextPayload?.state;
+  const prevSeq = Number(prevState?.eventSeq || 0);
+  const prevBattleSeq = Number(prevState?.battleSeq || 0);
+  const hasBattle = Number(nextState?.battleSeq || 0) > prevBattleSeq;
+  const hasLpDelta = Boolean(
+    prevState?.players && nextState?.players && (
+      prevState.players[0]?.lp !== nextState.players[0]?.lp ||
+      prevState.players[1]?.lp !== nextState.players[1]?.lp
+    )
+  );
+  const freshEvents = Array.isArray(nextState?.recentEvents)
+    ? nextState.recentEvents.filter((ev) => ev && (typeof ev.seq !== 'number' || ev.seq > prevSeq))
+    : [];
+  const hasHighImpactEvent = hasBattle || hasLpDelta || freshEvents.some((ev) => (
+    ev.type === 'SUMMON' || ev.type === 'CHAINING' || ev.type === 'SET' || ev.type === 'POS_CHANGE'
+  ));
+  const hasMinorCardEvent = freshEvents.some((ev) => ev.type === 'DRAW' || ev.type === 'MOVE');
+
+  let baseMs = AI_STEP_PHASE_ONLY_PACE_MS;
+  if (hasHighImpactEvent) {
+    baseMs = AI_STEP_IMPACT_PACE_MS;
+  } else if (hasMinorCardEvent) {
+    baseMs = AI_STEP_MINOR_PACE_MS;
+  }
+
+  if (remainingQueueLen > 12) {
+    return Math.min(baseMs, AI_STEP_TURBO_PACE_MS);
+  }
+  if (remainingQueueLen > 6) {
+    return Math.min(baseMs, AI_STEP_FAST_PACE_MS);
+  }
+  return baseMs;
+}
+
+function applyDuelStateSync(payload) {
+  const { mode, state, playerIndex, legalActions, isAiStep = false } = payload || {};
   appState.currentState = state;
   appState.myPlayerIndex = playerIndex;
   appState.legalActions = legalActions;
@@ -2189,11 +2289,12 @@ function applyDuelStateSync({ mode, state, playerIndex, legalActions }) {
       sfx.playSummon();
     }
   }
+  // Never pop an interactive OCG prompt modal during intermediate AI step playback
   appState.activeOcgPrompt =
-    state?.pendingOcgPrompt && state.pendingOcgPrompt.player === playerIndex
+    !isAiStep && state?.pendingOcgPrompt && state.pendingOcgPrompt.player === playerIndex
       ? state.pendingOcgPrompt
       : null;
-  renderDuelScreen();
+  renderDuelScreen({ isAiStep: Boolean(isAiStep) });
   if (appState.activeOcgPrompt) {
     renderOcgPromptModal(appState.activeOcgPrompt);
   } else {
@@ -2208,39 +2309,63 @@ function applyDuelStateSync({ mode, state, playerIndex, legalActions }) {
 }
 
 function pumpStateSyncQueue() {
-  if (stateSyncPacer.timer || stateSyncPacer.queue.length === 0) return;
+  if (stateSyncPacer.timer || stateSyncPacer.queue.length === 0) {
+    if (stateSyncPacer.queue.length === 0 && !stateSyncPacer.timer) {
+      stateSyncPacer.isPlayingAiSteps = false;
+    }
+    return;
+  }
+  const peek = stateSyncPacer.queue[0];
+  const shouldPace = Boolean(stateSyncPacer.lastAppliedWasAiStep || peek?.isAiStep);
+  const paceMs = shouldPace
+    ? computeStepPaceMs(appState.lastRenderedState, peek, stateSyncPacer.queue.length)
+    : 0;
   const elapsed = Date.now() - stateSyncPacer.lastApplyAt;
-  const waitMs = Math.max(0, CARD_ACTION_PACE_MS - elapsed);
+  const waitMs = Math.max(0, paceMs - elapsed);
+  const expectedEpoch = stateSyncPacer.epoch;
+
   const runNext = () => {
     stateSyncPacer.timer = null;
+    if (stateSyncPacer.epoch !== expectedEpoch) return;
     const next = stateSyncPacer.queue.shift();
-    if (!next) return;
+    if (!next) {
+      stateSyncPacer.isPlayingAiSteps = false;
+      return;
+    }
     stateSyncPacer.lastApplyAt = Date.now();
+    stateSyncPacer.lastAppliedWasAiStep = Boolean(next.isAiStep);
+    stateSyncPacer.isPlayingAiSteps = Boolean(next.isAiStep || stateSyncPacer.queue.some((item) => item?.isAiStep));
     applyDuelStateSync(next);
     if (stateSyncPacer.queue.length > 0) {
       pumpStateSyncQueue();
+    } else {
+      stateSyncPacer.isPlayingAiSteps = false;
     }
   };
+
   if (waitMs === 0) {
     runNext();
   } else {
+    stateSyncPacer.isPlayingAiSteps = Boolean(stateSyncPacer.lastAppliedWasAiStep || peek?.isAiStep);
     stateSyncPacer.timer = setTimeout(runNext, waitMs);
   }
 }
 
 function enqueuePacedStateSync(payload) {
-  const incomingDuelId = payload?.state?.duelId || null;
+  if (!payload?.state) return;
+  const incomingDuelId = payload.state.duelId || null;
   const isNewDuel = !appState.currentState || (incomingDuelId && stateSyncPacer.duelId !== incomingDuelId);
+
   if (isNewDuel) {
-    if (stateSyncPacer.timer) {
-      clearTimeout(stateSyncPacer.timer);
-      stateSyncPacer.timer = null;
-    }
-    stateSyncPacer.queue = [];
+    cancelStateSyncPlayback();
     stateSyncPacer.duelId = incomingDuelId;
     stateSyncPacer.lastApplyAt = Date.now();
+    stateSyncPacer.lastAppliedWasAiStep = Boolean(payload.isAiStep);
+    stateSyncPacer.isPlayingAiSteps = Boolean(payload.isAiStep);
     appState.lastAutoInspectedEventKey = null;
     appState.lastRenderedState = null;
+    clearDuelVfxLayer();
+    resetTurnChangeBannerQueue();
     resetDuelRenderCaches();
     appState.knownCardsById.clear();
     appState.knownCardsByCode.clear();
@@ -2249,9 +2374,37 @@ function enqueuePacedStateSync(payload) {
     applyDuelStateSync(payload);
     return;
   }
-  // Keep queue bounded so rapid bursts never lag behind indefinitely
-  if (stateSyncPacer.queue.length >= 30) {
-    stateSyncPacer.queue.splice(0, stateSyncPacer.queue.length - 29);
+
+  // Immediate flush on surrender so player never waits behind queued AI steps
+  if (!payload.isAiStep && payload.state.winReason === 'surrender') {
+    cancelStateSyncPlayback();
+    stateSyncPacer.lastApplyAt = Date.now();
+    applyDuelStateSync(payload);
+    return;
+  }
+
+  // Human / non-AI sync with no AI playback ahead applies immediately (0ms lag)
+  if (!payload.isAiStep && !stateSyncPacer.isPlayingAiSteps && stateSyncPacer.queue.length === 0 && !stateSyncPacer.timer) {
+    stateSyncPacer.lastApplyAt = Date.now();
+    stateSyncPacer.lastAppliedWasAiStep = false;
+    applyDuelStateSync(payload);
+    return;
+  }
+
+  // Skip exact no-op intermediate AI step duplicates
+  if (payload.isAiStep) {
+    const prevQueued = stateSyncPacer.queue.length > 0
+      ? stateSyncPacer.queue[stateSyncPacer.queue.length - 1]?.state
+      : appState.currentState;
+    if (prevQueued && buildClientStateSyncSig(prevQueued) === buildClientStateSyncSig(payload.state)) {
+      return;
+    }
+  }
+
+  // Keep queue bounded so rapid bursts never lag behind indefinitely while preserving final non-AI frame
+  if (stateSyncPacer.queue.length >= MAX_STATE_SYNC_QUEUE) {
+    const dropIdx = stateSyncPacer.queue.findIndex((item) => item?.isAiStep);
+    stateSyncPacer.queue.splice(dropIdx >= 0 ? dropIdx : 0, 1);
   }
   stateSyncPacer.queue.push(payload);
   pumpStateSyncQueue();
@@ -2312,9 +2465,10 @@ function computeCardRenderSig(card, isSelf, legal, chainLinkMap, oppTargetsSig, 
   ].join('~');
 }
 
-function renderDuelScreen() {
+function renderDuelScreen(renderOpts = {}) {
   const state = appState.currentState;
   if (!state) return;
+  const isAiStep = Boolean(renderOpts?.isAiStep);
 
   const myIdx = appState.myPlayerIndex;
   const oppIdx = 1 - myIdx;
@@ -2342,6 +2496,7 @@ function renderDuelScreen() {
       if (initialSnap) {
         prevSnapshot = {
           ...initialSnap,
+          isInitialRender: true,
           cards: new Map(),
           zones: new Map(),
           handOrder: [],
@@ -2637,7 +2792,7 @@ function renderDuelScreen() {
     }
   }
   if (isDuelVisible) {
-    enqueueTurnChangeBanners(appState.lastRenderedState, state, myIdx);
+    enqueueTurnChangeBanners(appState.lastRenderedState, state, myIdx, { isAiStep });
   }
   appState.lastRenderedState = createLightweightStateSnapshot(state);
   appState.lastRenderedPlayerIndex = myIdx;
@@ -6707,6 +6862,8 @@ function setupSurrenderControls() {
 
 function leaveCurrentDuel() {
   clearTimeout(appState.aiTimer);
+  cancelStateSyncPlayback({ clearDuelId: true });
+  clearDuelVfxLayer();
   if (appState.gameMode === 'MULTIPLAYER') {
     appState.mpManager?.disconnectRoom();
     appState.activeRoomCode = null;
@@ -6714,6 +6871,7 @@ function leaveCurrentDuel() {
     document.getElementById('waiting-room-banner')?.classList.add('hidden');
     renderP2PLiveStatus({ stage: 'idle', message: '' });
   }
+  appState.currentState = null;
   appState.lastRenderedState = null;
   appState.lastAutoInspectedEventKey = null;
   resetDuelRenderCaches();
@@ -7189,6 +7347,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Result Dialog Buttons
   document.getElementById('btn-duel-rematch')?.addEventListener('click', () => {
+    cancelStateSyncPlayback({ clearDuelId: true });
+    clearDuelVfxLayer();
     document.getElementById('dialog-duel-result')?.close();
     if (appState.gameMode === 'MULTIPLAYER') {
       const customPayload = buildSelectedCustomDeckPayload(appState.selectedDeckId);

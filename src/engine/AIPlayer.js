@@ -60,11 +60,25 @@ export class AIPlayer {
       }
 
       // 2b. Activate Spells & Hand Ignition effects (Searchers, Fusions, Reborns)
+      const oppFieldMons = engine.getPlayerFieldMonsters(1 - aiIndex);
+      const aiFieldMons = engine.getPlayerFieldMonsters(aiIndex);
+      const activeFieldId = aiPlayer.fieldZone?.id || aiPlayer.fieldSpell?.id || null;
       for (const [instanceId, actList] of Object.entries(legal.handActions)) {
         const card = aiPlayer.hand.find(c => c.instanceId === instanceId);
         if (!card) continue;
-        // Don't waste hand traps (Ash / Veiler / Impermanence) proactively on own turn
-        if (['ash_blossom', 'effect_veiler', 'infinite_impermanence', 'called_by_the_grave'].includes(card.id)) {
+        // Don't waste hand traps (Ash / Veiler / Impermanence / Maxx C / Nibiru) proactively on own turn
+        if (['ash_blossom', 'maxx_c', 'effect_veiler', 'infinite_impermanence', 'called_by_the_grave', 'crossout_designator', 'nibiru', 'ghost_ogre'].includes(card.id)) {
+          continue;
+        }
+        // Don't replace own active Field Spell with the exact same Field Spell
+        if (card.subType === 'FIELD' && activeFieldId && activeFieldId === card.id) {
+          continue;
+        }
+        // Don't activate Raigeki / Dark Hole / Widow Anchor when opponent has no monsters
+        if (['raigeki', 'dark_hole', 'lightning_storm', 'sky_striker_mecha_widow_anchor'].includes(card.id) && oppFieldMons.length === 0) {
+          continue;
+        }
+        if (card.id === 'dark_hole' && aiFieldMons.length > oppFieldMons.length) {
           continue;
         }
         const effAct = actList.find(a => a.type === 'ACTIVATE_EFFECT' && !a.isManualFallback);

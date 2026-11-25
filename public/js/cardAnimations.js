@@ -8,6 +8,10 @@
 import { MONSTER_FRAMES, POSITIONS } from '/src/constants/gameConstants.js';
 import { getCardArtUrl, getCardFrameClass } from '/js/cardArt.js';
 
+const MAX_ACTIVE_VFX_NODES = 28;
+let vfxEpoch = 0;
+const activeVfxTimers = new Set();
+
 function prefersReducedMotion() {
   return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
 }
@@ -24,11 +28,90 @@ function getVfxLayer() {
   return layer;
 }
 
+function scheduleVfxTimer(fn, delayMs) {
+  const expectedEpoch = vfxEpoch;
+  const id = setTimeout(() => {
+    activeVfxTimers.delete(id);
+    if (vfxEpoch !== expectedEpoch) return;
+    fn();
+  }, Math.max(0, delayMs));
+  activeVfxTimers.add(id);
+  return id;
+}
+
+function attachVfxElement(el, anim, lifeMs = 900) {
+  if (!el) return;
+  const layer = getVfxLayer();
+  while (layer.children.length >= MAX_ACTIVE_VFX_NODES) {
+    const oldest = layer.firstElementChild;
+    if (!oldest) break;
+    try {
+      oldest.getAnimations?.().forEach((a) => a.cancel());
+    } catch {
+      // ignore cancel errors
+    }
+    oldest.remove();
+  }
+  if (!el.parentNode) {
+    layer.appendChild(el);
+  }
+
+  let cleaned = false;
+  let safetyTimer = null;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    if (safetyTimer !== null) {
+      clearTimeout(safetyTimer);
+      activeVfxTimers.delete(safetyTimer);
+      safetyTimer = null;
+    }
+    el.remove();
+  };
+
+  safetyTimer = scheduleVfxTimer(cleanup, Math.max(200, lifeMs + 260));
+  if (anim && anim.finished) {
+    anim.finished.catch(() => {}).finally(cleanup);
+  }
+}
+
+export function clearDuelVfxLayer() {
+  vfxEpoch++;
+  for (const id of activeVfxTimers) {
+    clearTimeout(id);
+  }
+  activeVfxTimers.clear();
+  if (typeof document === 'undefined') return;
+  const layer = document.getElementById('duel-vfx-layer');
+  if (!layer) return;
+  for (const child of Array.from(layer.children)) {
+    try {
+      child.getAnimations?.().forEach((a) => a.cancel());
+    } catch {
+      // ignore cancel errors
+    }
+  }
+  layer.innerHTML = '';
+}
+
+function isValidRect(r) {
+  if (!r || !(r.width > 0) || !(r.height > 0)) return false;
+  if (!Number.isFinite(r.left) || !Number.isFinite(r.top)) return false;
+  const vw = typeof window !== 'undefined' ? (window.innerWidth || 1920) : 1920;
+  const vh = typeof window !== 'undefined' ? (window.innerHeight || 1080) : 1080;
+  if (r.right < -60 || r.left > vw + 60 || r.bottom < -60 || r.top > vh + 60) return false;
+  return true;
+}
+
+function isDefCardEl(el) {
+  return Boolean(el?.classList?.contains('def-position'));
+}
+
 function getRectIfVisible(selector) {
   const el = typeof selector === 'string' ? document.querySelector(selector) : selector;
   if (!el) return null;
   const r = el.getBoundingClientRect();
-  return r.width > 0 && r.height > 0 ? r : null;
+  return isValidRect(r) ? r : null;
 }
 
 function getFrameSummonTheme(card) {
@@ -239,27 +322,46 @@ function resolvePrevRect(loc, prev, myIdx) {
   const isSelf = loc.controller === myIdx;
   if (loc.zone === 'HAND') {
     if (isSelf) {
-      return prev?.handOrder?.[loc.index]?.rect || prev?.piles?.selfHandBar || null;
+      const r = prev?.handOrder?.[loc.index]?.rect || prev?.piles?.selfHandBar || null;
+      return isValidRect(r) ? r : getRectIfVisible('#self-hand-container');
     }
-    return prev?.oppHandRects?.[loc.index] || prev?.oppHandRects?.[prev.oppHandRects.length - 1] || prev?.piles?.oppHandBar || null;
+    const r = prev?.oppHandRects?.[loc.index]
+      || prev?.oppHandRects?.[prev.oppHandRects.length - 1]
+      || prev?.piles?.oppHandBar
+      || prev?.piles?.oppHud
+      || null;
+    return isValidRect(r) ? r : (getRectIfVisible('#opp-hand-bar') || getRectIfVisible('.opponent-hud'));
   }
   if (loc.zone === 'MMZ' || loc.zone === 'STZ') {
     const key = `${isSelf ? 'self' : 'opp'}:${loc.zone}:${loc.index}`;
-    return prev?.slotRects?.get(key) || getRectIfVisible(resolveZoneSlotEl(loc.controller, loc.zone, loc.index, myIdx));
+    const cached = prev?.slotRects?.get(key);
+    return isValidRect(cached) ? cached : getRectIfVisible(resolveZoneSlotEl(loc.controller, loc.zone, loc.index, myIdx));
   }
   if (loc.zone === 'FIELD') {
-    return (isSelf ? prev?.slotRects?.get('self:FIELD:5') : prev?.slotRects?.get('opp:FIELD:5'))
-      || getRectIfVisible(resolveZoneSlotEl(loc.controller, 'FIELD', loc.index, myIdx));
+    const cached = isSelf ? prev?.slotRects?.get('self:FIELD:5') : prev?.slotRects?.get('opp:FIELD:5');
+    return isValidRect(cached) ? cached : getRectIfVisible(resolveZoneSlotEl(loc.controller, 'FIELD', loc.index, myIdx));
   }
   if (loc.zone === 'EMZ') {
     const slotId = getEmzSlotId(loc.controller, loc.index, myIdx);
-    return (slotId === 'self-emz-slot' ? prev?.slotRects?.get('emz:LEFT') : prev?.slotRects?.get('emz:RIGHT'))
-      || getRectIfVisible(`#${slotId}`);
+    const cached = slotId === 'self-emz-slot' ? prev?.slotRects?.get('emz:LEFT') : prev?.slotRects?.get('emz:RIGHT');
+    return isValidRect(cached) ? cached : getRectIfVisible(`#${slotId}`);
   }
-  if (loc.zone === 'DECK') return isSelf ? prev?.piles?.selfDeck : prev?.piles?.oppDeck;
-  if (loc.zone === 'EXTRA') return isSelf ? prev?.piles?.selfExtra : prev?.piles?.oppExtra;
-  if (loc.zone === 'GY') return isSelf ? prev?.piles?.selfGy : prev?.piles?.oppGy;
-  if (loc.zone === 'BANISHED') return isSelf ? prev?.piles?.selfBanished : prev?.piles?.oppBanished;
+  if (loc.zone === 'DECK') {
+    const r = isSelf ? prev?.piles?.selfDeck : (prev?.piles?.oppDeck || prev?.piles?.oppHud);
+    return isValidRect(r) ? r : getRectIfVisible(resolveZoneSlotEl(loc.controller, 'DECK', 0, myIdx));
+  }
+  if (loc.zone === 'EXTRA') {
+    const r = isSelf ? prev?.piles?.selfExtra : (prev?.piles?.oppExtra || prev?.piles?.oppHud);
+    return isValidRect(r) ? r : getRectIfVisible(resolveZoneSlotEl(loc.controller, 'EXTRA', 0, myIdx));
+  }
+  if (loc.zone === 'GY') {
+    const r = isSelf ? prev?.piles?.selfGy : (prev?.piles?.oppGy || prev?.piles?.oppHud);
+    return isValidRect(r) ? r : getRectIfVisible(resolveZoneSlotEl(loc.controller, 'GY', 0, myIdx));
+  }
+  if (loc.zone === 'BANISHED') {
+    const r = isSelf ? prev?.piles?.selfBanished : (prev?.piles?.oppBanished || prev?.piles?.oppHud);
+    return isValidRect(r) ? r : getRectIfVisible(resolveZoneSlotEl(loc.controller, 'BANISHED', 0, myIdx));
+  }
   return getRectIfVisible(resolveZoneSlotEl(loc.controller, loc.zone, loc.index, myIdx));
 }
 
@@ -273,12 +375,12 @@ function resolveLiveRect(loc, prev, myIdx) {
 }
 
 function animateElementFlight(el, fromRect, toRect, options = {}) {
-  if (!el || !fromRect || !toRect) return null;
+  if (!el || !isValidRect(fromRect) || !isValidRect(toRect)) return null;
   const {
-    duration = 320,
+    duration = 300,
     delay = 0,
     startScale = 1.06,
-    midScale = 1.12,
+    midScale = 1.1,
     startRotateDeg = 0,
     flipYDeg = 0
   } = options;
@@ -293,19 +395,35 @@ function animateElementFlight(el, fromRect, toRect, options = {}) {
   const toCy = toRect.top + toRect.height / 2;
   const dx = fromCx - toCx;
   const dy = fromCy - toCy;
-  const ratio = Math.max(0.45, Math.min(1.4, (fromRect.width / Math.max(1, toRect.width)) * startScale));
+  const dist = Math.hypot(dx, dy);
+  const vw = typeof window !== 'undefined' ? (window.innerWidth || 1920) : 1920;
+  const vh = typeof window !== 'undefined' ? (window.innerHeight || 1080) : 1080;
+  if (dist > Math.max(vw, vh) * 1.45) return null;
+  if (dist < 4 && !flipYDeg) return null;
 
-  const keyframes = flipYDeg
-    ? [
-        { transform: `perspective(680px) translate3d(${dx}px, ${dy}px, 0) scale(${ratio}) rotateY(${flipYDeg}deg)`, opacity: 0.85 },
-        { transform: `perspective(680px) translate3d(${dx * 0.12}px, ${dy * 0.12}px, 24px) scale(${midScale}) rotateY(${Math.round(flipYDeg * 0.18)}deg)`, opacity: 1, offset: 0.7 },
-        { transform: 'perspective(680px) translate3d(0, 0, 0) scale(1) rotateY(0deg)', opacity: 1 }
-      ]
-    : [
-        { translate: `${dx}px ${dy}px`, scale: `${ratio}`, rotate: `${startRotateDeg}deg`, opacity: 0.86 },
-        { translate: `${dx * 0.1}px ${dy * 0.1}px`, scale: `${midScale}`, rotate: `${Math.round(startRotateDeg * 0.15)}deg`, opacity: 1, offset: 0.72 },
-        { translate: '0px 0px', scale: '1', rotate: '0deg', opacity: 1 }
-      ];
+  const isDef = isDefCardEl(el);
+  const fromRefSize = Math.min(fromRect.width, fromRect.height);
+  const toRefSize = Math.min(toRect.width, toRect.height);
+  const ratio = Math.max(0.55, Math.min(1.3, (fromRefSize / Math.max(1, toRefSize)) * startScale));
+
+  let keyframes;
+  if (flipYDeg) {
+    // Preserve `.def-position` base transform (`rotate(-90deg) scale(0.76)`) so SET_DEF cards never snap upright!
+    const baseRot = isDef ? -90 : 0;
+    const baseScale = isDef ? 0.76 : 1;
+    keyframes = [
+      { transform: `perspective(680px) translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) rotate(${baseRot}deg) scale(${(ratio * baseScale).toFixed(3)}) rotateY(${flipYDeg}deg)`, opacity: 0.85 },
+      { transform: `perspective(680px) translate3d(${(dx * 0.12).toFixed(1)}px, ${(dy * 0.12).toFixed(1)}px, 24px) rotate(${baseRot}deg) scale(${(midScale * baseScale).toFixed(3)}) rotateY(${Math.round(flipYDeg * 0.18)}deg)`, opacity: 1, offset: 0.7 },
+      { transform: `perspective(680px) translate3d(0, 0, 0) rotate(${baseRot}deg) scale(${baseScale.toFixed(3)}) rotateY(0deg)`, opacity: 1 }
+    ];
+  } else {
+    const safeStartRot = isDef ? 0 : startRotateDeg;
+    keyframes = [
+      { translate: `${dx.toFixed(1)}px ${dy.toFixed(1)}px`, scale: `${ratio.toFixed(3)}`, rotate: `${safeStartRot}deg`, opacity: 0.86 },
+      { translate: `${(dx * 0.1).toFixed(1)}px ${(dy * 0.1).toFixed(1)}px`, scale: `${midScale}`, rotate: `${Math.round(safeStartRot * 0.15)}deg`, opacity: 1, offset: 0.72 },
+      { translate: '0px 0px', scale: '1', rotate: '0deg', opacity: 1 }
+    ];
+  }
 
   return el.animate(keyframes, {
     duration,
@@ -315,37 +433,44 @@ function animateElementFlight(el, fromRect, toRect, options = {}) {
   });
 }
 
-function spawnCallout(rect, label, color, delay = 0) {
-  if (!rect || !label || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+function spawnCallout(rect, label, color, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect) || !label || prefersReducedMotion()) return;
+  if (frameBudget) {
+    if (frameBudget.calloutsShown >= 3) return;
+    const bucketKey = `${Math.round((rect.left + rect.width / 2) / 48)}:${Math.round((rect.top + rect.height / 2) / 48)}`;
+    if (frameBudget.calloutZones.has(bucketKey)) return;
+    frameBudget.calloutZones.add(bucketKey);
+    frameBudget.calloutsShown++;
+  }
   const el = document.createElement('div');
   el.className = 'vfx-action-callout';
   el.textContent = label;
-  el.style.left = `${rect.left + rect.width / 2}px`;
+  const vw = typeof window !== 'undefined' ? (window.innerWidth || 1920) : 1920;
+  const clampedX = Math.max(64, Math.min(vw - 64, rect.left + rect.width / 2));
+  el.style.left = `${clampedX}px`;
   el.style.top = `${Math.max(18, rect.top - 8)}px`;
   el.style.setProperty('--vfx-color', color || '#facc15');
-  layer.appendChild(el);
+  getVfxLayer().appendChild(el);
   const anim = el.animate(
     [
       { transform: 'translate(-50%, 8px) scale(0.86)', opacity: 0 },
       { transform: 'translate(-50%, -4px) scale(1.04)', opacity: 1, offset: 0.24 },
       { transform: 'translate(-50%, -18px) scale(1)', opacity: 0 }
     ],
-    { duration: 880, delay, easing: 'ease-out', fill: 'both' }
+    { duration: 760, delay, easing: 'ease-out', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => el.remove());
+  attachVfxElement(el, anim, 760 + delay);
 }
 
 function spawnPlacementRipple(rect, isSet = false, delay = 0) {
-  if (!rect || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+  if (!isValidRect(rect) || prefersReducedMotion()) return;
   const el = document.createElement('div');
   el.className = isSet ? 'vfx-set-lock' : 'vfx-place-ripple';
   el.style.left = `${rect.left + rect.width / 2}px`;
   el.style.top = `${rect.top + rect.height / 2}px`;
   el.style.width = `${Math.max(58, rect.width + 8)}px`;
   el.style.height = `${Math.max(82, rect.height + 8)}px`;
-  layer.appendChild(el);
+  getVfxLayer().appendChild(el);
 
   const anim = el.animate(
     isSet
@@ -358,19 +483,17 @@ function spawnPlacementRipple(rect, isSet = false, delay = 0) {
           { transform: 'translate(-50%, -50%) scale(0.88)', opacity: 0.95 },
           { transform: 'translate(-50%, -50%) scale(1.24)', opacity: 0 }
         ],
-    { duration: 420, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 380, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => el.remove());
+  attachVfxElement(el, anim, 380 + delay);
 }
 
 function spawnMaterialOrbs(originRects, targetRect, color, glow, delay = 0) {
-  if (!targetRect || !originRects?.length || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+  if (!isValidRect(targetRect) || !originRects?.length || prefersReducedMotion()) return;
   const toCx = targetRect.left + targetRect.width / 2;
   const toCy = targetRect.top + targetRect.height / 2;
 
-  originRects.slice(0, 6).forEach((fromRect, idx) => {
-    if (!fromRect) return;
+  originRects.filter(isValidRect).slice(0, 4).forEach((fromRect, idx) => {
     const fromCx = fromRect.left + fromRect.width / 2;
     const fromCy = fromRect.top + fromRect.height / 2;
     const dx = toCx - fromCx;
@@ -382,28 +505,28 @@ function spawnMaterialOrbs(originRects, targetRect, color, glow, delay = 0) {
     orb.style.top = `${fromCy}px`;
     orb.style.setProperty('--vfx-color', color);
     orb.style.setProperty('--vfx-glow', glow);
-    layer.appendChild(orb);
+    getVfxLayer().appendChild(orb);
 
     const curveOffset = (idx % 2 === 0 ? 1 : -1) * 26;
+    const orbDelay = delay + idx * 30;
     const anim = orb.animate(
       [
         { transform: 'translate(-50%, -50%) scale(0.65)', opacity: 0 },
         { transform: `translate(calc(-50% + ${dx * 0.45}px), calc(-50% + ${dy * 0.45 + curveOffset}px)) scale(1.35)`, opacity: 1, offset: 0.42 },
         { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.25)`, opacity: 0 }
       ],
-      { duration: 420, delay: delay + idx * 35, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+      { duration: 380, delay: orbDelay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
     );
-    anim.finished.catch(() => {}).finally(() => orb.remove());
+    attachVfxElement(orb, anim, 380 + orbDelay);
   });
 }
 
-function spawnFusionSummonVfx(rect, cardEl, materialRects, delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, 'FUSION SUMMON', '#c084fc', delay + 80);
+function spawnFusionSummonVfx(rect, cardEl, materialRects, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, 'FUSION SUMMON', '#c084fc', delay + 80, frameBudget);
   if (prefersReducedMotion()) return;
 
   spawnMaterialOrbs(materialRects, rect, '#e879f9', 'rgba(232, 121, 249, 0.85)', delay);
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -418,7 +541,7 @@ function spawnFusionSummonVfx(rect, cardEl, materialRects, delay = 0) {
       <path d="M60,18 A42,42 0 0,1 102,60 A26,26 0 0,1 60,86 A16,16 0 0,1 44,60" fill="none" stroke="#f0abfc" stroke-width="3" stroke-linecap="round"/>
     </svg>
   `;
-  layer.appendChild(vortex);
+  getVfxLayer().appendChild(vortex);
 
   const anim = vortex.animate(
     [
@@ -426,29 +549,29 @@ function spawnFusionSummonVfx(rect, cardEl, materialRects, delay = 0) {
       { transform: 'translate(-50%, -50%) scale(1.05) rotate(190deg)', opacity: 0.96, offset: 0.45 },
       { transform: 'translate(-50%, -50%) scale(1.5) rotate(360deg)', opacity: 0 }
     ],
-    { duration: 680, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 640, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => vortex.remove());
+  attachVfxElement(vortex, anim, 640 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
-        { scale: '0.35', rotate: '-14deg', opacity: 0.25 },
-        { scale: '1.16', rotate: '2deg', opacity: 1, offset: 0.65 },
+        { scale: '0.35', rotate: isDefCardEl(cardEl) ? '0deg' : '-14deg', opacity: 0.25 },
+        { scale: '1.14', rotate: isDefCardEl(cardEl) ? '0deg' : '2deg', opacity: 1, offset: 0.65 },
         { scale: '1', rotate: '0deg', opacity: 1 }
       ],
-      { duration: 480, delay: delay + 110, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 440, delay: delay + 100, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
-function spawnSynchroSummonVfx(rect, cardEl, materialRects, delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, 'SYNCHRO SUMMON', '#86efac', delay + 90);
+function spawnSynchroSummonVfx(rect, cardEl, materialRects, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, 'SYNCHRO SUMMON', '#86efac', delay + 90, frameBudget);
   if (prefersReducedMotion()) return;
 
   spawnMaterialOrbs(materialRects, rect, '#4ade80', 'rgba(74, 222, 128, 0.88)', delay);
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -456,53 +579,54 @@ function spawnSynchroSummonVfx(rect, cardEl, materialRects, delay = 0) {
   pillar.className = 'vfx-synchro-pillar';
   pillar.style.left = `${cx}px`;
   pillar.style.top = `${cy}px`;
-  layer.appendChild(pillar);
+  getVfxLayer().appendChild(pillar);
   const pillarAnim = pillar.animate(
     [
       { transform: 'translate(-50%, -50%) scaleY(0.15) scaleX(0.6)', opacity: 0 },
       { transform: 'translate(-50%, -50%) scaleY(1) scaleX(1.05)', opacity: 0.95, offset: 0.35 },
       { transform: 'translate(-50%, -50%) scaleY(1.2) scaleX(1.4)', opacity: 0 }
     ],
-    { duration: 600, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 580, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  pillarAnim.finished.catch(() => {}).finally(() => pillar.remove());
+  attachVfxElement(pillar, pillarAnim, 580 + delay);
 
   [0, 1, 2].forEach((idx) => {
     const ring = document.createElement('div');
     ring.className = 'vfx-synchro-ring';
     ring.style.left = `${cx}px`;
     ring.style.top = `${cy - 18 + idx * 18}px`;
-    layer.appendChild(ring);
+    getVfxLayer().appendChild(ring);
+    const rDelay = delay + idx * 50;
     const rAnim = ring.animate(
       [
         { transform: 'translate(-50%, -50%) scale(0.35)', opacity: 0 },
         { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 1, offset: 0.4 },
         { transform: 'translate(-50%, -50%) scale(1.45)', opacity: 0 }
       ],
-      { duration: 540, delay: delay + idx * 55, easing: 'ease-out', fill: 'both' }
+      { duration: 500, delay: rDelay, easing: 'ease-out', fill: 'both' }
     );
-    rAnim.finished.catch(() => {}).finally(() => ring.remove());
+    attachVfxElement(ring, rAnim, 500 + rDelay);
   });
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
-        { translate: '0px -36px', scale: '0.78', opacity: 0.15 },
+        { translate: '0px -34px', scale: '0.78', opacity: 0.15 },
         { translate: '0px 3px', scale: '1.12', opacity: 1, offset: 0.7 },
         { translate: '0px 0px', scale: '1', opacity: 1 }
       ],
-      { duration: 430, delay: delay + 140, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 400, delay: delay + 120, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
-function spawnXyzSummonVfx(rect, cardEl, materialRects, delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, 'XYZ SUMMON', '#fbbf24', delay + 90);
+function spawnXyzSummonVfx(rect, cardEl, materialRects, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, 'XYZ SUMMON', '#fbbf24', delay + 90, frameBudget);
   if (prefersReducedMotion()) return;
 
   spawnMaterialOrbs(materialRects, rect, '#fbbf24', 'rgba(251, 191, 36, 0.9)', delay);
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -517,7 +641,7 @@ function spawnXyzSummonVfx(rect, cardEl, materialRects, delay = 0) {
       <circle cx="60" cy="60" r="14" fill="#020617" stroke="#f59e0b" stroke-width="3"/>
     </svg>
   `;
-  layer.appendChild(galaxy);
+  getVfxLayer().appendChild(galaxy);
 
   const anim = galaxy.animate(
     [
@@ -525,29 +649,29 @@ function spawnXyzSummonVfx(rect, cardEl, materialRects, delay = 0) {
       { transform: 'translate(-50%, -50%) scale(0.45) rotate(-140deg)', opacity: 1, offset: 0.42 },
       { transform: 'translate(-50%, -50%) scale(1.55) rotate(-240deg)', opacity: 0 }
     ],
-    { duration: 660, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 620, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => galaxy.remove());
+  attachVfxElement(galaxy, anim, 620 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
         { scale: '0.32', opacity: 0.15 },
-        { scale: '1.18', opacity: 1, offset: 0.68 },
+        { scale: '1.16', opacity: 1, offset: 0.68 },
         { scale: '1', opacity: 1 }
       ],
-      { duration: 460, delay: delay + 140, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 420, delay: delay + 120, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
-function spawnLinkSummonVfx(rect, cardEl, materialRects, delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, 'LINK SUMMON', '#38bdf8', delay + 80);
+function spawnLinkSummonVfx(rect, cardEl, materialRects, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, 'LINK SUMMON', '#38bdf8', delay + 80, frameBudget);
   if (prefersReducedMotion()) return;
 
   spawnMaterialOrbs(materialRects, rect, '#38bdf8', 'rgba(56, 189, 248, 0.9)', delay);
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -565,7 +689,7 @@ function spawnLinkSummonVfx(rect, cardEl, materialRects, delay = 0) {
       <polygon points="117,60 107,55 107,65" fill="#38bdf8"/>
     </svg>
   `;
-  layer.appendChild(circuit);
+  getVfxLayer().appendChild(circuit);
 
   const anim = circuit.animate(
     [
@@ -573,28 +697,28 @@ function spawnLinkSummonVfx(rect, cardEl, materialRects, delay = 0) {
       { transform: 'translate(-50%, -50%) scale(1.06) rotate(0deg)', opacity: 1, offset: 0.42 },
       { transform: 'translate(-50%, -50%) scale(1.38) rotate(12deg)', opacity: 0 }
     ],
-    { duration: 600, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 560, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => circuit.remove());
+  attachVfxElement(circuit, anim, 560 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
         { clipPath: 'inset(0 0 100% 0)', scale: '1.08', opacity: 0.4 },
         { clipPath: 'inset(0 0 0% 0)', scale: '1', opacity: 1 }
       ],
-      { duration: 360, delay: delay + 90, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 340, delay: delay + 80, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
-function spawnRitualSummonVfx(rect, cardEl, materialRects, delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, 'RITUAL SUMMON', '#60a5fa', delay + 80);
+function spawnRitualSummonVfx(rect, cardEl, materialRects, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, 'RITUAL SUMMON', '#60a5fa', delay + 80, frameBudget);
   if (prefersReducedMotion()) return;
 
   spawnMaterialOrbs(materialRects, rect, '#60a5fa', 'rgba(96, 165, 250, 0.88)', delay);
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -609,7 +733,7 @@ function spawnRitualSummonVfx(rect, cardEl, materialRects, delay = 0) {
       <polygon points="60,106 100,36 20,36" fill="none" stroke="#38bdf8" stroke-width="2.2"/>
     </svg>
   `;
-  layer.appendChild(altar);
+  getVfxLayer().appendChild(altar);
 
   const anim = altar.animate(
     [
@@ -617,27 +741,27 @@ function spawnRitualSummonVfx(rect, cardEl, materialRects, delay = 0) {
       { transform: 'translate(-50%, -50%) scale(1.08) rotate(90deg)', opacity: 1, offset: 0.45 },
       { transform: 'translate(-50%, -50%) scale(1.42) rotate(180deg)', opacity: 0 }
     ],
-    { duration: 640, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 600, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => altar.remove());
+  attachVfxElement(altar, anim, 600 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
         { translate: '0px -28px', scale: '0.82', opacity: 0.25 },
         { translate: '0px 0px', scale: '1.1', opacity: 1, offset: 0.65 },
         { translate: '0px 0px', scale: '1', opacity: 1 }
       ],
-      { duration: 440, delay: delay + 110, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 400, delay: delay + 100, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
 function spawnPendulumBeamVfx(targetRect, controller, myIdx, delay = 0) {
-  if (!targetRect || prefersReducedMotion()) return;
+  if (!isValidRect(targetRect) || prefersReducedMotion()) return;
   const leftScaleEl = resolveZoneSlotEl(controller, 'STZ', 0, myIdx);
   const rightScaleEl = resolveZoneSlotEl(controller, 'STZ', 4, myIdx);
-  const layer = getVfxLayer();
 
   [leftScaleEl, rightScaleEl].forEach((scaleEl) => {
     const sr = getRectIfVisible(scaleEl);
@@ -655,7 +779,7 @@ function spawnPendulumBeamVfx(targetRect, controller, myIdx, delay = 0) {
     beam.style.top = `${y1}px`;
     beam.style.width = `${Math.max(24, dist)}px`;
     beam.style.transformOrigin = '0 50%';
-    layer.appendChild(beam);
+    getVfxLayer().appendChild(beam);
 
     const anim = beam.animate(
       [
@@ -663,21 +787,20 @@ function spawnPendulumBeamVfx(targetRect, controller, myIdx, delay = 0) {
         { transform: `rotate(${angle}deg) scaleX(1)`, opacity: 0.95, offset: 0.45 },
         { transform: `rotate(${angle}deg) scaleX(1)`, opacity: 0 }
       ],
-      { duration: 480, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+      { duration: 460, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
     );
-    anim.finished.catch(() => {}).finally(() => beam.remove());
+    attachVfxElement(beam, anim, 460 + delay);
   });
 }
 
-function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0) {
-  if (!rect) return;
+function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
   const isField = cardMeta?.subtype === 'FIELD' || cardMeta?.subType === 'FIELD';
   const isQuick = cardMeta?.subtype === 'QUICK_PLAY' || cardMeta?.subType === 'QUICK_PLAY';
   const label = isField ? 'FIELD SPELL ❖' : isQuick ? 'QUICK-PLAY ⚡' : 'SPELL ACTIVATE';
-  spawnCallout(rect, label, isField ? '#2dd4bf' : '#10b981', delay + 40);
+  spawnCallout(rect, label, isField ? '#2dd4bf' : '#10b981', delay + 40, frameBudget);
   if (prefersReducedMotion()) return;
 
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -693,7 +816,7 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
       <polygon points="60,105 99,37 21,37" fill="none" stroke="#34d399" stroke-width="2"/>
     </svg>
   `;
-  layer.appendChild(circle);
+  getVfxLayer().appendChild(circle);
 
   const circleAnim = circle.animate(
     [
@@ -701,20 +824,21 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
       { transform: 'translate(-50%, -50%) scale(1.06) rotate(75deg)', opacity: 1, offset: 0.35 },
       { transform: 'translate(-50%, -50%) scale(1.34) rotate(135deg)', opacity: 0 }
     ],
-    { duration: 600, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 560, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  circleAnim.finished.catch(() => {}).finally(() => circle.remove());
+  attachVfxElement(circle, circleAnim, 560 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
         { translate: '0px 0px', scale: '0.94', opacity: 0.7 },
         { translate: '0px -6px', scale: '1.14', opacity: 1, offset: 0.38 },
         { translate: '0px 0px', scale: '1', opacity: 1 }
       ],
-      { duration: 360, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 340, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
-  } else if (cardMeta) {
+  } else if (!cardEl && cardMeta) {
     // Card already moved off-field (resolved to GY) in same tick -> brief on-slot preview ghost!
     const ghost = document.createElement('div');
     ghost.className = `vfx-card-ghost frame-spell`;
@@ -728,10 +852,11 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
     img.decoding = 'async';
     img.className = 'vfx-ghost-img';
     ghost.appendChild(img);
-    layer.appendChild(ghost);
+    getVfxLayer().appendChild(ghost);
 
-    const endDx = destPileRect ? ((destPileRect.left + destPileRect.width / 2) - cx) : 0;
-    const endDy = destPileRect ? ((destPileRect.top + destPileRect.height / 2) - cy) : -24;
+    const validDest = isValidRect(destPileRect) ? destPileRect : null;
+    const endDx = validDest ? ((validDest.left + validDest.width / 2) - cx) : 0;
+    const endDy = validDest ? ((validDest.top + validDest.height / 2) - cy) : -24;
 
     const gAnim = ghost.animate(
       [
@@ -740,9 +865,9 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
         { transform: 'translateY(-6px) scale(1.14)', opacity: 1, offset: 0.65 },
         { transform: `translate3d(${endDx}px, ${endDy}px, 0) scale(0.32) rotate(12deg)`, opacity: 0 }
       ],
-      { duration: 540, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+      { duration: 500, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
     );
-    gAnim.finished.catch(() => {}).finally(() => ghost.remove());
+    attachVfxElement(ghost, gAnim, 500 + delay);
   }
 
   if (isField) {
@@ -754,23 +879,22 @@ function spawnSpellActivationVfx(rect, cardMeta, cardEl, destPileRect, delay = 0
       pulse.style.top = `${playmatRect.top}px`;
       pulse.style.width = `${playmatRect.width}px`;
       pulse.style.height = `${playmatRect.height}px`;
-      layer.appendChild(pulse);
+      getVfxLayer().appendChild(pulse);
       const pAnim = pulse.animate(
         [
           { transform: 'scale(0.985)', opacity: 0 },
           { transform: 'scale(1)', opacity: 0.85, offset: 0.38 },
           { transform: 'scale(1.015)', opacity: 0 }
         ],
-        { duration: 640, delay, easing: 'ease-out', fill: 'both' }
+        { duration: 580, delay, easing: 'ease-out', fill: 'both' }
       );
-      pAnim.finished.catch(() => {}).finally(() => pulse.remove());
+      attachVfxElement(pulse, pAnim, 580 + delay);
     }
   }
 }
 
 function spawn3dFlipStage(rect, cardMeta, destPileRect, themeColor, delay = 0) {
-  if (!rect || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+  if (!isValidRect(rect) || prefersReducedMotion()) return;
   const stage = document.createElement('div');
   stage.className = 'vfx-3d-flip-stage';
   stage.style.left = `${rect.left}px`;
@@ -796,15 +920,17 @@ function spawn3dFlipStage(rect, cardMeta, destPileRect, themeColor, delay = 0) {
   cardInner.appendChild(front);
   cardInner.appendChild(back);
   stage.appendChild(cardInner);
-  layer.appendChild(stage);
+  getVfxLayer().appendChild(stage);
 
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-  const endDx = destPileRect ? ((destPileRect.left + destPileRect.width / 2) - cx) : 0;
-  const endDy = destPileRect ? ((destPileRect.top + destPileRect.height / 2) - cy) : 0;
+  const validDest = isValidRect(destPileRect) ? destPileRect : null;
+  const endDx = validDest ? ((validDest.left + validDest.width / 2) - cx) : 0;
+  const endDy = validDest ? ((validDest.top + validDest.height / 2) - cy) : 0;
+  const dur = validDest ? 560 : 400;
 
   const flipAnim = cardInner.animate(
-    destPileRect
+    validDest
       ? [
           { transform: 'rotateY(180deg) scale(0.92)', opacity: 0.9 },
           { transform: 'rotateY(0deg) scale(1.22)', opacity: 1, offset: 0.42 },
@@ -816,19 +942,18 @@ function spawn3dFlipStage(rect, cardMeta, destPileRect, themeColor, delay = 0) {
           { transform: 'rotateY(0deg) scale(1.22)', opacity: 1, offset: 0.55 },
           { transform: 'rotateY(0deg) scale(1)', opacity: 0 }
         ],
-    { duration: destPileRect ? 620 : 420, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+    { duration: dur, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
   );
-  flipAnim.finished.catch(() => {}).finally(() => stage.remove());
+  attachVfxElement(stage, flipAnim, dur + delay);
 }
 
-function spawnTrapFlipVfx(rect, cardMeta, cardEl, destPileRect, delay = 0) {
-  if (!rect) return;
+function spawnTrapFlipVfx(rect, cardMeta, cardEl, destPileRect, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
   const isCounter = cardMeta?.subtype === 'COUNTER' || cardMeta?.subType === 'COUNTER';
   const color = isCounter ? '#fb7185' : '#ec4899';
-  spawnCallout(rect, isCounter ? 'COUNTER TRAP ⮌' : 'TRAP FLIP!', color, delay + 60);
+  spawnCallout(rect, isCounter ? 'COUNTER TRAP ⮌' : 'TRAP FLIP!', color, delay + 60, frameBudget);
   if (prefersReducedMotion()) return;
 
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -842,7 +967,7 @@ function spawnTrapFlipVfx(rect, cardMeta, cardEl, destPileRect, delay = 0) {
       <circle cx="60" cy="60" r="44" fill="none" stroke="#fbcfe8" stroke-width="2.5" stroke-dasharray="14 8"/>
     </svg>
   `;
-  layer.appendChild(burst);
+  getVfxLayer().appendChild(burst);
 
   const bAnim = burst.animate(
     [
@@ -850,30 +975,30 @@ function spawnTrapFlipVfx(rect, cardMeta, cardEl, destPileRect, delay = 0) {
       { transform: 'translate(-50%, -50%) scale(1.12) rotate(35deg)', opacity: 1, offset: 0.35 },
       { transform: 'translate(-50%, -50%) scale(1.42) rotate(60deg)', opacity: 0 }
     ],
-    { duration: 540, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 500, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  bAnim.finished.catch(() => {}).finally(() => burst.remove());
+  attachVfxElement(burst, bAnim, 500 + delay);
 
-  if (cardEl) {
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
     cardEl.animate(
       [
         { transform: 'perspective(680px) rotateY(180deg) scale(0.92)', opacity: 0.8 },
         { transform: 'perspective(680px) rotateY(-8deg) scale(1.2)', opacity: 1, offset: 0.55 },
         { transform: 'perspective(680px) rotateY(0deg) scale(1)', opacity: 1 }
       ],
-      { duration: 420, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 400, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
-  } else if (cardMeta) {
+  } else if (!cardEl && cardMeta) {
     spawn3dFlipStage(rect, cardMeta, destPileRect, color, delay);
   }
 }
 
-function spawnMonsterFlipVfx(rect, cardEl, label = 'FLIP!', delay = 0) {
-  if (!rect) return;
-  spawnCallout(rect, label, '#fbbf24', delay + 60);
+function spawnMonsterFlipVfx(rect, cardEl, label = 'FLIP!', delay = 0, frameBudget = null) {
+  if (!isValidRect(rect)) return;
+  spawnCallout(rect, label, '#fbbf24', delay + 60, frameBudget);
   if (prefersReducedMotion()) return;
 
-  const layer = getVfxLayer();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
@@ -887,7 +1012,7 @@ function spawnMonsterFlipVfx(rect, cardEl, label = 'FLIP!', delay = 0) {
       <polygon points="60,10 69,48 108,60 69,72 60,110 51,72 12,60 51,48" fill="none" stroke="#fef08a" stroke-width="2.5"/>
     </svg>
   `;
-  layer.appendChild(burst);
+  getVfxLayer().appendChild(burst);
 
   const bAnim = burst.animate(
     [
@@ -895,29 +1020,34 @@ function spawnMonsterFlipVfx(rect, cardEl, label = 'FLIP!', delay = 0) {
       { transform: 'translate(-50%, -50%) scale(1.1) rotate(12deg)', opacity: 1, offset: 0.38 },
       { transform: 'translate(-50%, -50%) scale(1.4) rotate(35deg)', opacity: 0 }
     ],
-    { duration: 520, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 480, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  bAnim.finished.catch(() => {}).finally(() => burst.remove());
+  attachVfxElement(burst, bAnim, 480 + delay);
 
-  if (cardEl) {
-    // Use individual rotate/scale properties so .def-position CSS transform stays intact!
+  if (cardEl && (!frameBudget || !frameBudget.animatedEls.has(cardEl))) {
+    frameBudget?.animatedEls.add(cardEl);
+    // True 3D Y-axis card flip while preserving `.def-position` base transform (`rotate(-90deg) scale(0.76)`)
+    const isDef = isDefCardEl(cardEl);
+    const baseRot = isDef ? -90 : 0;
+    const baseScale = isDef ? 0.76 : 1;
     cardEl.animate(
       [
-        { scale: '0.82', rotate: '-180deg', opacity: 0.72 },
-        { scale: '1.22', rotate: '10deg', opacity: 1, offset: 0.6 },
-        { scale: '1', rotate: '0deg', opacity: 1 }
+        { transform: `perspective(680px) rotate(${baseRot}deg) scale(${(0.9 * baseScale).toFixed(3)}) rotateY(180deg)`, opacity: 0.75 },
+        { transform: `perspective(680px) rotate(${baseRot}deg) scale(${(1.16 * baseScale).toFixed(3)}) rotateY(-10deg)`, opacity: 1, offset: 0.58 },
+        { transform: `perspective(680px) rotate(${baseRot}deg) scale(${baseScale.toFixed(3)}) rotateY(0deg)`, opacity: 1 }
       ],
-      { duration: 420, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
+      { duration: 400, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
     );
   }
 }
 
-function spawnPileActivationCutin(pileRect, cardMeta, chainLink, delay = 0) {
-  if (!pileRect || !cardMeta || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+function spawnPileActivationCutin(pileRect, cardMeta, chainLink, delay = 0, frameBudget = null) {
+  if (!isValidRect(pileRect) || !cardMeta || prefersReducedMotion()) return;
   const theme = getFrameSummonTheme(cardMeta);
-  const cx = pileRect.left + pileRect.width / 2;
-  const cy = pileRect.top + pileRect.height / 2;
+  const vw = typeof window !== 'undefined' ? (window.innerWidth || 1920) : 1920;
+  const vh = typeof window !== 'undefined' ? (window.innerHeight || 1080) : 1080;
+  const cx = Math.max(44, Math.min(vw - 44, pileRect.left + pileRect.width / 2));
+  const cy = Math.max(96, Math.min(vh - 44, pileRect.top + pileRect.height / 2));
 
   const cutin = document.createElement('div');
   cutin.className = `vfx-pile-cutin ${getCardFrameClass(cardMeta)}`;
@@ -932,26 +1062,25 @@ function spawnPileActivationCutin(pileRect, cardMeta, chainLink, delay = 0) {
   img.decoding = 'async';
   img.className = 'vfx-ghost-img';
   cutin.appendChild(img);
-  layer.appendChild(cutin);
+  getVfxLayer().appendChild(cutin);
 
   const label = chainLink ? `CL${chainLink} • ${cardMeta.name || 'ACTIVATE'}` : (cardMeta.name || theme.label);
-  spawnCallout(pileRect, label, '#38bdf8', delay + 40);
+  spawnCallout(pileRect, label, '#38bdf8', delay + 40, frameBudget);
 
   const anim = cutin.animate(
     [
       { transform: 'translate(-50%, -20%) scale(0.45)', opacity: 0 },
-      { transform: 'translate(-50%, -85%) scale(1.18)', opacity: 1, offset: 0.35 },
-      { transform: 'translate(-50%, -92%) scale(1.12)', opacity: 1, offset: 0.72 },
+      { transform: 'translate(-50%, -85%) scale(1.16)', opacity: 1, offset: 0.35 },
+      { transform: 'translate(-50%, -92%) scale(1.1)', opacity: 1, offset: 0.72 },
       { transform: 'translate(-50%, -125%) scale(0.75)', opacity: 0 }
     ],
-    { duration: 720, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+    { duration: 640, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => cutin.remove());
+  attachVfxElement(cutin, anim, 640 + delay);
 }
 
-function spawnSummonBurst(rect, card, delay = 0) {
-  if (!rect || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+function spawnSummonBurst(rect, card, delay = 0, frameBudget = null) {
+  if (!isValidRect(rect) || prefersReducedMotion()) return;
   const theme = getFrameSummonTheme(card);
 
   const ring = document.createElement('div');
@@ -960,25 +1089,28 @@ function spawnSummonBurst(rect, card, delay = 0) {
   ring.style.top = `${rect.top + rect.height / 2}px`;
   ring.style.setProperty('--vfx-color', theme.color);
   ring.style.setProperty('--vfx-glow', theme.glow);
-  layer.appendChild(ring);
+  getVfxLayer().appendChild(ring);
 
   const anim = ring.animate(
     [
       { transform: 'translate(-50%, -50%) scale(0.45)', opacity: 0.95 },
-      { transform: 'translate(-50%, -50%) scale(1.65)', opacity: 0 }
+      { transform: 'translate(-50%, -50%) scale(1.6)', opacity: 0 }
     ],
-    { duration: 520, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
+    { duration: 480, delay, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'both' }
   );
-  anim.finished.catch(() => {}).finally(() => ring.remove());
+  attachVfxElement(ring, anim, 480 + delay);
 
   if (card?.zone === 'MMZ' || card?.zone === 'EMZ' || card?.zone === 'FIELD' || !card?.zone) {
-    spawnCallout(rect, theme.label, theme.color, delay + 30);
+    spawnCallout(rect, theme.label, theme.color, delay + 30, frameBudget);
   }
 }
 
-function spawnCardSendGhost(cardInfo, prevRect, targetRect, cardDef, delay = 0) {
-  if (!prevRect || !targetRect || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+function spawnCardSendGhost(cardInfo, prevRect, targetRect, cardDef, delay = 0, frameBudget = null) {
+  if (!isValidRect(prevRect) || !isValidRect(targetRect) || prefersReducedMotion()) return;
+  if (frameBudget) {
+    if (frameBudget.sendGhostsShown >= 4) return;
+    frameBudget.sendGhostsShown++;
+  }
 
   const ghost = document.createElement('div');
   ghost.className = `vfx-card-ghost ${getCardFrameClass(cardDef)}`;
@@ -995,7 +1127,7 @@ function spawnCardSendGhost(cardInfo, prevRect, targetRect, cardDef, delay = 0) 
     img.className = 'vfx-ghost-img';
     ghost.appendChild(img);
   }
-  layer.appendChild(ghost);
+  getVfxLayer().appendChild(ghost);
 
   const dx = (targetRect.left + targetRect.width / 2) - (prevRect.left + prevRect.width / 2);
   const dy = (targetRect.top + targetRect.height / 2) - (prevRect.top + prevRect.height / 2);
@@ -1005,15 +1137,14 @@ function spawnCardSendGhost(cardInfo, prevRect, targetRect, cardDef, delay = 0) 
       { transform: 'translate3d(0, 0, 0) scale(1) rotate(0deg)', opacity: 0.92 },
       { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.32) rotate(12deg)`, opacity: 0.08 }
     ],
-    { duration: 360, delay, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }
+    { duration: 340, delay, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }
   );
 
-  anim.finished.catch(() => {}).finally(() => ghost.remove());
+  attachVfxElement(ghost, anim, 340 + delay);
 }
 
 function spawnBattleSlashVfx(targetRect, isDirect = false) {
-  if (!targetRect || prefersReducedMotion()) return;
-  const layer = getVfxLayer();
+  if (!isValidRect(targetRect) || prefersReducedMotion()) return;
   const slash = document.createElement('div');
   slash.className = `vfx-battle-slash ${isDirect ? 'direct-hit' : ''}`;
   slash.style.left = `${targetRect.left + targetRect.width / 2}px`;
@@ -1025,7 +1156,7 @@ function spawnBattleSlashVfx(targetRect, isDirect = false) {
       <circle cx="60" cy="60" r="24" fill="none" stroke="rgba(250, 204, 21, 0.7)" stroke-width="3" />
     </svg>
   `;
-  layer.appendChild(slash);
+  getVfxLayer().appendChild(slash);
 
   const anim = slash.animate(
     [
@@ -1033,23 +1164,22 @@ function spawnBattleSlashVfx(targetRect, isDirect = false) {
       { transform: 'translate(-50%, -50%) scale(1.18) rotate(4deg)', opacity: 1, offset: 0.32 },
       { transform: 'translate(-50%, -50%) scale(1.42) rotate(8deg)', opacity: 0 }
     ],
-    { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+    { duration: 400, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
   );
-  anim.finished.catch(() => {}).finally(() => slash.remove());
+  attachVfxElement(slash, anim, 400);
 }
 
 function spawnLpDeltaPopup(lpValueEl, delta) {
   if (!lpValueEl || delta === 0) return;
-  const rect = lpValueEl.getBoundingClientRect();
-  if (rect.width === 0) return;
+  const rect = getRectIfVisible(lpValueEl);
+  if (!rect) return;
 
-  const layer = getVfxLayer();
   const pop = document.createElement('div');
   pop.className = `vfx-lp-delta ${delta < 0 ? 'lp-loss' : 'lp-gain'}`;
   pop.textContent = `${delta > 0 ? '+' : ''}${delta} LP`;
   pop.style.left = `${rect.left + rect.width / 2}px`;
   pop.style.top = `${rect.top}px`;
-  layer.appendChild(pop);
+  getVfxLayer().appendChild(pop);
 
   const startY = prefersReducedMotion() ? '-6px' : '0px';
   const endY = prefersReducedMotion() ? '-8px' : '-34px';
@@ -1059,9 +1189,9 @@ function spawnLpDeltaPopup(lpValueEl, delta) {
       { transform: `translate(-50%, -14px) scale(1.12)`, opacity: 1, offset: 0.25 },
       { transform: `translate(-50%, ${endY}) scale(1)`, opacity: 0 }
     ],
-    { duration: 920, easing: 'ease-out' }
+    { duration: 860, easing: 'ease-out' }
   );
-  anim.finished.catch(() => {}).finally(() => pop.remove());
+  attachVfxElement(pop, anim, 860);
 }
 
 function animatePositionPivot(cardEl, prevPos, newPos, delay = 0) {
@@ -1114,11 +1244,23 @@ function animateHandRearrangeFlip(prev, me, myIdx, consumedPrevHandIndices) {
   }
 }
 
-function playEventDrivenAnimations(prev, newState, myIdx) {
-  const events = newState.recentEvents || [];
+function playEventDrivenAnimations(prev, newState, myIdx, filteredEvents = null) {
+  const prevSeq = Number(prev?.lastEventSeq || 0);
+  const events = Array.isArray(filteredEvents)
+    ? filteredEvents
+    : (newState.recentEvents || [])
+        .filter((ev) => ev && (typeof ev.seq !== 'number' || ev.seq > prevSeq))
+        .sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0));
   const me = newState.players[myIdx];
   const oppIdx = 1 - myIdx;
   const opp = newState.players[oppIdx];
+
+  const frameBudget = {
+    calloutsShown: 0,
+    calloutZones: new Set(),
+    sendGhostsShown: 0,
+    animatedEls: new Set()
+  };
 
   // Pair material exits cleanly with their resulting SUMMON event
   const summonMaterialMap = new Map();
@@ -1173,7 +1315,7 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
 
   for (let i = 0; i < events.length; i++) {
     const ev = events[i];
-    const delay = Math.min(stepOrder * 75, 480);
+    const delay = Math.min(stepOrder * 55, 220);
 
     if (ev.type === 'DRAW') {
       const isSelfDraw = ev.controller === myIdx;
@@ -1183,25 +1325,28 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         const startIdx = Math.max(0, me.hand.length - drawCount);
         for (let hIdx = startIdx; hIdx < me.hand.length; hIdx++) {
           const cardEl = resolveLiveCardEl(myIdx, 'HAND', hIdx, myIdx);
-          if (cardEl && deckOrigin && cardEl.getAnimations().length === 0) {
+          if (cardEl && isValidRect(deckOrigin) && !frameBudget.animatedEls.has(cardEl) && cardEl.getAnimations().length === 0) {
+            frameBudget.animatedEls.add(cardEl);
             animateElementFlight(cardEl, deckOrigin, cardEl.getBoundingClientRect(), {
-              duration: 300,
-              delay: drawStagger * 55,
+              duration: 280,
+              delay: drawStagger * 50,
               startScale: 0.72,
               startRotateDeg: -10
             });
             drawStagger++;
           }
         }
-      } else if (prev.piles.oppDeck) {
+      } else if (isValidRect(prev.piles.oppDeck || prev.piles.oppHud)) {
+        const oppOrigin = isValidRect(prev.piles.oppDeck) ? prev.piles.oppDeck : prev.piles.oppHud;
         const backs = document.querySelectorAll('#opp-hand-bar .opp-hand-card-back');
         const startIdx = Math.max(0, backs.length - drawCount);
         for (let bIdx = startIdx; bIdx < backs.length; bIdx++) {
           const b = backs[bIdx];
-          if (b && b.getAnimations().length === 0) {
-            animateElementFlight(b, prev.piles.oppDeck, b.getBoundingClientRect(), {
-              duration: 280,
-              delay: (bIdx - startIdx) * 55,
+          if (b && !frameBudget.animatedEls.has(b) && b.getAnimations().length === 0) {
+            frameBudget.animatedEls.add(b);
+            animateElementFlight(b, oppOrigin, b.getBoundingClientRect(), {
+              duration: 260,
+              delay: (bIdx - startIdx) * 50,
               startScale: 0.85,
               startRotateDeg: 10
             });
@@ -1221,17 +1366,17 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
       fieldActivatedZones.add(zoneKey);
 
       if (ev.summonKind === 'FLIP') {
-        spawnMonsterFlipVfx(toRect, cardEl, 'FLIP SUMMON!', delay);
+        spawnMonsterFlipVfx(toRect, cardEl, 'FLIP SUMMON!', delay, frameBudget);
       } else if (frame === MONSTER_FRAMES.FUSION) {
-        spawnFusionSummonVfx(toRect, cardEl, mats, delay);
+        spawnFusionSummonVfx(toRect, cardEl, mats, delay, frameBudget);
       } else if (frame === MONSTER_FRAMES.SYNCHRO) {
-        spawnSynchroSummonVfx(toRect, cardEl, mats, delay);
+        spawnSynchroSummonVfx(toRect, cardEl, mats, delay, frameBudget);
       } else if (frame === MONSTER_FRAMES.XYZ) {
-        spawnXyzSummonVfx(toRect, cardEl, mats, delay);
+        spawnXyzSummonVfx(toRect, cardEl, mats, delay, frameBudget);
       } else if (frame === MONSTER_FRAMES.LINK) {
-        spawnLinkSummonVfx(toRect, cardEl, mats, delay);
+        spawnLinkSummonVfx(toRect, cardEl, mats, delay, frameBudget);
       } else if (frame === 'RITUAL') {
-        spawnRitualSummonVfx(toRect, cardEl, mats, delay);
+        spawnRitualSummonVfx(toRect, cardEl, mats, delay, frameBudget);
       } else {
         // Check preceding MOVE origin to fly card smoothly from Hand/Deck/GY/Extra to zone
         let originRect = null;
@@ -1243,22 +1388,23 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
             break;
           }
         }
-        if (originRect && cardEl && toRect) {
-          animateElementFlight(cardEl, originRect, toRect, { duration: 310, delay, startScale: 1.12, midScale: 1.16 });
+        if (originRect && cardEl && toRect && !frameBudget.animatedEls.has(cardEl)) {
+          frameBudget.animatedEls.add(cardEl);
+          animateElementFlight(cardEl, originRect, toRect, { duration: 290, delay, startScale: 1.08, midScale: 1.14 });
         }
         if (mats.length > 0 && ev.summonKind === 'NORMAL') {
           spawnMaterialOrbs(mats, toRect, '#facc15', 'rgba(250, 204, 21, 0.85)', delay);
-          spawnCallout(toRect, 'TRIBUTE SUMMON', '#facc15', delay + 60);
+          spawnCallout(toRect, 'TRIBUTE SUMMON', '#facc15', delay + 60, frameBudget);
         } else if (ev.summonKind === 'SPECIAL') {
           if (specialSummonCountThisBatch >= 2 || ev.meta?.isPendulum) {
             spawnPendulumBeamVfx(toRect, ev.controller, myIdx, delay);
-            spawnCallout(toRect, ev.meta?.isPendulum ? 'PENDULUM SUMMON' : 'SPECIAL SUMMON', '#2dd4bf', delay + 40);
+            spawnCallout(toRect, ev.meta?.isPendulum ? 'PENDULUM SUMMON' : 'SPECIAL SUMMON', '#2dd4bf', delay + 40, frameBudget);
           } else {
-            spawnSummonBurst(toRect, { ...ev.meta, zone: ev.zone }, delay);
+            spawnSummonBurst(toRect, { ...ev.meta, zone: ev.zone }, delay, frameBudget);
           }
         } else {
           spawnPlacementRipple(toRect, false, delay);
-          spawnSummonBurst(toRect, { ...ev.meta, zone: ev.zone }, delay);
+          spawnSummonBurst(toRect, { ...ev.meta, zone: ev.zone }, delay, frameBudget);
         }
       }
       stepOrder++;
@@ -1279,10 +1425,11 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
           break;
         }
       }
-      if (cardEl && originRect && toRect) {
-        animateElementFlight(cardEl, originRect, toRect, { duration: 320, delay, startScale: 1.08, midScale: 1.14, flipYDeg: 180 });
+      if (cardEl && originRect && toRect && !frameBudget.animatedEls.has(cardEl)) {
+        frameBudget.animatedEls.add(cardEl);
+        animateElementFlight(cardEl, originRect, toRect, { duration: 300, delay, startScale: 1.06, midScale: 1.12, flipYDeg: 180 });
       }
-      spawnPlacementRipple(toRect, true, delay + 90);
+      spawnPlacementRipple(toRect, true, delay + 80);
       stepOrder++;
       continue;
     }
@@ -1298,24 +1445,29 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         const isSelf = ev.controller === myIdx;
         const destGy = isSelf ? prev.piles.selfGy : prev.piles.oppGy;
         if (ev.meta?.kind === 'TRAP') {
-          spawnTrapFlipVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay);
+          spawnTrapFlipVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay, frameBudget);
         } else if (ev.meta?.kind === 'SPELL') {
-          spawnSpellActivationVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay);
+          spawnSpellActivationVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay, frameBudget);
         } else {
-          spawnMonsterFlipVfx(rect, cardEl, 'FLIP!', delay);
+          spawnMonsterFlipVfx(rect, cardEl, 'FLIP!', delay, frameBudget);
         }
       } else if (!ev.prevFaceDown && ev.nowFaceDown) {
-        if (cardEl && !prefersReducedMotion()) {
+        if (cardEl && !prefersReducedMotion() && !frameBudget.animatedEls.has(cardEl)) {
+          frameBudget.animatedEls.add(cardEl);
+          const isDef = isDefCardEl(cardEl);
+          const baseRot = isDef ? -90 : 0;
+          const baseScale = isDef ? 0.76 : 1;
           cardEl.animate(
             [
-              { transform: 'perspective(680px) rotateY(-180deg) scale(1.08)' },
-              { transform: 'perspective(680px) rotateY(0deg) scale(1)' }
+              { transform: `perspective(680px) rotate(${baseRot}deg) scale(${(1.08 * baseScale).toFixed(3)}) rotateY(-180deg)` },
+              { transform: `perspective(680px) rotate(${baseRot}deg) scale(${baseScale.toFixed(3)}) rotateY(0deg)` }
             ],
             { duration: 300, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }
           );
         }
         spawnPlacementRipple(rect, true, delay + 80);
-      } else {
+      } else if (cardEl && !frameBudget.animatedEls.has(cardEl)) {
+        frameBudget.animatedEls.add(cardEl);
         animatePositionPivot(cardEl, ev.prevPosition, ev.position, delay);
       }
       stepOrder++;
@@ -1334,23 +1486,25 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         if (ev.meta?.kind === 'SPELL') {
           if (!fieldActivatedZones.has(zoneKey)) {
             fieldActivatedZones.add(zoneKey);
-            spawnSpellActivationVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay);
+            spawnSpellActivationVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay, frameBudget);
           }
         } else if (ev.meta?.kind === 'TRAP') {
           if (!fieldActivatedZones.has(zoneKey)) {
             fieldActivatedZones.add(zoneKey);
-            spawnTrapFlipVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay);
+            spawnTrapFlipVfx(rect, ev.meta, cardEl, cardEl ? null : destGy, delay, frameBudget);
           }
-        } else {
-          spawnSummonBurst(rect, { ...ev.meta, zone: ev.zone }, delay);
-          if (cardEl && !prefersReducedMotion()) {
+        } else if (!fieldActivatedZones.has(zoneKey)) {
+          fieldActivatedZones.add(zoneKey);
+          spawnSummonBurst(rect, { ...ev.meta, zone: ev.zone }, delay, frameBudget);
+          if (cardEl && !prefersReducedMotion() && !frameBudget.animatedEls.has(cardEl)) {
+            frameBudget.animatedEls.add(cardEl);
             cardEl.animate(
               [
                 { translate: '0px 0px', scale: '1' },
-                { translate: '0px -6px', scale: '1.15', offset: 0.42 },
+                { translate: '0px -6px', scale: '1.14', offset: 0.42 },
                 { translate: '0px 0px', scale: '1' }
               ],
-              { duration: 360, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+              { duration: 340, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
             );
           }
         }
@@ -1358,7 +1512,7 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         // Activated in Hand, GY, Banished, Extra, or Deck -> crisp Cut-In ghost above that zone
         const pileRect = resolveLiveRect({ controller: ev.controller, zone: ev.zone, index: ev.index }, prev, myIdx)
           || resolvePrevRect({ controller: ev.controller, zone: ev.zone, index: ev.index }, prev, myIdx);
-        spawnPileActivationCutin(pileRect, ev.meta, ev.chainLink, delay);
+        spawnPileActivationCutin(pileRect, ev.meta, ev.chainLink, delay, frameBudget);
       }
       stepOrder++;
       continue;
@@ -1376,10 +1530,11 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
       if (to.zone === 'HAND') {
         const cardEl = resolveLiveCardEl(to.controller, 'HAND', to.index, myIdx);
         const toRect = resolveLiveRect(to, prev, myIdx);
-        if (cardEl && fromRect && toRect) {
+        if (cardEl && fromRect && toRect && !frameBudget.animatedEls.has(cardEl)) {
+          frameBudget.animatedEls.add(cardEl);
           animateElementFlight(cardEl, fromRect, toRect, {
-            duration: 300,
-            delay: drawStagger * 50,
+            duration: 280,
+            delay: drawStagger * 45,
             startScale: 0.72,
             startRotateDeg: to.controller === myIdx ? -10 : 10
           });
@@ -1391,23 +1546,24 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         const zoneKey = `${to.controller}:${to.zone}:${to.index}`;
         const isPendulumScalePlace = ev.meta?.isPendulum && to.zone === 'STZ' && (to.index === 0 || to.index === 4) && !to.isFaceDown;
 
-        if (cardEl && fromRect && toRect) {
+        if (cardEl && fromRect && toRect && !frameBudget.animatedEls.has(cardEl)) {
+          frameBudget.animatedEls.add(cardEl);
           animateElementFlight(cardEl, fromRect, toRect, {
-            duration: 310,
+            duration: 290,
             delay,
-            startScale: 1.08,
-            midScale: 1.15,
+            startScale: 1.06,
+            midScale: 1.13,
             flipYDeg: to.isFaceDown ? 180 : 0
           });
         }
         if (isPendulumScalePlace && !fieldActivatedZones.has(zoneKey)) {
           fieldActivatedZones.add(zoneKey);
-          spawnCallout(toRect, 'PENDULUM SCALE', '#2dd4bf', delay + 50);
+          spawnCallout(toRect, 'PENDULUM SCALE', '#2dd4bf', delay + 50, frameBudget);
           spawnPlacementRipple(toRect, false, delay);
         } else if (ev.meta?.kind === 'SPELL' && !to.isFaceDown && !fieldActivatedZones.has(zoneKey)) {
           fieldActivatedZones.add(zoneKey);
           const isSelf = to.controller === myIdx;
-          spawnSpellActivationVfx(toRect, ev.meta, cardEl, cardEl ? null : (isSelf ? prev.piles.selfGy : prev.piles.oppGy), delay);
+          spawnSpellActivationVfx(toRect, ev.meta, cardEl, cardEl ? null : (isSelf ? prev.piles.selfGy : prev.piles.oppGy), delay, frameBudget);
         } else if (!fieldActivatedZones.has(zoneKey)) {
           spawnPlacementRipple(toRect, to.isFaceDown, delay + 70);
         }
@@ -1416,7 +1572,7 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
         const toRect = resolveLiveRect(to, prev, myIdx);
         if (isFromVisibleOrSelf && fromRect && toRect) {
           const prevZoneEntry = prev.zones.get(`${from.controller}:${from.zone}:${from.index}`);
-          spawnCardSendGhost(prevZoneEntry, fromRect, toRect, ev.meta, delay);
+          spawnCardSendGhost(prevZoneEntry, fromRect, toRect, ev.meta, delay, frameBudget);
         }
       }
       stepOrder++;
@@ -1428,14 +1584,16 @@ function playEventDrivenAnimations(prev, newState, myIdx) {
 
   // Also ensure any opponent draws animate from deck when no explicit HAND cardEl existed
   const oppDraws = (opp?.hand?.length ?? 0) - prev.oppHandCount;
-  if (oppDraws > 0 && prev.piles.oppDeck) {
+  const oppDeckOrigin = isValidRect(prev.piles.oppDeck) ? prev.piles.oppDeck : prev.piles.oppHud;
+  if (oppDraws > 0 && isValidRect(oppDeckOrigin)) {
     const backs = document.querySelectorAll('#opp-hand-bar .opp-hand-card-back');
     for (let i = Math.max(0, backs.length - oppDraws); i < backs.length; i++) {
       const b = backs[i];
-      if (b.getAnimations().length === 0) {
-        animateElementFlight(b, prev.piles.oppDeck, b.getBoundingClientRect(), {
-          duration: 280,
-          delay: (i - (backs.length - oppDraws)) * 55,
+      if (b && !frameBudget.animatedEls.has(b) && b.getAnimations().length === 0) {
+        frameBudget.animatedEls.add(b);
+        animateElementFlight(b, oppDeckOrigin, b.getBoundingClientRect(), {
+          duration: 260,
+          delay: (i - (backs.length - oppDraws)) * 50,
           startScale: 0.85
         });
       }
@@ -1548,8 +1706,8 @@ function playLegacyBoardDiffAnimations(prev, newState, myIdx) {
  * Diff previous board snapshot against new state & newly rendered DOM, playing smooth animations.
  */
 const TURN_BANNER_DURATION_MS = 1500;
-const PHASE_BANNER_DURATION_MS = 1100;
-const TURN_BANNER_GAP_MS = 60;
+const PHASE_BANNER_DURATION_MS = 850;
+const TURN_BANNER_GAP_MS = 50;
 
 const PHASE_BANNER_LABELS = {
   DP: 'DRAW PHASE',
@@ -1565,6 +1723,7 @@ const turnBannerState = {
   seenKeys: new Set(),
   queue: [],
   active: false,
+  activeItem: null,
   hideTimer: null,
   nextTimer: null
 };
@@ -1602,6 +1761,9 @@ export function getTurnBannerDisplay(transition, myIdx) {
   const isSelfTurn = transition.turnPlayer === myIdx;
   return {
     isSelfTurn,
+    isPhaseBanner: false,
+    turnCount: transition.turnCount,
+    turnPlayer: transition.turnPlayer,
     text: isSelfTurn ? 'YOUR TURN' : 'YOUR OPPONENT TURN',
     themeClass: isSelfTurn ? 'is-self-turn' : 'is-opp-turn',
     subText: `TURN ${transition.turnCount}`,
@@ -1615,6 +1777,10 @@ export function getPhaseBannerDisplay(phase, turnCount, turnPlayer, myIdx) {
   const battleClass = phase === 'BP' ? ' is-battle-phase' : '';
   return {
     isSelfTurn,
+    isPhaseBanner: true,
+    phase,
+    turnCount,
+    turnPlayer,
     text: label,
     themeClass: `is-phase-change ${isSelfTurn ? 'is-self-turn' : 'is-opp-turn'}${battleClass}`,
     subText: `TURN ${turnCount} • ${isSelfTurn ? 'YOUR TURN' : 'OPPONENT TURN'}`,
@@ -1633,6 +1799,7 @@ export function resetTurnChangeBannerQueue() {
   }
   turnBannerState.queue = [];
   turnBannerState.active = false;
+  turnBannerState.activeItem = null;
   turnBannerState.duelId = null;
   turnBannerState.seenKeys.clear();
 
@@ -1641,6 +1808,23 @@ export function resetTurnChangeBannerQueue() {
     if (banner) {
       banner.innerHTML = '';
     }
+  }
+}
+
+function clearActiveBannerSlot() {
+  if (turnBannerState.hideTimer) {
+    clearTimeout(turnBannerState.hideTimer);
+    turnBannerState.hideTimer = null;
+  }
+  if (turnBannerState.nextTimer) {
+    clearTimeout(turnBannerState.nextTimer);
+    turnBannerState.nextTimer = null;
+  }
+  turnBannerState.active = false;
+  turnBannerState.activeItem = null;
+  if (typeof document !== 'undefined') {
+    const banner = document.getElementById('turn-change-banner');
+    if (banner) banner.innerHTML = '';
   }
 }
 
@@ -1657,11 +1841,16 @@ function pumpTurnBannerQueue() {
 
   turnBannerState.active = true;
   const item = turnBannerState.queue.shift();
+  turnBannerState.activeItem = item;
+  const durationMs = item.durationMs || TURN_BANNER_DURATION_MS;
 
   banner.innerHTML = '';
   const card = document.createElement('div');
   card.className = `turn-banner-card ${item.themeClass}`;
   card.dataset.turnText = item.text;
+  if (item.isPhaseBanner) {
+    card.style.animationDuration = `${durationMs}ms`;
+  }
 
   const sweep = document.createElement('div');
   sweep.className = 'turn-banner-sweep';
@@ -1674,6 +1863,9 @@ function pumpTurnBannerQueue() {
   const title = document.createElement('div');
   title.className = 'turn-banner-title';
   title.textContent = item.text;
+  if (item.isPhaseBanner) {
+    title.style.animationDuration = `${durationMs}ms`;
+  }
 
   card.append(sweep, sub, title);
   banner.appendChild(card);
@@ -1684,45 +1876,85 @@ function pumpTurnBannerQueue() {
       banner.innerHTML = '';
     }
     turnBannerState.active = false;
+    turnBannerState.activeItem = null;
     if (turnBannerState.queue.length > 0) {
       turnBannerState.nextTimer = setTimeout(() => {
         turnBannerState.nextTimer = null;
         pumpTurnBannerQueue();
       }, TURN_BANNER_GAP_MS);
     }
-  }, item.durationMs || TURN_BANNER_DURATION_MS);
+  }, durationMs);
 }
 
-export function enqueueTurnChangeBanners(prevState, newState, myIdx) {
+export function enqueueTurnChangeBanners(prevState, newState, myIdx, opts = {}) {
   if (!newState) return;
+  const isAiStep = Boolean(opts.isAiStep);
   if (newState.duelId && turnBannerState.duelId !== newState.duelId) {
     resetTurnChangeBannerQueue();
     turnBannerState.duelId = newState.duelId;
   }
 
-  const transitions = collectTurnTransitions(prevState, newState);
+  const rawTransitions = collectTurnTransitions(prevState, newState);
+  // If multiple turns resolved in one jump, only announce the current/latest turn so stale turns never flood.
+  const transitions = rawTransitions.length > 1
+    ? [rawTransitions[rawTransitions.length - 1]]
+    : rawTransitions;
+
+  let enqueuedTurnBanner = false;
   for (const tr of transitions) {
     const key = `${newState.duelId || 'duel'}:${tr.turnCount}:${tr.turnPlayer}`;
     if (turnBannerState.seenKeys.has(key)) continue;
     turnBannerState.seenKeys.add(key);
+
+    // Drop any queued stale phase banners or older turn banners when a new turn begins
+    turnBannerState.queue = turnBannerState.queue.filter(
+      (item) => !item.isPhaseBanner && Number(item.turnCount || 0) >= tr.turnCount
+    );
+    // Interrupt a stale phase banner from an earlier turn immediately so the new turn banner is crisp
+    if (
+      turnBannerState.active &&
+      turnBannerState.activeItem?.isPhaseBanner &&
+      Number(turnBannerState.activeItem.turnCount || 0) < tr.turnCount
+    ) {
+      clearActiveBannerSlot();
+    }
+
     turnBannerState.queue.push(getTurnBannerDisplay(tr, myIdx));
+    enqueuedTurnBanner = true;
   }
 
-  // Enqueue phase change banner when phase changes within an active duel
-  if (
+  // Enqueue phase change banner cleanly without flooding:
+  // - Never announce automatic DP / SP micro-phases or MP1 right on a turn switch.
+  // - During opponent / AI turns, only announce Battle Phase (BP) so AI phase cycling never floods banners.
+  const isOppOrAiTurn = isAiStep || newState.turnPlayer !== myIdx;
+  const phaseChanged = Boolean(
     prevState &&
     prevState.duelId === newState.duelId &&
     newState.phase &&
     prevState.phase !== newState.phase &&
     PHASE_BANNER_LABELS[newState.phase]
-  ) {
+  );
+  const shouldAnnouncePhase = phaseChanged && !enqueuedTurnBanner && (
+    isOppOrAiTurn
+      ? newState.phase === 'BP'
+      : (newState.phase === 'BP' || newState.phase === 'MP2' || newState.phase === 'EP')
+  );
+
+  if (shouldAnnouncePhase) {
     const phaseKey = `phase:${newState.duelId || 'duel'}:${newState.turnCount}:${newState.turnPlayer}:${newState.phase}`;
     if (!turnBannerState.seenKeys.has(phaseKey)) {
       turnBannerState.seenKeys.add(phaseKey);
+      // Coalesce: keep at most 1 pending phase banner in queue (replace any older pending phase banner)
+      turnBannerState.queue = turnBannerState.queue.filter((item) => !item.isPhaseBanner);
       turnBannerState.queue.push(
         getPhaseBannerDisplay(newState.phase, newState.turnCount, newState.turnPlayer, myIdx)
       );
     }
+  }
+
+  // Hard cap queue to 2 entries (at most 1 turn + 1 phase) so stale banners can never pile up
+  if (turnBannerState.queue.length > 2) {
+    turnBannerState.queue = turnBannerState.queue.slice(-2);
   }
 
   pumpTurnBannerQueue();
@@ -1743,20 +1975,27 @@ export function playBoardDiffAnimations(prev, newState, myIdx) {
   }
 
   // 2. Card Placing, Summon Mechanics (Fusion/Synchro/Xyz/Link/Ritual), Spell Activation, Trap & Monster Flips
-  const hasNewOcgEvents = Array.isArray(newState.recentEvents) && newState.recentEvents.length > 0 && newState.eventSeq !== prev.lastEventSeq;
-  if (hasNewOcgEvents) {
-    playEventDrivenAnimations(prev, newState, myIdx);
-  } else {
+  const prevSeq = Number(prev.lastEventSeq || 0);
+  const hasOcgEventStream = Array.isArray(newState.recentEvents) && typeof newState.eventSeq === 'number';
+  const freshOcgEvents = hasOcgEventStream
+    ? newState.recentEvents
+        .filter((ev) => ev && (typeof ev.seq !== 'number' || ev.seq > prevSeq))
+        .sort((a, b) => Number(a.seq || 0) - Number(b.seq || 0))
+    : [];
+
+  if (prev.isInitialRender || !hasOcgEventStream) {
     playLegacyBoardDiffAnimations(prev, newState, myIdx);
+  } else if (freshOcgEvents.length > 0 && Number(newState.eventSeq || 0) > prevSeq) {
+    playEventDrivenAnimations(prev, newState, myIdx, freshOcgEvents);
   }
 
   // 3. Battle Attack Lunge & Slash VFX
   const battle = newState.lastBattleEvent;
-  if (battle && battle.seq !== prev.lastBattleSeq) {
-    const attackerEl = document.querySelector(`.duel-card[data-instance-id="${battle.attackerInstanceId}"]`)
+  if (battle && Number(battle.seq || 0) > Number(prev.lastBattleSeq || 0)) {
+    const attackerEl = (battle.attackerInstanceId && document.querySelector(`.duel-card[data-instance-id="${battle.attackerInstanceId}"]`))
       || resolveLiveCardEl(battle.attackerPlayerIndex, battle.attackerZone || 'MMZ', battle.attackerIndex ?? 0, myIdx);
-    const attackerRect = attackerEl?.getBoundingClientRect()
-      || prev.cards.get(battle.attackerInstanceId)?.rect
+    const attackerRect = getRectIfVisible(attackerEl)
+      || (battle.attackerInstanceId && isValidRect(prev.cards.get(battle.attackerInstanceId)?.rect) ? prev.cards.get(battle.attackerInstanceId).rect : null)
       || resolvePrevRect({ controller: battle.attackerPlayerIndex, zone: battle.attackerZone || 'MMZ', index: battle.attackerIndex ?? 0 }, prev, myIdx);
 
     let targetRect = null;
@@ -1768,26 +2007,54 @@ export function playBoardDiffAnimations(prev, newState, myIdx) {
     } else if (battle.targetInstanceId || typeof battle.targetIndex === 'number') {
       const targetEl = (battle.targetInstanceId && document.querySelector(`.duel-card[data-instance-id="${battle.targetInstanceId}"]`))
         || resolveLiveCardEl(battle.targetPlayerIndex, battle.targetZone || 'MMZ', battle.targetIndex ?? 0, myIdx);
-      targetRect = targetEl?.getBoundingClientRect()
-        || (battle.targetInstanceId && prev.cards.get(battle.targetInstanceId)?.rect)
+      targetRect = getRectIfVisible(targetEl)
+        || (battle.targetInstanceId && isValidRect(prev.cards.get(battle.targetInstanceId)?.rect) ? prev.cards.get(battle.targetInstanceId).rect : null)
         || resolvePrevRect({ controller: battle.targetPlayerIndex, zone: battle.targetZone || 'MMZ', index: battle.targetIndex ?? 0 }, prev, myIdx);
     }
 
-    if (attackerEl && attackerRect && targetRect && !prefersReducedMotion()) {
+    if (isValidRect(attackerRect) && isValidRect(targetRect) && !prefersReducedMotion()) {
       const dx = ((targetRect.left + targetRect.width / 2) - (attackerRect.left + attackerRect.width / 2)) * 0.72;
       const dy = ((targetRect.top + targetRect.height / 2) - (attackerRect.top + attackerRect.height / 2)) * 0.72;
-      attackerEl.animate(
-        [
-          { translate: '0px 0px', scale: '1', zIndex: 30 },
-          { translate: `${dx}px ${dy}px`, scale: '1.16', zIndex: 30, offset: 0.42 },
-          { translate: '0px 0px', scale: '1', zIndex: 30 }
-        ],
-        { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
-      );
+      if (attackerEl) {
+        attackerEl.animate(
+          [
+            { translate: '0px 0px', scale: '1', zIndex: 30 },
+            { translate: `${dx.toFixed(1)}px ${dy.toFixed(1)}px`, scale: '1.16', zIndex: 30, offset: 0.42 },
+            { translate: '0px 0px', scale: '1', zIndex: 30 }
+          ],
+          { duration: 340, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+      } else {
+        // Attacker was destroyed during battle (mutual crash / stronger DEF): play a crisp ghost lunge
+        const prevAttacker = battle.attackerInstanceId ? prev.cards.get(battle.attackerInstanceId) : null;
+        if (prevAttacker?.artSrc) {
+          const ghost = document.createElement('div');
+          ghost.className = 'vfx-card-ghost';
+          ghost.style.left = `${attackerRect.left}px`;
+          ghost.style.top = `${attackerRect.top}px`;
+          ghost.style.width = `${attackerRect.width}px`;
+          ghost.style.height = `${attackerRect.height}px`;
+          const img = document.createElement('img');
+          img.src = prevAttacker.artSrc;
+          img.alt = '';
+          img.className = 'vfx-ghost-img';
+          ghost.appendChild(img);
+          getVfxLayer().appendChild(ghost);
+          const gAnim = ghost.animate(
+            [
+              { transform: 'translate3d(0, 0, 0) scale(1)', opacity: 0.92 },
+              { transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(1.14)`, opacity: 0.96, offset: 0.48 },
+              { transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(0.7)`, opacity: 0 }
+            ],
+            { duration: 340, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' }
+          );
+          attachVfxElement(ghost, gAnim, 340);
+        }
+      }
     }
 
-    if (targetRect) {
-      setTimeout(() => {
+    if (isValidRect(targetRect)) {
+      scheduleVfxTimer(() => {
         spawnBattleSlashVfx(targetRect, battle.directAttack);
         const playmatEl = document.getElementById('playmat-container');
         if (playmatEl && battle.damage > 0 && !prefersReducedMotion()) {
@@ -1801,7 +2068,7 @@ export function playBoardDiffAnimations(prev, newState, myIdx) {
             { duration: 220, easing: 'ease-out' }
           );
         }
-      }, prefersReducedMotion() ? 0 : 120);
+      }, prefersReducedMotion() ? 0 : 110);
     }
   }
 }

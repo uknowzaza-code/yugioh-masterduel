@@ -149,6 +149,100 @@ const rooms = new Map();
 const soloDuels = new Map();
 const translationCache = new Map();
 
+const MAX_AI_STEP_SNAPSHOTS = 36;
+const EMPTY_SOLO_LEGAL_ACTIONS = Object.freeze({
+  handActions: {},
+  fieldActions: {},
+  gyActions: {},
+  banishedActions: {},
+  extraActions: {},
+  attackTargets: {},
+  canBattlePhase: false,
+  canMainPhase2: false,
+  canEndTurn: false,
+  canChainRespond: false,
+  chainPrompt: null
+});
+
+function buildAiStepSignature(snap) {
+  if (!snap) return '';
+  const p0 = snap.players?.[0];
+  const p1 = snap.players?.[1];
+  return [
+    snap.turnCount ?? 0,
+    snap.turnPlayer ?? 0,
+    snap.phase ?? '',
+    snap.eventSeq ?? 0,
+    snap.battleSeq ?? 0,
+    p0?.lp ?? 0,
+    p1?.lp ?? 0,
+    p0?.hand?.length ?? 0,
+    p1?.hand?.length ?? 0,
+    snap.chainStack?.length ?? 0,
+    snap.winner ?? ''
+  ].join('|');
+}
+
+function generateDuelId(prefix = 'duel') {
+  return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
+function attachDuelId(state, duelId) {
+  if (!state || typeof state !== 'object') return state;
+  if (state.duelId || !duelId) return state;
+  return { ...state, duelId };
+}
+
+function createAiStepCollector(initialEventSeq = 0, duelId = null) {
+  const snapshots = [];
+  let lastSig = '';
+  let lastEventSeq = Number(initialEventSeq || 0);
+  return {
+    snapshots,
+    onAiStep(snap) {
+      if (!snap || snapshots.length >= MAX_AI_STEP_SNAPSHOTS) return;
+      const sig = buildAiStepSignature(snap);
+      if (sig === lastSig) return;
+      lastSig = sig;
+      const incrementalEvents = Array.isArray(snap.recentEvents)
+        ? snap.recentEvents.filter((ev) => ev && (typeof ev.seq !== 'number' || ev.seq > lastEventSeq))
+        : [];
+      if (typeof snap.eventSeq === 'number' && snap.eventSeq > lastEventSeq) {
+        lastEventSeq = snap.eventSeq;
+      }
+      snapshots.push({
+        ...snap,
+        ...(duelId && !snap.duelId ? { duelId } : {}),
+        recentEvents: incrementalEvents
+      });
+    },
+    flushToSocket(ws, humanIdx, finalState) {
+      if (!snapshots.length) return;
+      const finalSig = buildAiStepSignature(finalState);
+      while (
+        snapshots.length > 0 &&
+        buildAiStepSignature(snapshots[snapshots.length - 1]) === finalSig &&
+        (snapshots[snapshots.length - 1].recentEvents?.length || 0) === 0
+      ) {
+        snapshots.pop();
+      }
+      const total = snapshots.length;
+      for (let i = 0; i < total; i++) {
+        sendJson(ws, {
+          type: 'DUEL_STATE_SYNC',
+          mode: 'SOLO',
+          playerIndex: humanIdx,
+          state: attachDuelId(snapshots[i], duelId),
+          legalActions: EMPTY_SOLO_LEGAL_ACTIONS,
+          isAiStep: true,
+          aiStepIndex: i,
+          aiStepTotal: total
+        });
+      }
+    }
+  };
+}
+
 async function createYgoProEngineForDecks({
   p0Name,
   p0DeckId,
@@ -156,7 +250,8 @@ async function createYgoProEngineForDecks({
   p1DeckId,
   isSoloVsAi = false,
   humanStartsFirst = true,
-  aiDifficulty = 'normal'
+  aiDifficulty = 'normal',
+  onAiStep = null
 }) {
   const core = await getSharedOcgCore();
   const normDifficulty = normalizeAiDifficulty(aiDifficulty);
@@ -174,7 +269,8 @@ async function createYgoProEngineForDecks({
       deck2Cards: humanCards,
       isSoloVsAi: true,
       aiIndex: 0,
-      aiDifficulty: normDifficulty
+      aiDifficulty: normDifficulty,
+      onAiStep
     });
   }
 
@@ -186,7 +282,8 @@ async function createYgoProEngineForDecks({
     deck2Cards: oppCards,
     isSoloVsAi,
     aiIndex: 1,
-    aiDifficulty: normDifficulty
+    aiDifficulty: normDifficulty,
+    onAiStep
   });
 }
 
@@ -1190,6 +1287,8 @@ async function handleClientMessage(ws, msg) {
           if (prev) prev.destroy();
           const humanStartsFirst = msg.firstPlayer !== 'ai' && msg.humanStartsFirst !== false;
           const aiDifficulty = normalizeAiDifficulty(msg.aiDifficulty);
+          const soloDuelId = generateDuelId('solo');
+          const stepCollector = createAiStepCollector(0, soloDuelId);
           const engine = await createYgoProEngineForDecks({
             p0Name: msg.playerName || 'Player 1',
             p0DeckId: msg.playerDeckId || 'blue_eyes_meta',
@@ -1197,16 +1296,21 @@ async function handleClientMessage(ws, msg) {
             p1DeckId: msg.aiDeckId || 'swordsoul_tenyi',
             isSoloVsAi: true,
             humanStartsFirst,
-            aiDifficulty
+            aiDifficulty,
+            onAiStep: stepCollector.onAiStep
           });
+          engine.onAiStep = null;
+          engine.duelId = soloDuelId;
           soloDuels.set(ws, engine);
           const humanIdx = engine.humanIndex ?? 0;
+          stepCollector.flushToSocket(ws, humanIdx, engine.state);
           sendJson(ws, {
             type: 'DUEL_STATE_SYNC',
             mode: 'SOLO',
             playerIndex: humanIdx,
-            state: engine.state,
-            legalActions: engine.getLegalActions(humanIdx)
+            state: attachDuelId(engine.state, soloDuelId),
+            legalActions: engine.getLegalActions(humanIdx),
+            isAiStep: false
           });
         } catch (err) {
           sendJson(ws, { type: 'ACTION_ERROR', errorTh: err.message });
@@ -1438,31 +1542,27 @@ async function handleClientMessage(ws, msg) {
         const soloEngine = soloDuels.get(ws);
         if (soloEngine) {
           const humanIdx = soloEngine.humanIndex ?? 0;
-          const aiStepSnapshots = [];
-          soloEngine.onAiStep = (snap) => {
-            if (aiStepSnapshots.length < 24) aiStepSnapshots.push(snap);
-          };
-          const result = soloEngine.dispatchAction(humanIdx, msg.action || {});
-          soloEngine.onAiStep = null;
-          const emptyLegal = { handActions: {}, fieldActions: {}, attackTargets: {}, canBattlePhase: false, canMainPhase2: false, canEndTurn: false, canChainRespond: false, chainPrompt: null };
-          for (const snap of aiStepSnapshots) {
-            sendJson(ws, {
-              type: 'DUEL_STATE_SYNC',
-              mode: 'SOLO',
-              playerIndex: humanIdx,
-              state: snap,
-              legalActions: emptyLegal
-            });
+          const soloDuelId = soloEngine.duelId || (soloEngine.duelId = generateDuelId('solo'));
+          const stepCollector = createAiStepCollector(soloEngine.eventSeq || 0, soloDuelId);
+          let result;
+          soloEngine.onAiStep = stepCollector.onAiStep;
+          try {
+            result = soloEngine.dispatchAction(humanIdx, msg.action || {});
+          } finally {
+            soloEngine.onAiStep = null;
           }
+          const finalState = result.ok ? soloEngine.state : (result.state || soloEngine.state);
+          stepCollector.flushToSocket(ws, humanIdx, finalState);
           if (!result.ok) {
             if (result.state) {
               sendJson(ws, {
                 type: 'DUEL_STATE_SYNC',
                 mode: 'SOLO',
                 playerIndex: humanIdx,
-                state: result.state,
+                state: attachDuelId(result.state, soloDuelId),
                 legalActions: soloEngine.getLegalActions(humanIdx),
-                lastAction: msg.action
+                lastAction: msg.action,
+                isAiStep: false
               });
             }
             sendJson(ws, { type: 'ACTION_ERROR', errorTh: result.error });
@@ -1472,9 +1572,10 @@ async function handleClientMessage(ws, msg) {
             type: 'DUEL_STATE_SYNC',
             mode: 'SOLO',
             playerIndex: humanIdx,
-            state: soloEngine.state,
+            state: attachDuelId(soloEngine.state, soloDuelId),
             legalActions: soloEngine.getLegalActions(humanIdx),
-            lastAction: msg.action
+            lastAction: msg.action,
+            isAiStep: false
           });
           break;
         }

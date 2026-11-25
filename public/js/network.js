@@ -526,7 +526,11 @@ export class MultiplayerManager {
           mode: msg.mode || null,
           state: msg.state,
           playerIndex: msg.playerIndex,
-          legalActions: msg.legalActions
+          legalActions: msg.legalActions,
+          isAiStep: Boolean(msg.isAiStep),
+          aiStepIndex: typeof msg.aiStepIndex === 'number' ? msg.aiStepIndex : null,
+          aiStepTotal: typeof msg.aiStepTotal === 'number' ? msg.aiStepTotal : null,
+          lastAction: msg.lastAction || null
         });
         break;
 

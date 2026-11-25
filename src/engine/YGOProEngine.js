@@ -312,6 +312,9 @@ export class YGOProEngine {
     let prevPending = retryFallbackMessage || this.pendingMessage;
     let safety = 0;
     let consecutiveRetries = 0;
+    let lastEmittedEventSeq = 0;
+    let lastEmittedFingerprint = '';
+    let emittedAnyAiStep = false;
     while (safety < 3000) {
       safety++;
       const status = this.core.duelProcess(this.handle);
@@ -410,6 +413,7 @@ export class YGOProEngine {
         }
         if (this.isSoloVsAi && this.pendingMessage && this.pendingMessage.player === this.aiIndex && this.winner === null) {
           const msgType = this.pendingMessage.type;
+          const msgPlayer = this.pendingMessage.player;
           const needsBoardSync =
             msgType === OcgMessageType.SELECT_IDLECMD ||
             msgType === OcgMessageType.SELECT_BATTLECMD ||
@@ -417,21 +421,39 @@ export class YGOProEngine {
             msgType === OcgMessageType.SELECT_CARD ||
             msgType === OcgMessageType.SELECT_TRIBUTE ||
             msgType === OcgMessageType.SELECT_UNSELECT_CARD ||
+            msgType === OcgMessageType.SELECT_SUM ||
             msgType === OcgMessageType.SELECT_POSITION ||
             msgType === OcgMessageType.SELECT_PLACE ||
-            msgType === OcgMessageType.SELECT_DISFIELD;
+            msgType === OcgMessageType.SELECT_DISFIELD ||
+            msgType === OcgMessageType.SELECT_EFFECTYN ||
+            msgType === OcgMessageType.SELECT_YESNO;
           if (needsBoardSync) {
             this._syncStateFromCore();
           }
           const aiResp = this._computeAiResponse(this.pendingMessage, consecutiveRetries);
           if (aiResp) {
+            // Clear consumed HINT_SELECTMSG after every prompt except ongoing SELECT_UNSELECT_CARD picks
+            if (msgType !== OcgMessageType.SELECT_UNSELECT_CARD || aiResp.index === null) {
+              this.lastHintMsgByPlayer[msgPlayer] = 0;
+            }
             const isVisibleAiStep =
               msgType === OcgMessageType.SELECT_IDLECMD ||
               msgType === OcgMessageType.SELECT_BATTLECMD ||
               (msgType === OcgMessageType.SELECT_CHAIN && aiResp.index !== null && aiResp.index !== undefined);
             if (this.onAiStep && isVisibleAiStep) {
               if (!needsBoardSync) this._syncStateFromCore();
-              this.onAiStep(structuredClone(this.state));
+              const fingerprint = `${this.turnCount}|${this.turnPlayerIndex}|${this.phase}|${this.eventSeq}|${this.battleSeq}|${this.chainStack.length}|${this.lps[0]}|${this.lps[1]}`;
+              if (!emittedAnyAiStep || fingerprint !== lastEmittedFingerprint) {
+                const incEvents = this.recentEvents.filter((ev) => ev.seq > lastEmittedEventSeq).slice(-40);
+                const stepSnap = structuredClone(this.state);
+                stepSnap.recentEvents = incEvents;
+                stepSnap.pendingChainPrompt = null;
+                stepSnap.pendingOcgPrompt = null;
+                this.onAiStep(stepSnap);
+                lastEmittedEventSeq = this.eventSeq;
+                lastEmittedFingerprint = fingerprint;
+                emittedAnyAiStep = true;
+              }
             }
             this._lastResponse = aiResp;
             prevPending = this.pendingMessage;
@@ -450,6 +472,9 @@ export class YGOProEngine {
     }
 
     this._syncStateFromCore();
+    if (emittedAnyAiStep && this.state) {
+      this.state.recentEvents = this.recentEvents.filter((ev) => ev.seq > lastEmittedEventSeq).slice(-40);
+    }
   }
 
   /**
@@ -530,6 +555,7 @@ export class YGOProEngine {
           this._aiState = createAiTurnState();
           this._aiChainKeysThisTurn.clear();
           this._aiActionCount = 0;
+          this.lastHintMsgByPlayer = [0, 0];
           this._pendingPreferredPlace = [null, null];
           this.recentEvents.push({
             seq: ++this.eventSeq,
@@ -542,6 +568,7 @@ export class YGOProEngine {
           break;
         case OcgMessageType.NEW_PHASE:
           this.phase = mapOcgPhaseToUi(m.phase);
+          this.lastHintMsgByPlayer = [0, 0];
           this.log(`Phase changed to ${this.phase}`);
           break;
         case OcgMessageType.DRAW: {
@@ -1540,6 +1567,13 @@ export class YGOProEngine {
     }
 
     const prevPending = m;
+    if (
+      m.type === OcgMessageType.SELECT_CARD ||
+      m.type === OcgMessageType.SELECT_TRIBUTE ||
+      (m.type === OcgMessageType.SELECT_UNSELECT_CARD && response.index === null)
+    ) {
+      this.lastHintMsgByPlayer[playerIndex] = 0;
+    }
     this._lastResponse = response;
     this.lastRetryError = false;
     this.pendingMessage = null;
@@ -1570,13 +1604,14 @@ export class YGOProEngine {
       retryAttempt,
       aiState: this._aiState,
       getCardMeta: getUiCardMeta,
-      solveSelectSum: (msg) => this._solveSelectSum(msg),
+      resolveDescription: resolveOcgDescription,
+      solveSelectSum: (msg, scoreCardFn) => this._solveSelectSum(msg, scoreCardFn),
       pickFirstAvailablePlaces: (mask, count, player) => this._pickFirstAvailablePlaces(mask, count, player),
       findAnnounceCardCodes
     });
   }
 
-  _solveSelectSum(m) {
+  _solveSelectSum(m, scoreCardFn = null) {
     const selects = m.selects || [];
     const musts = m.selects_must || [];
     if (selects.length === 0) return [];
@@ -1599,6 +1634,15 @@ export class YGOProEngine {
     }
 
     const cardVals = selects.map(c => unpackVals(c.amount));
+    const cardCosts = typeof scoreCardFn === 'function'
+      ? selects.map(c => Number(scoreCardFn(c) || 0))
+      : null;
+    // Order candidate indices by ascending keep-value so lowest-value fodder is tried first
+    const orderedOrigIndices = selects.map((_, i) => i);
+    if (cardCosts) {
+      orderedOrigIndices.sort((a, b) => cardCosts[a] - cardCosts[b]);
+    }
+
     const target = Number(m.amount || 0);
     const selectMax = Number(m.select_max ?? 0);
     const minPicks = selectMax ? (musts.length > 0 ? 0 : 1) : Math.max(musts.length > 0 ? 0 : 1, Number(m.min || 0));
@@ -1642,26 +1686,47 @@ export class YGOProEngine {
       return true;
     };
 
+    let bestSolution = null;
+    let bestCost = Infinity;
+    let solutionsChecked = 0;
+    const MAX_SOLUTIONS = cardCosts ? 64 : 1;
+
     const chosen = [];
-    const dfs = (startIdx, targetLen) => {
+    const dfs = (startPos, targetLen) => {
+      if (solutionsChecked >= MAX_SOLUTIONS) return true;
       if (chosen.length === targetLen) {
-        return isValidSubset(chosen);
+        if (isValidSubset(chosen)) {
+          solutionsChecked++;
+          if (!cardCosts) {
+            bestSolution = [...chosen].sort((a, b) => a - b);
+            return true;
+          }
+          const cost = chosen.reduce((acc, idx) => acc + cardCosts[idx], 0);
+          if (cost < bestCost) {
+            bestCost = cost;
+            bestSolution = [...chosen].sort((a, b) => a - b);
+          }
+        }
+        return false;
       }
       const needed = targetLen - chosen.length;
-      for (let i = startIdx; i <= selects.length - needed; i++) {
-        chosen.push(i);
-        if (dfs(i + 1, targetLen)) return true;
+      for (let pos = startPos; pos <= orderedOrigIndices.length - needed; pos++) {
+        chosen.push(orderedOrigIndices[pos]);
+        if (dfs(pos + 1, targetLen)) return true;
         chosen.pop();
       }
       return false;
     };
 
     for (let len = minPicks; len <= maxPicks; len++) {
-      if (dfs(0, len)) return [...chosen];
+      dfs(0, len);
+      if (solutionsChecked >= MAX_SOLUTIONS) break;
     }
 
+    if (bestSolution) return bestSolution;
+
     const fallbackCount = Math.max(1, Math.min(minPicks || 1, selects.length));
-    return Array.from({ length: fallbackCount }, (_, i) => i);
+    return orderedOrigIndices.slice(0, fallbackCount).sort((a, b) => a - b);
   }
 
   _pickFirstAvailablePlaces(fieldMask, count, responderPlayer = 0) {
