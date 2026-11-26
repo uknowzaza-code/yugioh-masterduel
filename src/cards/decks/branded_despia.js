@@ -30,7 +30,7 @@ export const BRANDED_DESPIA_CARDS = [
     archetype: 'Branded',
     subArchetypes: ['Albaz'],
     mentions: ['Fallen of Albaz'],
-    description: 'If this card is Normal or Special Summoned: You can discard 1 card; Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters on either field as Fusion Material, including this card.',
+    description: 'If this card is Normal or Special Summoned (except during the Damage Step): You can discard 1 card; Fusion Summon 1 Fusion Monster from your Extra Deck using monsters on either field, including this card, but you cannot use other monsters you control as material. You can only use this effect of "Fallen of Albaz" once per turn.',
     descriptionTh: 'เมื่ออัญเชิญปกติหรือพิเศษสำเร็จ: ทิ้งการ์ดบนมือ 1 ใบ; อัญเชิญฟิวชั่นมอนสเตอร์สาย "Branded" จาก Extra Deck ทันที!',
     effects: [
       {
@@ -65,7 +65,7 @@ export const BRANDED_DESPIA_CARDS = [
     archetype: 'Despia',
     subArchetypes: ['Branded'],
     mentions: ['Fallen of Albaz'],
-    description: 'If this card is Normal or Special Summoned: You can add 1 "Branded" Spell/Trap from your Deck to your hand.',
+    description: 'If this card is Normal or Special Summoned: You can add 1 "Branded" Spell/Trap from your Deck to your hand. If a face-up Fusion Monster you control is destroyed by battle, or leaves the field because of an opponent\'s card effect, while this card is in your GY: You can target 1 Effect Monster your opponent controls; Special Summon this card, and if you do, negate the targeted monster\'s effects until the end of this turn. You can only use 1 "Aluber the Jester of Despia" effect per turn, and only once that turn.',
     descriptionTh: 'เมื่ออัญเชิญปกติหรือพิเศษสำเร็จ: ค้นหาเวทมนตร์หรือกับดัก "Branded" (เช่น Branded Fusion หรือ Branded Opening) 1 ใบจากเด็คขึ้นมือ! (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -101,7 +101,7 @@ export const BRANDED_DESPIA_CARDS = [
     def: 400,
     archetype: 'Despia',
     subArchetypes: ['Branded'],
-    description: 'If this card is sent to the GY, or banished, by a card effect: You can add 1 "Despia" monster from your Deck to your hand, except "Despian Tragedy". You can banish this card from your GY, then target 1 "Branded" Spell/Trap in your GY; Set it to your field.',
+    description: 'If this card is sent to the GY, or banished, by card effect: You can add 1 "Despia" monster from your Deck to your hand, except "Despian Tragedy". You can banish this card from your GY, then target 1 "Branded" Spell/Trap in your GY; Set it to your field. You can only use 1 "Despian Tragedy" effect per turn, and only once that turn.',
     descriptionTh: '(1) เมื่อถูกส่งลงสุสาน: ค้นหามอนสเตอร์ "Despia" (เช่น Aluber หรือ Dramaturge) 1 ใบจากเด็คขึ้นมือ! (2) มูฟการ์ดใบนี้จากสุสาน; เก็บเวทมนตร์/กับดัก "Branded" จากสุสานขึ้นมือ 1 ใบ',
     effects: [
       {
@@ -157,7 +157,7 @@ export const BRANDED_DESPIA_CARDS = [
       labelTh: 'อัญเชิญพิเศษ Cartesia จากมือ',
       opt: 'cartesia_ss_opt'
     },
-    description: 'If you control "Fallen of Albaz" or it is in your GY: You can Special Summon this card from your hand. During the Main Phase (Quick Effect): You can Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck, using monsters from your hand or field as material.',
+    description: 'If you have "Fallen of Albaz" in your field or GY: You can Special Summon this card from your hand. During the Main Phase (Quick Effect): You can Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck, using monsters from your hand or field. During the End Phase, if a Fusion Monster(s) was sent to your GY this turn: You can add this card from the GY to your hand. You can only use each effect of "Blazing Cartesia, the Virtuous" once per turn.',
     descriptionTh: '[จูนเนอร์ Lv.4] (1) อัญเชิญพิเศษจากมือได้ (2) [เอฟเฟคความเร็วสูง] อัญเชิญฟิวชั่นมอนสเตอร์ Lv.8 ขึ้นไปจาก Extra Deck โดยใช้วัตถุดิบจากมือหรือสนาม!',
     effects: [
       {
@@ -190,7 +190,7 @@ export const BRANDED_DESPIA_CARDS = [
     def: 1500,
     archetype: 'Despia',
     subArchetypes: ['Branded'],
-    description: 'If this card in your hand or field is used as Fusion Material, and sent to the GY or banished: You can Special Summon this card. If a Fusion, Synchro, Xyz, or Link Monster is Special Summoned: You can target 1 Effect Monster on the field; negate its effects until the end of this turn.',
+    description: 'If a Fusion, Synchro, Xyz, or Link Monster is Special Summoned (except during the Damage Step): You can target 1 Effect Monster on the field; negate its effects until the end of this turn. If this card in your hand or field is used as Fusion Material, and sent to the GY or banished: You can Special Summon this card. You can only use each effect of "Dramaturge of Despia" once per turn.',
     descriptionTh: '(1) เมื่อถูกส่งลงสุสาน (เช่น ใช้เป็นวัตถุดิบฟิวชั่น): อัญเชิญพิเศษตัวเองกลับลงสนามทันที! (2) เทิร์นละครั้ง: ใบ้เอฟเฟคมอนสเตอร์ของอีกฝ่าย 1 ใบ!',
     effects: [
       {
@@ -236,7 +236,7 @@ export const BRANDED_DESPIA_CARDS = [
     def: 2000,
     archetype: 'Branded',
     mentions: ['Fallen of Albaz'],
-    description: 'If this card is in your hand or GY: You can send 1 "Fallen of Albaz" or 1 "Branded" Spell/Trap from your hand or Deck to the GY; apply the following effect based on where this card was at activation. Hand: Place this card on the bottom of the Deck, then draw 1 card.',
+    description: 'This card\'s name becomes "Fallen of Albaz" while on the field or in the GY. If this card is in your hand or GY: You can send 1 "Fallen of Albaz" or 1 "Branded" Spell/Trap from your hand or Deck to the GY; apply the following effect based on where you sent it from.\n● Hand: Special Summon this card.\n● Deck: Place this card on the bottom of the Deck, then if you placed this card from your hand, draw 1 card.\nYou can only use this effect of "Albion the Shrouded Dragon" once per turn.',
     descriptionTh: 'ส่งการ์ดใบนี้จากมือลงสุสาน พร้อมส่งการ์ด "Branded" 1 ใบจากเด็คลงสุสาน; จากนั้นจั่วการ์ด 1 ใบ! (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -267,7 +267,7 @@ export const BRANDED_DESPIA_CARDS = [
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Branded',
     mentions: ['Fallen of Albaz'],
-    description: 'Fusion Summon 1 Fusion Monster that mentions "Fallen of Albaz" as material from your Extra Deck, using 2 monsters from your hand, Deck, or field as Fusion Material.',
+    description: 'Fusion Summon 1 Fusion Monster that mentions "Fallen of Albaz" as material from your Extra Deck, using 2 monsters from your hand, Deck, or field. You cannot Special Summon from the Extra Deck, except Fusion Monsters, the turn you activate this card. You can only activate 1 "Branded Fusion" per turn.',
     descriptionTh: '[เวทมนตร์ปกติ] สุดยอดเวทฟิวชั่นประจำเด็ค! ส่งมอนสเตอร์วัตถุดิบจากในเด็ค/มือลงสุสาน แล้วอัญเชิญฟิวชั่นมอนสเตอร์สาย "Branded" (เช่น Mirrorjade, Albion, Lubellion) จาก Extra Deck ทันที! (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -301,7 +301,7 @@ export const BRANDED_DESPIA_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Branded',
-    description: 'Discard 1 card, then take 1 "Despia" monster from your Deck, and either add it to your hand or Special Summon it in Defense Position.',
+    description: 'Discard 1 card, then take 1 "Despia" monster from your Deck, and either add it to your hand or Special Summon it in Defense Position, also for the rest of this turn after this card resolves, you cannot Special Summon from the Extra Deck, except Fusion Monsters. If a Fusion Monster(s) you control would be destroyed by card effect, you can banish this card from your GY instead. You can only use each effect of "Branded Opening" once per turn.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] ทิ้งการ์ดบนมือ 1 ใบ; อัญเชิญพิเศษมอนสเตอร์ "Despia" (เช่น Aluber หรือ Dramaturge) 1 ใบจากเด็คลงสนามทันที! (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -330,7 +330,7 @@ export const BRANDED_DESPIA_CARDS = [
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Branded',
     mentions: ['Fallen of Albaz'],
-    description: 'Target 1 "Despia" monster or "Fallen of Albaz" in your GY; add it to your hand, then you can apply the following effect: Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck.',
+    description: 'Target 1 "Despia" monster or "Fallen of Albaz" in your GY; add it to your hand, then you can apply the following effect.\n● Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck, by banishing Fusion Materials mentioned on it from your hand or field, but it cannot attack directly this turn.\nYou can only activate 1 "Branded in Red" per turn.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] เก็บมอนสเตอร์ "Despia" หรือ "Fallen of Albaz" จากสุสานขึ้นมือ 1 ใบ จากนั้นสามารถอัญเชิญฟิวชั่นมอนสเตอร์ Lv.8+ จาก Extra Deck ได้ทันที!',
     effects: [
       {
@@ -363,7 +363,7 @@ export const BRANDED_DESPIA_CARDS = [
     kind: CARD_KINDS.TRAP,
     subType: TRAP_SUBTYPES.NORMAL,
     archetype: 'Branded',
-    description: 'Target 1 "Despia" monster or 1 Level 8 or higher Fusion Monster in your GY; Special Summon it, then you can apply the following effect: Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck.',
+    description: 'Target 1 "Despia" monster or 1 Level 8 or higher Fusion Monster in your GY; Special Summon it, then you can apply this effect.\n● Fusion Summon 1 Level 8 or higher Fusion Monster from your Extra Deck, by banishing Fusion Materials mentioned on it from either field.\nYou can only activate 1 "Branded Banishment" per turn.',
     descriptionTh: '[กับดักปกติ] ชุบชีวิตมอนสเตอร์ "Despia" หรือมอนสเตอร์ฟิวชั่น Lv.8 ขึ้นไป 1 ใบจากสุสานของเราลงสนาม!',
     effects: [
       {
@@ -404,7 +404,7 @@ export const BRANDED_DESPIA_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: '"Fallen of Albaz" + มอนสเตอร์ฟิวชั่น/ซิงโคร/เอ็กシーズ/ลิงก์ หรือมอนสเตอร์สาย Branded/Despia'
     },
-    description: '"Fallen of Albaz" + 1 Fusion, Synchro, Xyz, or Link Monster. Once per turn (Quick Effect): You can send 1 Fusion Monster from your Extra Deck to the GY; banish 1 monster on the field. If this Fusion Summoned card in its owner\'s control leaves the field because of an opponent\'s card: You can destroy all monsters your opponent controls.',
+    description: '"Fallen of Albaz" + 1 Fusion, Synchro, Xyz, or Link Monster\nYou can only control 1 "Mirrorjade the Iceblade Dragon". Once per turn (Quick Effect): You can send 1 Fusion Monster from your Extra Deck to the GY that mentions "Fallen of Albaz" as material; banish 1 monster on the field, also this card cannot use this effect next turn. If this Fusion Summoned card in its owner\'s control leaves the field by an opponent\'s card: You can destroy all monsters your opponent controls during the End Phase of this turn.',
     descriptionTh: '[ฟิวชั่น Lv.8] (1) [เอฟเฟคความเร็วสูง] มูฟมอนสเตอร์บนสนามของอีกฝ่าย 1 ใบออกนอกเกมแบบไม่เล็งเป้า! (2) เมื่อถูกทำลาย: ทำลายมอนสเตอร์บนสนามของอีกฝ่ายทั้งหมด!',
     effects: [
       {
@@ -460,7 +460,7 @@ export const BRANDED_DESPIA_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: 'มอนสเตอร์ธาตุมืด 1 ใบ + "Fallen of Albaz"'
     },
-    description: '1 DARK monster + "Fallen of Albaz". If this card is Fusion Summoned: You can discard 1 card; Fusion Summon 1 Level 8 or lower Fusion Monster from your Extra Deck, by shuffling Fusion Materials mentioned on it into the Deck from your monsters on the field, GY, and/or face-up banished cards.',
+    description: '1 DARK monster + "Fallen of Albaz"\nIf this card is Fusion Summoned: You can discard 1 card; Fusion Summon 1 Level 8 or lower Fusion Monster from your Extra Deck, except "Lubellion the Searing Dragon", by shuffling Fusion Materials mentioned on it into the Deck, from your monsters on the field, GY, and/or face-up banished cards. For the rest of this turn, this card cannot attack, also you cannot Special Summon from the Extra Deck, except Fusion Monsters. You can only use this effect of "Lubellion the Searing Dragon" once per turn.',
     descriptionTh: '[ฟิวชั่น Lv.8] เมื่อถูกอัญเชิญฟิวชั่นสำเร็จ: สามารถอัญเชิญฟิวชั่นมอนสเตอร์ Lv.8 อีกใบ (เช่น Mirrorjade) ต่อได้ทันที!',
     effects: [
       {
@@ -499,7 +499,7 @@ export const BRANDED_DESPIA_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: '"Fallen of Albaz" + มอนสเตอร์ธาตุแสง 1 ใบ'
     },
-    description: '"Fallen of Albaz" + 1 LIGHT monster. If this card is Fusion Summoned: You can Fusion Summon 1 Level 8 or lower Fusion Monster from your Extra Deck, by banishing Fusion Materials mentioned on it from your hand, field, and/or GY. During the End Phase, if this card is in the GY: You can add to your hand or Set 1 "Branded" Spell/Trap from your Deck.',
+    description: '"Fallen of Albaz" + 1 LIGHT monster\nIf this card is Fusion Summoned: You can Fusion Summon 1 Level 8 or lower Fusion Monster from your Extra Deck, except "Albion the Branded Dragon", by banishing Fusion Materials mentioned on it from your hand, field, and/or GY. During the End Phase, if this card is in the GY because it was sent there this turn: You can add to your hand or Set 1 "Branded" Spell/Trap from your Deck. You can only use each effect of "Albion the Branded Dragon" once per turn.',
     descriptionTh: '[ฟิวชั่น Lv.8] เมื่อถูกอัญเชิญสำเร็จ (หรือเมื่อถูกส่งลงสุสาน): ค้นหาเวทมนตร์หรือกับดัก "Branded" 1 ใบจากเด็คขึ้นมือ!',
     effects: [
       {
@@ -538,7 +538,7 @@ export const BRANDED_DESPIA_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: 'มอนสเตอร์ "Despia" 1 ใบ + มอนสเตอร์ธาตุแสงหรือมืด 1 ใบ'
     },
-    description: '1 "Despia" monster + 1 LIGHT or DARK monster. While you control this Fusion Summoned card, your opponent must pay 600 LP to activate cards or effects.',
+    description: '1 "Despia" monster + 1 LIGHT or DARK monster\nWhile you control this Fusion Summoned card, your opponent must pay 600 LP to activate cards or effects. If your opponent controls a Ritual, Fusion, Synchro, Xyz, or Link Monster, while this card is in your GY (Quick Effect): You can Special Summon this card, but banish it when it leaves the field. You can only use this effect of "Masquerade the Blazing Dragon" once per turn.',
     descriptionTh: '[ฟิวชั่น Lv.8] (1) เมื่ออัญเชิญสำเร็จและเทิร์นละครั้ง: เผา LP ของอีกฝ่าย 600 LP! (2) หากอยู่ในสุสานและอีกฝ่ายมีมอนสเตอร์จาก Extra Deck สามารถชุบตัวเองจากสุสานได้!',
     effects: [
       {
@@ -582,7 +582,7 @@ export const BRANDED_DESPIA_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: 'มอนสเตอร์ชื่อต่างกัน 2-3 ใบ'
     },
-    description: '3 monsters with different names. If this card is Fusion Summoned by a Spell Card or effect: You can draw cards equal to the number of cards used as material from the hand, and if you do, destroy cards your opponent controls equal to the number of cards used as material from the field.',
+    description: '3 monsters with different names\nMust first be Fusion Summoned using only Fusion Materials from your hand and field, with at least 1 monster from each. If this card is Fusion Summoned by a Spell Card or effect: You can draw cards equal to the number of cards used as material from the hand, and if you do, destroy cards your opponent controls equal to the number of cards used as material from the field. You can only use this effect of "Guardian Chimera" once per turn. While "Polymerization" is in your GY, your opponent cannot target this card with card effects.',
     descriptionTh: '[ฟิวชั่น Lv.9] เมื่ออัญเชิญฟิวชั่นสำเร็จ: จั่วการ์ด 1 ใบ และทำลายการ์ดบนสนามของอีกฝ่าย 1 ใบทันที!',
     effects: [
       {

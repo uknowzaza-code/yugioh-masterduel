@@ -29,7 +29,7 @@ export const STAPLE_CARDS = [
     atk: 0,
     def: 1800,
     archetype: 'Yo-kai Girl',
-    description: 'When a card or effect is activated that includes adding a card from the Deck to the hand, Special Summoning from the Deck, or sending a card from the Deck to the GY (Quick Effect): You can discard this card; negate that effect.',
+    description: 'When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect.\n● Add a card from the Deck to the hand.\n● Special Summon from the Deck.\n● Send a card from the Deck to the GY.\nYou can only use this effect of "Ash Blossom & Joyous Spring" once per turn.',
     descriptionTh: '[เอฟเฟคความเร็วสูง - Hand Trap] เมื่ออีกฝ่ายใช้เอฟเฟคที่มีการค้นหาการ์ดจากเด็คขึ้นมือ, อัญเชิญพิเศษจากเด็ค, จั่วการ์ด, หรือส่งการ์ดจากเด็คลงสุสาน: ทิ้งการ์ดใบนี้จากมือ; ยกเลิกเอฟเฟคนั้น (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -70,7 +70,7 @@ export const STAPLE_CARDS = [
     atk: 500,
     def: 200,
     archetype: '"C"',
-    description: 'During either player\'s turn: You can send this card from your hand to the Graveyard; this turn, each time your opponent Special Summons a monster(s), immediately draw 1 card.',
+    description: '(Quick Effect): You can send this card from your hand to the GY; this turn, each time your opponent Special Summons a monster(s), immediately draw 1 card. You can only use this effect of "Maxx "C"" once per turn.',
     descriptionTh: '[เอฟเฟคความเร็วสูง - Hand Trap] ส่งการ์ดใบนี้จากมือลงสุสาน; จั่วการ์ด 1 ใบทันที และหากอีกฝ่ายมีมอนสเตอร์ที่อัญเชิญพิเศษอยู่บนสนาม จะได้จั่วเพิ่มอีก 1 ใบ (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -165,7 +165,7 @@ export const STAPLE_CARDS = [
     subType: TRAP_SUBTYPES.NORMAL,
     archetype: 'Staple',
     canActivateFromHandIfEmptyField: true,
-    description: 'Target 1 face-up monster your opponent controls; negate its effects (until the end of this turn). If you control no cards, you can activate this card from your hand.',
+    description: 'Target 1 face-up monster your opponent controls; negate its effects (until the end of this turn), then if this card was Set before activation and is on the field at resolution, for the rest of this turn all other Spell/Trap effects in this column are negated. If you control no cards, you can activate this card from your hand.',
     descriptionTh: '[กับดักปกติ / Hand Trap] เลือกมอนสเตอร์ที่หงายหน้าบนสนามอีกฝ่าย 1 ใบ; ทำให้เอฟเฟคไร้ผล (หากบนสนามเราไม่มีการ์ดเลย สามารถสั่งใช้งานจากบนมือได้ทันที!)',
     effects: [
       {
@@ -286,7 +286,7 @@ export const STAPLE_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 10)'
     },
-    description: '1 Tuner + 1+ non-Tuner monsters. Once per turn: You can target 1 card on the field; destroy it. Once while face-up on the field, when a card or effect is activated (Quick Effect): You can negate the activation, and if you do, destroy that card.',
+    description: '1 Tuner + 1+ non-Tuner monsters\nOnce per turn: You can target 1 card on the field; destroy it. Once while face-up on the field, when a card or effect is activated (Quick Effect): You can negate the activation, and if you do, destroy that card. You can only use the previous effect of "Baronne de Fleur" once per turn. Once per turn, during the Standby Phase: You can target 1 Level 9 or lower monster in your GY; return this card to the Extra Deck, and if you do, Special Summon that monster.',
     descriptionTh: '[ซิงโคร Lv.10] (1) เทิร์นละครั้ง: เลือกทำลายการ์ดบนสนามของอีกฝ่าย 1 ใบ (2) [เอฟเฟคความเร็วสูง] เมื่ออีกฝ่ายสั่งใช้การ์ดหรือเอฟเฟค: ยกเลิกการใช้งานนั้นและทำลายทิ้ง',
     effects: [
       {
@@ -342,7 +342,7 @@ export const STAPLE_CARDS = [
       minMonsters: 2,
       descriptionTh: 'มอนสเตอร์เอฟเฟค 2 ใบขึ้นไป (ค่า Link รวม = 4)'
     },
-    description: '2+ Effect Monsters. If this card is Link Summoned: Gains 2000+ ATK. You can banish 1 Link Monster from your field or GY; destroy 1 card your opponent controls.',
+    description: '2+ Effect Monsters\nYour opponent cannot activate cards or effects in response to this card\'s effect activations. If this card is Link Summoned: You can target 1 Link Monster that was used as its Link Material; this card gains ATK equal to that monster\'s Link Rating x 1000. You can banish 1 Link Monster from your field or GY; destroy 1 card your opponent controls, also for the rest of this turn, you cannot banish monsters with that same Attribute to activate this effect of "Accesscode Talker".',
     descriptionTh: '[ลิงก์-4] (1) เมื่ออัญเชิญลิงก์สำเร็จ: ได้รับพลังโจมตี +3000 ATK (เป็น 5300 ATK!) (2) มูฟมอนสเตอร์จากสุสานเรา 1 ใบ; ทำลายการ์ดบนสนามของอีกฝ่าย 1 ใบ',
     effects: [
       {

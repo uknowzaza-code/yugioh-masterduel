@@ -28,7 +28,7 @@ export const SKY_STRIKER_CARDS = [
     def: 1500,
     archetype: 'Sky Striker',
     subArchetypes: ['Sky Striker Ace'],
-    description: '(Quick Effect): You can Tribute this card; Special Summon 1 "Sky Striker Ace" monster from your Extra Deck. While this card is in your GY, if a face-up "Sky Striker Ace" Link Monster you control is destroyed: You can Special Summon this card.',
+    description: '(Quick Effect): You can Tribute this card; Special Summon 1 "Sky Striker Ace" monster from your Extra Deck to the Extra Monster Zone. While this card is in your GY, if a face-up "Sky Striker Ace" Link Monster you control is destroyed by battle, or leaves the field by an opponent\'s card effect: You can Special Summon this card. You can only use each effect of "Sky Striker Ace - Raye" once per turn.',
     descriptionTh: '(1) [เอฟเฟคความเร็วสูง] สังเวยการ์ดใบนี้; อัญเชิญพิเศษมอนสเตอร์ลิงก์ "Sky Striker Ace" 1 ใบจาก Extra Deck ทันที! (2) หากอยู่ในสุสาน สามารถชุบชีวิตตัวเองกลับลงสนามได้เทิร์นละครั้ง',
     effects: [
       {
@@ -83,7 +83,7 @@ export const SKY_STRIKER_CARDS = [
       },
       opt: 'roze_ss_opt'
     },
-    description: 'If a "Sky Striker Ace" monster is Normal or Special Summoned: You can Special Summon this card from your hand. If an opponent\'s monster is destroyed: You can negate the effects of 1 face-up monster your opponent controls.',
+    description: 'If a "Sky Striker Ace" monster(s) is Normal or Special Summoned, except "Sky Striker Ace - Roze" (except during the Damage Step): You can Special Summon this card from your hand. If an opponent\'s monster in the Extra Monster Zone is destroyed by battle, or leaves the field by your card effect, while this card is in your GY: You can Special Summon this card, then you can negate the effects of 1 face-up monster your opponent controls, until the end of this turn. You can only use each effect of "Sky Striker Ace - Roze" once per turn.',
     descriptionTh: '(1) หากเรามีมอนสเตอร์ "Sky Striker" บนสนาม สามารถอัญเชิญพิเศษการ์ดใบนี้จากมือได้ (2) เมื่ออัญเชิญสำเร็จ: ใบ้เอฟเฟคมอนสเตอร์อีกฝ่าย 1 ใบ',
     effects: [
       {
@@ -178,7 +178,7 @@ export const SKY_STRIKER_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Sky Striker',
-    description: 'If you control no monsters in your Main Monster Zone: Special Summon 1 "Sky Striker Ace Token" (Warrior/DARK/Level 1/ATK 0/DEF 0) in Defense Position.',
+    description: 'If you control no monsters in your Main Monster Zone: Special Summon 1 "Sky Striker Ace Token" (Warrior/DARK/Level 1/ATK 0/DEF 0) in Defense Position, which cannot be Tributed, and if you have 3 or more Spells in your GY when this effect resolves, the Token\'s ATK/DEF become 1500 instead.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] อัญเชิญพิเศษ "Sky Striker Ace Token" (นักรบ/มืด/Lv.1/ATK 0/DEF 0) ลงสนาม 1 ตัว (ใช้เป็นวัตถุดิบลิงก์ Kagari/Shizuku/Hayate ได้ทันที!)',
     effects: [
       {
@@ -218,7 +218,7 @@ export const SKY_STRIKER_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Sky Striker',
-    description: 'Target 1 monster in your opponent\'s GY; banish that monster, or, if you have 3 or more Spells in your GY, you can Special Summon that monster to your field instead.',
+    description: 'If you control no monsters in your Main Monster Zone: Target 1 monster in your opponent\'s GY; banish that monster, or, if you have 3 or more Spells in your GY, you can Special Summon that monster to your field instead, but it cannot attack.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] ชุบชีวิตมอนสเตอร์จากสุสานของอีกฝ่ายมาลงสนามเรา หรือมูฟมอนสเตอร์ในสุสานอีกฝ่ายออกนอกเกม 1 ใบ',
     effects: [
       {
@@ -246,7 +246,7 @@ export const SKY_STRIKER_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Sky Striker',
-    description: 'Target 1 face-up monster on the field; destroy it, then, if you have 3 or more Spells in your GY, you can destroy 1 Spell/Trap on the field.',
+    description: 'If you control no monsters in your Main Monster Zone: Target 1 face-up monster on the field; destroy it, then, if you have 3 or more Spells in your GY, you can destroy 1 Spell/Trap on the field.',
     descriptionTh: '[เวทมนตร์ปกติ] ทำลายมอนสเตอร์บนสนามของอีกฝ่าย 1 ใบ และหากมีเวทในสุสาน 3 ใบขึ้นไป ทำลายเวท/กับดักของอีกฝ่ายเพิ่มอีก 1 ใบ!',
     effects: [
       {
@@ -282,7 +282,7 @@ export const SKY_STRIKER_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.FIELD,
     archetype: 'Sky Striker',
-    description: 'You can target 1 other card you control; excavate the top 3 cards of your Deck, and if you do, you can add 1 excavated "Sky Striker" card to your hand.',
+    description: 'You can target 1 other card you control; excavate the top 3 cards of your Deck, and if you do, you can add 1 excavated "Sky Striker" card to your hand, also shuffle the rest into the Deck, then, if you excavated a "Sky Striker" card, send the targeted card to the GY. If this card in the Field Zone is sent to the GY by a card effect: You can Special Summon 1 "Sky Striker Ace" monster from your Deck. You can only use each effect of "Sky Striker Airspace - Area Zero" once per turn.',
     descriptionTh: '[เวทมนตร์สนาม] เทิร์นละครั้ง: ค้นหาการ์ด "Sky Striker" 1 ใบจากเด็คขึ้นมือ',
     effects: [
       {
@@ -358,7 +358,7 @@ export const SKY_STRIKER_CARDS = [
       filter: { archetype: 'Sky Striker', notAttribute: ATTRIBUTES.FIRE },
       descriptionTh: 'มอนสเตอร์ "Sky Striker Ace" ที่ไม่ใช่ธาตุไฟ 1 ใบ'
     },
-    description: '1 non-FIRE "Sky Striker Ace" monster. If this card is Special Summoned: You can target 1 "Sky Striker" Spell in your GY; add it to your hand. Gains 100 ATK for each Spell in your GY.',
+    description: '1 non-FIRE "Sky Striker Ace" monster\nIf this card is Special Summoned: You can target 1 "Sky Striker" Spell in your GY; add it to your hand. Gains 100 ATK for each Spell in your GY. You can only Special Summon "Sky Striker Ace - Kagari(s)" once per turn.',
     descriptionTh: '[ลิงก์-1] เมื่อถูกอัญเชิญพิเศษสำเร็จ: เก็บการ์ดเวทมนตร์ "Sky Striker" 1 ใบจากสุสานกลับขึ้นมือ และได้รับพลังโจมตี +500 ATK!',
     effects: [
       {
@@ -406,7 +406,7 @@ export const SKY_STRIKER_CARDS = [
       filter: { archetype: 'Sky Striker', notAttribute: ATTRIBUTES.WATER },
       descriptionTh: 'มอนสเตอร์ "Sky Striker Ace" ที่ไม่ใช่ธาตุน้ำ 1 ใบ'
     },
-    description: '1 non-WATER "Sky Striker Ace" monster. Once per turn, during the End Phase, if this card was Special Summoned this turn: You can add 1 "Sky Striker" Spell from your Deck to your hand.',
+    description: '1 non-WATER "Sky Striker Ace" monster\nMonsters your opponent controls lose 100 ATK/DEF for each Spell in your GY. Once per turn, during the End Phase, if this card was Special Summoned this turn: You can add 1 "Sky Striker" Spell from your Deck to your hand, with a name different from the cards in your GY. You can only Special Summon "Sky Striker Ace - Shizuku(s)" once per turn.',
     descriptionTh: '[ลิงก์-1] เมื่ออัญเชิญพิเศษสำเร็จ (หรือกดใช้เทิร์นละครั้ง): ค้นหาการ์ดเวทมนตร์ "Sky Striker" 1 ใบจากเด็คขึ้นมือ!',
     effects: [
       {
@@ -448,7 +448,7 @@ export const SKY_STRIKER_CARDS = [
       filter: { archetype: 'Sky Striker', notAttribute: ATTRIBUTES.WIND },
       descriptionTh: 'มอนสเตอร์ "Sky Striker Ace" ที่ไม่ใช่ธาตุลม 1 ใบ'
     },
-    description: '1 non-WIND "Sky Striker Ace" monster. Can attack directly. After damage calculation, if this card battled: You can send 1 "Sky Striker" card from your Deck to the GY.',
+    description: '1 non-WIND "Sky Striker Ace" monster\nYou can only Special Summon "Sky Striker Ace - Hayate(s)" once per turn. Can attack directly. After damage calculation, if this card battled: You can send 1 "Sky Striker" card from your Deck to the GY.',
     descriptionTh: '[ลิงก์-1] สามารถโจมตีผู้เล่นโดยตรงได้! และเมื่อประกาศโจมตี สามารถส่งการ์ด "Sky Striker" 1 ใบจากเด็คลงสุสานเพื่อปั๊มจำนวนเวทในสุสาน',
     effects: [
       {
@@ -487,7 +487,7 @@ export const SKY_STRIKER_CARDS = [
       minMonsters: 2,
       descriptionTh: 'มอนสเตอร์ 2 ใบ โดยต้องมีมอนสเตอร์ "Sky Striker Ace" อย่างน้อย 1 ใบ'
     },
-    description: '2 monsters, including a "Sky Striker Ace" monster. If this card is Link Summoned: You can target 1 face-up monster on the field; banish it. Gains 1000 ATK.',
+    description: '2 monsters, including a "Sky Striker Ace" monster\nMust be Link Summoned. You can only Special Summon "Sky Striker Ace - Zeke(s)" once per turn. If this card is Link Summoned: You can target 1 face-up monster on the field; banish it until your opponent\'s next End Phase. Once per turn: You can target 1 other card you control; this card gains 1000 ATK, then, send the targeted card to the GY.',
     descriptionTh: '[ลิงก์-2] เมื่อถูกอัญเชิญลิงก์สำเร็จ: มูฟมอนสเตอร์ของอีกฝ่าย 1 ใบออกนอกเกม และได้รับพลังโจมตี +1000 ATK!',
     effects: [
       {

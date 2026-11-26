@@ -55,7 +55,7 @@ export const BLUE_EYES_CARDS = [
       },
       opt: 'alternative_ss_opt'
     },
-    description: 'Can be Special Summoned by revealing "Blue-Eyes White Dragon" in your hand. Once per turn: You can target 1 monster your opponent controls; destroy it.',
+    description: 'Cannot be Normal Summoned/Set. Must first be Special Summoned (from your hand) by revealing "Blue-Eyes White Dragon" in your hand. You can only Special Summon "Blue-Eyes Alternative White Dragon" once per turn this way. This card\'s name becomes "Blue-Eyes White Dragon" while on the field or in the GY. Once per turn: You can target 1 monster your opponent controls; destroy it. This card cannot attack the turn this effect is activated.',
     descriptionTh: '(1) อัญเชิญพิเศษจากมือได้โดยแสดง "Blue-Eyes White Dragon" บนมือหรือสนาม (2) เทิร์นละครั้ง: เลือกทำลายมอนสเตอร์บนสนามอีกฝ่าย 1 ใบ',
     effects: [
       {
@@ -91,7 +91,7 @@ export const BLUE_EYES_CARDS = [
     def: 0,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'Other cards you control cannot be destroyed by your opponent\'s card effects. If a card on the field is destroyed or you control/have Blue-Eyes White Dragon in GY: You can Special Summon this card from your GY or hand. At the start of the Damage Step: You can return 1 card your opponent controls to the hand.',
+    description: 'Other cards you control cannot be destroyed by your opponent\'s card effects. You can only use each of the following effects of "Blue-Eyes Jet Dragon" once per turn, and can only activate them while "Blue-Eyes White Dragon" is on your field or in your GY. If a card(s) on the field is destroyed by battle or card effect: You can Special Summon this card from the GY (if it was there when the card was destroyed) or hand (even if not). At the start of the Damage Step, if this card battles: You can target 1 card your opponent controls; return it to the hand.',
     descriptionTh: '(1) หากมี "Blue-Eyes White Dragon" บนสนามหรือในสุสาน สามารถอัญเชิญพิเศษการ์ดใบนี้จากมือหรือสุสานได้ (2) เมื่อประกาศโจมตี: ดีดการ์ดบนสนามอีกฝ่าย 1 ใบกลับขึ้นมือ',
     effects: [
       {
@@ -140,7 +140,7 @@ export const BLUE_EYES_CARDS = [
     def: 2500,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'If this card is Special Summoned: You can add 1 Ritual/Fusion Spell or 1 Level 8+ Dragon monster from your Deck to your hand.',
+    description: 'If this card is Special Summoned: You can add 1 Ritual Spell or 1 "Polymerization" from your Deck to your hand. During your End Phase: You can add 1 Level 8 or higher Dragon monster from your Deck to your hand. You can banish this card from your GY; all Level 8 or higher Dragon monsters you control gain 1000 ATK. You can only use each effect of "Blue-Eyes Abyss Dragon" once per turn, and can only activate them while "Blue-Eyes White Dragon" is on your field or in your GY.',
     descriptionTh: 'เมื่อการ์ดใบนี้ถูกอัญเชิญพิเศษสำเร็จ: ค้นหาเวทฟิวชั่น "Ultimate Fusion" หรือมอนสเตอร์เผ่ามังกร เลเวล 8 ขึ้นไป 1 ใบจากเด็คขึ้นมือ',
     effects: [
       {
@@ -176,7 +176,7 @@ export const BLUE_EYES_CARDS = [
     def: 1500,
     archetype: 'Eyes of Blue',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'When this card is Normal Summoned: You can add 1 Level 1 LIGHT Tuner from your Deck to your hand. You can discard this card, then target 1 Effect Monster you control; send it to the GY, and if you do, Special Summon 1 "Blue-Eyes" monster from your Deck.',
+    description: 'When this card is Normal Summoned: You can add 1 Level 1 LIGHT Tuner from your Deck to your hand, except "Sage with Eyes of Blue". You can discard this card, then target 1 Effect Monster you control; send it to the GY, and if you do, Special Summon 1 "Blue-Eyes" monster from your Deck. You can only use this effect of "Sage with Eyes of Blue" once per turn.',
     descriptionTh: '[จูนเนอร์ Lv.1] (1) เมื่ออัญเชิญปกติสำเร็จ: ค้นหาจูนเนอร์ธาตุแสง Lv.1 จากเด็คขึ้นมือ 1 ใบ (2) ทิ้งการ์ดใบนี้จากมือและส่งมอนสเตอร์บนสนามเรา 1 ใบลงสุสาน; อัญเชิญพิเศษมอนสเตอร์ "Blue-Eyes" 1 ใบจากเด็ค!',
     effects: [
       {
@@ -232,7 +232,7 @@ export const BLUE_EYES_CARDS = [
     def: 500,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'Once per turn, during the End Phase, if this card is in the GY because it was sent there this turn: You can Special Summon 1 "Blue-Eyes" monster from your Deck. You can banish this card from your GY, then target 1 "Blue-Eyes" monster in your GY; add it to your hand.',
+    description: 'Once per turn, during the End Phase, if this card is in the GY because it was sent there this turn: You can Special Summon 1 "Blue-Eyes" monster from your Deck. You can banish this card from your GY, then target 1 "Blue-Eyes" monster in your GY; add it to your hand. You can only use this effect of "The White Stone of Ancients" once per turn.',
     descriptionTh: '[จูนเนอร์ Lv.1] (1) เมื่อถูกส่งลงสุสาน: สามารถอัญเชิญพิเศษมอนสเตอร์ "Blue-Eyes" 1 ใบจากเด็คได้ (2) มูฟการ์ดใบนี้จากสุสาน; เก็บมอนสเตอร์ "Blue-Eyes" จากสุสานขึ้นมือ 1 ใบ',
     effects: [
       {
@@ -302,7 +302,7 @@ export const BLUE_EYES_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Dragon Lords',
-    description: 'Target 1 Level 7 or 8 Dragon monster in your GY; Special Summon it.',
+    description: 'Target 1 Level 7 or 8 Dragon monster in your GY; Special Summon it. If a Dragon monster(s) you control would be destroyed by battle or card effect, you can banish this card from your GY instead.',
     descriptionTh: '[เวทมนตร์ปกติ] เลือกมอนสเตอร์เผ่ามังกร เลเวล 7 หรือ 8 ในสุสานของเรา 1 ใบ; อัญเชิญพิเศษลงสนาม',
     effects: [
       {
@@ -330,7 +330,7 @@ export const BLUE_EYES_CARDS = [
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'Add 1 "Blue-Eyes" monster or 1 Spell/Trap that mentions "Blue-Eyes White Dragon" from your Deck to your hand.',
+    description: 'Reveal 3 cards from your Deck that each meets at least 1 of the criteria listed below, your opponent randomly picks 1 for you to add to your hand, and you shuffle the rest into your Deck. You can only activate 1 "Bingo Machine, Go!!!" per turn.\n● "Blue-Eyes" monster\n● Spell/Trap that mentions "Blue-Eyes White Dragon" or "Blue-Eyes Ultimate Dragon", except "Bingo Machine, Go!!!"',
     descriptionTh: '[เวทมนตร์ปกติ] ค้นหาการ์ด "Blue-Eyes" หรือเวทมนตร์/กับดักที่ระบุชื่อ "Blue-Eyes White Dragon" 1 ใบจากเด็คขึ้นมือ (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -358,7 +358,7 @@ export const BLUE_EYES_CARDS = [
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'During the Main Phase: Fusion Summon 1 Fusion Monster from your Extra Deck that mentions "Blue-Eyes White Dragon" by shuffling the Fusion Materials listed on it from your hand, field, and/or GY into the Deck, then you can destroy face-up cards your opponent controls.',
+    description: 'During the Main Phase: Fusion Summon 1 Fusion Monster from your Extra Deck that mentions "Blue-Eyes White Dragon" or "Blue-Eyes Ultimate Dragon" as material, by shuffling the materials mentioned on it from your hand, field, and/or GY into the Deck, then, you can destroy face-up cards your opponent controls, up to the number of "Blue-Eyes White Dragon" and "Blue-Eyes Ultimate Dragon" used from the field as material. You can only activate 1 "Ultimate Fusion" per turn.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] อัญเชิญฟิวชั่นมอนสเตอร์ "Blue-Eyes" จาก Extra Deck โดยใช้วัตถุดิบจากมือ/สนาม/สุสาน จากนั้นทำลายการ์ดบนสนามอีกฝ่าย 1 ใบ!',
     effects: [
       {
@@ -393,7 +393,7 @@ export const BLUE_EYES_CARDS = [
     subType: TRAP_SUBTYPES.CONTINUOUS,
     archetype: 'Blue-Eyes',
     mentions: ['Blue-Eyes White Dragon'],
-    description: 'You can activate 1 of these effects: Special Summon 1 "Blue-Eyes White Dragon" from your hand or GY; OR Set 1 Spell/Trap from your Deck that specifically lists "Blue-Eyes White Dragon" in its text.',
+    description: 'Your opponent cannot target "Blue-Eyes White Dragon" in your Monster Zone with card effects. If this face-up card is sent from the Spell & Trap Zone to the GY: Destroy all monsters you control. You can only use the following effect of "True Light" once per turn. You can activate 1 of these effects;\n● Special Summon 1 "Blue-Eyes White Dragon" from your hand or GY.\n● Set 1 Spell/Trap from your Deck, that mentions "Blue-Eyes White Dragon", with a different name from the cards you control and in your GY.',
     descriptionTh: '[กับดักต่อเนื่อง] เทิร์นละครั้ง: อัญเชิญพิเศษ "Blue-Eyes White Dragon" จากมือหรือสุสาน หรือค้นหาการ์ดที่ระบุชื่อ "Blue-Eyes White Dragon" จากเด็คขึ้นมือ',
     effects: [
       {
@@ -450,7 +450,7 @@ export const BLUE_EYES_CARDS = [
       filter: { archetype: 'Blue-Eyes', kind: CARD_KINDS.MONSTER },
       descriptionTh: 'มอนสเตอร์ "Blue-Eyes" 2 ใบขึ้นไป'
     },
-    description: '"Blue-Eyes White Dragon" + "Blue-Eyes White Dragon" + "Blue-Eyes White Dragon". Your opponent cannot target or destroy this card with card effects. Once per turn: You can target up to 2 cards your opponent controls; destroy them.',
+    description: '"Blue-Eyes White Dragon" + "Blue-Eyes White Dragon" + "Blue-Eyes White Dragon"\nYour opponent cannot target or destroy this card with card effects. Once per turn: You can target 1 card your opponent controls; destroy it. If this card was Fusion Summoned using a monster whose original name is "Blue-Eyes Alternative White Dragon" as material, you can target up to 3 cards your opponent controls instead. This card cannot attack the turn this effect is activated.',
     descriptionTh: '[ฟิวชั่น Lv.12] เทิร์นละครั้ง: เลือกทำลายการ์ดบนสนามของอีกฝ่ายสูงสุด 2 ใบ!',
     effects: [
       {
@@ -492,7 +492,7 @@ export const BLUE_EYES_CARDS = [
       filter: { race: 'Dragon', kind: CARD_KINDS.MONSTER },
       descriptionTh: '"Blue-Eyes White Dragon" + มอนสเตอร์เผ่ามังกร 1 ใบ'
     },
-    description: '"Blue-Eyes White Dragon" + 1 Dragon monster. Unaffected by Trap Cards or effects. This card can attack all monsters your opponent controls, once each.',
+    description: '"Blue-Eyes White Dragon" + 1 Dragon monster\nMust first be either Fusion Summoned, or Special Summoned from your Extra Deck by Tributing 1 "Blue-Eyes White Dragon" equipped with a Fusion Monster. Unaffected by Trap Cards or effects. Can attack all monsters your opponent controls, once each. Once per turn, at the end of the Damage Step, if this card battled: You can target 1 Trap in your GY; Set it.',
     descriptionTh: '[ฟิวชั่น Lv.8] เมื่ออัญเชิญสำเร็จ: สามารถโจมตีได้ 2 ครั้งในแต่ละ Battle Phase และเก็บกับดักจากสุสานขึ้นมือได้ 1 ใบ!',
     effects: [
       {
@@ -532,7 +532,7 @@ export const BLUE_EYES_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์ "Blue-Eyes" ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 9)'
     },
-    description: '1 Tuner + 1+ non-Tuner "Blue-Eyes" monsters. Once per turn, when an effect is activated in the GY (Quick Effect): You can negate the activation. (Quick Effect): You can Tribute this Synchro Summoned card; Special Summon 1 LIGHT Dragon Synchro Monster from your Extra Deck in Defense Position.',
+    description: '1 Tuner + 1+ non-Tuner "Blue-Eyes" monsters\nNeither player can Special Summon 2 or more monsters at the same time. Once per turn, when an effect of a card in the GY is activated (Quick Effect): You can negate the activation. (Quick Effect): You can Tribute this Synchro Summoned card; Special Summon 1 LIGHT Dragon Synchro Monster from your Extra Deck in Defense Position, except "Blue-Eyes Spirit Dragon", but destroy it during the End Phase of this turn.',
     descriptionTh: '[ซิงโคร Lv.9] [เอฟเฟคความเร็วสูง] สังเวยการ์ดใบนี้; อัญเชิญพิเศษมอนสเตอร์ซิงโครเผ่ามังกรธาตุแสง (เช่น Azure-Eyes Silver Dragon) จาก Extra Deck!',
     effects: [
       {
@@ -572,7 +572,7 @@ export const BLUE_EYES_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 9)'
     },
-    description: '1 Tuner + 1+ non-Tuner Normal Monsters. If this card is Special Summoned: Dragon monsters you currently control cannot be targeted or destroyed. Once per turn: You can target 1 Normal Monster in your GY; Special Summon that target.',
+    description: '1 Tuner + 1+ non-Tuner Normal Monsters\nIf this card is Special Summoned: Until the end of the next turn, neither player can target Dragon monsters you currently control with card effects, also they cannot be destroyed by card effects. Once per turn, during your Standby Phase: You can target 1 Normal Monster in your GY; Special Summon it.',
     descriptionTh: '[ซิงโคร Lv.9] เทิร์นละครั้ง (หรือเมื่อถูกอัญเชิญพิเศษ): ชุบชีวิตมอนสเตอร์ปกติ (เช่น Blue-Eyes White Dragon) 1 ใบจากสุสานของเราลงสนาม!',
     effects: [
       {
@@ -612,7 +612,7 @@ export const BLUE_EYES_CARDS = [
       count: 2,
       descriptionTh: 'มอนสเตอร์เลเวล 8 จำนวน 2 ใบ'
     },
-    description: '2 Level 8 monsters. Once per turn, when a Spell Card or effect is activated on the field (Quick Effect): You can negate that effect, and if you do, attach that card to this card as material.',
+    description: '2 Level 8 monsters\nOnce per turn, when a Spell Card or effect is activated on the field (Quick Effect): You can negate that effect, and if you do, attach that card to this card as material. When an opponent\'s monster declares an attack: You can detach 1 material from this card; change the attack target to this card and perform damage calculation. If another face-up Xyz Monster(s) you control is destroyed by battle or card effect: You can target 1 face-up Xyz Monster you control; it gains ATK equal to 1 of those destroyed monster\'s original ATK.',
     descriptionTh: '[เอ็กシーズ Rank 8] [เอฟเฟคความเร็วสูง] ถอดโอเวอร์เลย์ยูนิต 1 ใบ (หรือใช้เอฟเฟคเฉยๆ เทิร์นละครั้ง) เมื่ออีกฝ่ายใช้เวทมนตร์หรือเอฟเฟค: ยกเลิกเอฟเฟคนั้นทันที!',
     effects: [
       {

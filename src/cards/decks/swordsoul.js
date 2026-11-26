@@ -44,7 +44,7 @@ export const SWORDSOUL_CARDS = [
     atk: 1700,
     def: 1800,
     archetype: 'Swordsoul',
-    description: 'If this card is Normal or Special Summoned: You can reveal 1 "Swordsoul" card or 1 Wyrm monster in your hand; Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). If this card is sent to the GY as Synchro Material: You can draw 1 card.',
+    description: 'If this card is Normal or Special Summoned: You can reveal 1 "Swordsoul" card or 1 Wyrm monster in your hand; Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). While that Token is in the Monster Zone, the player who Summoned it cannot Special Summon from the Extra Deck, except Synchro Monsters. If this card is sent to the GY as Synchro Material: You can draw 1 card. You can only use each effect of "Swordsoul of Mo Ye" once per turn.',
     descriptionTh: '(1) เมื่ออัญเชิญปกติหรือพิเศษสำเร็จ: เสก "Swordsoul Token" (จูนเนอร์ Lv.4) ลงสนาม 1 ตัวทันที! (2) เมื่อถูกส่งลงสุสาน (เช่น ใช้เป็นวัตถุดิบซิงโคร): จั่วการ์ด 1 ใบ!',
     effects: [
       {
@@ -85,7 +85,7 @@ export const SWORDSOUL_CARDS = [
     atk: 1800,
     def: 1500,
     archetype: 'Swordsoul',
-    description: 'You can banish 1 "Swordsoul" card or 1 Wyrm monster from your GY; Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). If this card is sent to the GY as Synchro Material: You can send 1 "Swordsoul" card or 1 Wyrm monster from your Deck to the GY.',
+    description: 'You can banish 1 "Swordsoul" card or 1 Wyrm monster from your GY; Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). While that Token is in the Monster Zone, the player who Summoned it cannot Special Summon from the Extra Deck, except Synchro Monsters. If this card is sent to the GY as Synchro Material: You can send 1 "Swordsoul" card or 1 Wyrm monster from your Deck to the GY. You can only use each effect of "Swordsoul of Taia" once per turn.',
     descriptionTh: '(1) เทิร์นละครั้ง: เสก "Swordsoul Token" (จูนเนอร์ Lv.4) ลงสนาม 1 ตัว (2) เมื่อถูกส่งลงสุสาน: ส่งการ์ด "Swordsoul" หรือเผ่า Wyrm 1 ใบจากเด็คลงสุสาน',
     effects: [
       {
@@ -131,7 +131,7 @@ export const SWORDSOUL_CARDS = [
     atk: 1200,
     def: 2300,
     archetype: 'Swordsoul',
-    description: 'You can discard 1 other "Swordsoul" card or 1 Wyrm monster; Special Summon this card from your hand, then you can Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). If this card is sent to the GY as Synchro Material: You can inflict 1200 damage to your opponent.',
+    description: 'You can discard 1 other "Swordsoul" card or 1 other Wyrm monster; Special Summon this card from your hand, then you can Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). While that Token is in the Monster Zone, the player who Summoned it cannot Special Summon from the Extra Deck, except Synchro Monsters. If this card is sent to the GY as Synchro Material: You can inflict 1200 damage to your opponent. You can only use each effect of "Swordsoul Strategist Longyuan" once per turn.',
     descriptionTh: '(1) ทิ้งการ์ดบนมือ 1 ใบ; อัญเชิญพิเศษการ์ดใบนี้จากมือ พร้อมเสก "Swordsoul Token" (จูนเนอร์ Lv.4) ลงสนามทันที! (รวมเลเวล 6+4 = ซิงโคร Lv.10 ได้เลย!) (2) เมื่อถูกส่งลงสุสาน: ยิงดาเมจ 1200 ใส่ LP อีกฝ่าย!',
     effects: [
       {
@@ -182,7 +182,7 @@ export const SWORDSOUL_CARDS = [
       labelTh: 'อัญเชิญพิเศษ Ecclesia จากมือ',
       opt: 'ecclesia_ss_opt'
     },
-    description: 'During the Main Phase (Quick Effect): You can Tribute this card; Special Summon 1 "Swordsoul" monster or 1 "Fallen of Albaz" from your hand or Deck.',
+    description: 'If your opponent controls more monsters than you do, you can Special Summon this card (from your hand). You can only Special Summon "Incredible Ecclesia, the Virtuous" once per turn this way. You can only use each of the following effects of "Incredible Ecclesia, the Virtuous" once per turn. During the Main Phase (Quick Effect): You can Tribute this card; Special Summon 1 "Swordsoul" monster or 1 "Fallen of Albaz" from your hand or Deck. During the End Phase, if a Fusion Monster(s) was sent to your GY this turn: You can add this card from the GY to your hand.',
     descriptionTh: '[จูนเนอร์ Lv.4] (1) อัญเชิญพิเศษจากมือได้ (2) [เอฟเฟคความเร็วสูง] สังเวยการ์ดใบนี้; อัญเชิญพิเศษมอนสเตอร์ "Swordsoul" (เช่น Mo Ye หรือ Taia) 1 ใบจากเด็คลงสนามทันที!',
     effects: [
       {
@@ -221,7 +221,7 @@ export const SWORDSOUL_CARDS = [
       labelTh: 'อัญเชิญพิเศษ Ashuna จากมือ',
       opt: 'ashuna_ss_opt'
     },
-    description: 'If you control no Effect Monsters: You can Special Summon this card from your hand. You can banish this card from your GY; Special Summon 1 "Tenyi" monster from your Deck.',
+    description: 'If you control no Effect Monsters: You can Special Summon this card from your hand. If you control a face-up non-Effect Monster: You can banish this card from your hand or GY; Special Summon 1 "Tenyi" monster from your Deck, except "Tenyi Spirit - Ashuna", also you cannot Special Summon for the rest of this turn, except Wyrm monsters. You can only use each effect of "Tenyi Spirit - Ashuna" once per turn.',
     descriptionTh: '(1) อัญเชิญพิเศษการ์ดใบนี้จากมือได้ (2) มูฟการ์ดใบนี้จากสุสาน; อัญเชิญพิเศษมอนสเตอร์เผ่ามังกรมายา (Wyrm) 1 ใบจากเด็คลงสนาม!',
     effects: [
       {
@@ -260,7 +260,7 @@ export const SWORDSOUL_CARDS = [
       labelTh: 'อัญเชิญพิเศษ Vishuda จากมือ',
       opt: 'vishuda_ss_opt'
     },
-    description: 'If you control no Effect Monsters: You can Special Summon this card from your hand. You can banish this card from your GY, then target 1 card your opponent controls; return it to the hand.',
+    description: 'If you control no Effect Monsters: You can Special Summon this card from your hand. If you control a face-up non-Effect Monster: You can banish this card from your hand or GY, then target 1 card your opponent controls; return it to the hand. You can only use each effect of "Tenyi Spirit - Vishuda" once per turn.',
     descriptionTh: '(1) อัญเชิญพิเศษจากมือได้ (2) มูฟการ์ดใบนี้จากสุสานหรือบนมือ; ดีดการ์ดบนสนามของอีกฝ่าย 1 ใบกลับขึ้นมือ!',
     effects: [
       {
@@ -291,7 +291,7 @@ export const SWORDSOUL_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Swordsoul',
-    description: 'Add 1 "Swordsoul" monster from your Deck to your hand, or, if you control a Synchro Monster, you can add 1 Wyrm monster instead.',
+    description: 'Add 1 "Swordsoul" monster from your Deck to your hand, or if you control a Synchro Monster, you can add 1 Wyrm monster instead. If this card is banished: You can target 1 "Swordsoul" monster, or Wyrm monster, you control; increase or decrease its Level by 1 until the end of this turn. You can only use each effect of "Swordsoul Emergence" once per turn.',
     descriptionTh: '[เวทมนตร์ปกติ] ค้นหามอนสเตอร์ "Swordsoul" หรือเผ่ามังกรมายา (Wyrm) 1 ใบจากเด็คขึ้นมือ (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -318,7 +318,7 @@ export const SWORDSOUL_CARDS = [
     kind: CARD_KINDS.SPELL,
     subType: SPELL_SUBTYPES.NORMAL,
     archetype: 'Swordsoul',
-    description: 'Target 1 "Swordsoul" monster in your GY, or, if you control a Synchro Monster, you can target 1 Wyrm monster instead; Special Summon it.',
+    description: 'Target 1 "Swordsoul" monster in your GY, or if you control a Synchro Monster, you can target 1 Wyrm monster instead; Special Summon it. If this card is banished: You can target 1 "Swordsoul" monster, or Wyrm monster, you control; increase or decrease its Level by 1 until the end of this turn. You can only use each effect of "Swordsoul Sacred Summit" once per turn.',
     descriptionTh: '[เวทมนตร์ปกติ] ชุบชีวิตมอนสเตอร์ "Swordsoul" หรือเผ่า Wyrm 1 ใบจากสุสานของเราลงสนาม!',
     effects: [
       {
@@ -346,7 +346,7 @@ export const SWORDSOUL_CARDS = [
     kind: CARD_KINDS.TRAP,
     subType: TRAP_SUBTYPES.NORMAL,
     archetype: 'Swordsoul',
-    description: 'Target 1 Wyrm monster you control and 2 cards your opponent controls; destroy them.',
+    description: 'Target 1 Wyrm monster you control and 2 cards your opponent controls; destroy them. If this card is banished: You can Special Summon 1 "Swordsoul Token" (Wyrm/Tuner/WATER/Level 4/ATK 0/DEF 0). While that Token is in the Monster Zone, the player who Summoned it cannot Special Summon monsters from the Extra Deck, except Synchro Monsters. You can only use each effect of "Swordsoul Blackout" once per turn.',
     descriptionTh: '[กับดักปกติ] ทำลายการ์ดบนสนามของอีกฝ่ายสูงสุด 2 ใบ!',
     effects: [
       {
@@ -386,7 +386,7 @@ export const SWORDSOUL_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์เผ่า Wyrm ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 8)'
     },
-    description: '1 Tuner + 1+ non-Tuner Wyrm monsters. If this card is Synchro Summoned: You can add to your hand or banish 1 "Swordsoul" card from your Deck. (Quick Effect): You can banish 1 "Swordsoul" card or 1 Wyrm monster from your hand or GY, then target 1 other Effect Monster on the field; negate its effects until the end of this turn.',
+    description: '1 Tuner + 1+ non-Tuner Wyrm monsters\nIf this card is Synchro Summoned: You can add to your hand or banish 1 "Swordsoul" card from your Deck. (Quick Effect): You can banish 1 "Swordsoul" card or 1 Wyrm monster from your hand or GY, then target 1 other Effect Monster on the field; negate its effects until the end of this turn. You can only use 1 "Swordsoul Grandmaster - Chixiao" effect per turn, and only once that turn.',
     descriptionTh: '[ซิงโคร Lv.8] (1) เมื่ออัญเชิญซิงโครสำเร็จ: ค้นหาการ์ด "Swordsoul" 1 ใบจากเด็คขึ้นมือ! (2) [เอฟเฟคความเร็วสูง] ใบ้เอฟเฟคมอนสเตอร์ของอีกฝ่าย 1 ใบจนจบเทิร์น!',
     effects: [
       {
@@ -441,7 +441,7 @@ export const SWORDSOUL_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 10)'
     },
-    description: '1 Tuner + 1+ non-Tuner monsters. For each banished card, this card gains 100 ATK/DEF. If a card(s) is banished: You can banish 1 card each from your opponent\'s field and GY.',
+    description: '1 Tuner + 1+ non-Tuners\nFor each banished card, this card gains 100 ATK/DEF and monsters your opponent controls lose 100 ATK/DEF. If this card would be destroyed by card effect, you can banish 1 card from your GY instead. If a card(s) is banished (except during the Damage Step): You can banish 1 card each from both your opponent\'s field and GY. You can only use this effect of "Swordsoul Supreme Sovereign - Chengying" once per turn.',
     descriptionTh: '[ซิงโคร Lv.10] เทิร์นละครั้ง: เพิ่มพลังโจมตี +500 ATK และมูฟการ์ดบนสนามของอีกฝ่าย 1 ใบออกนอกเกม!',
     effects: [
       {
@@ -488,7 +488,7 @@ export const SWORDSOUL_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์เผ่า Wyrm ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 10)'
     },
-    description: '1 Tuner + 1+ non-Tuner Wyrm monsters. If you Synchro Summon: You can draw 1 card. If your opponent Special Summons a monster(s) or activates a Spell/Trap (Quick Effect): Banish that card, and if you do, inflict 1200 damage to your opponent.',
+    description: '1 Tuner + 1+ non-Tuner Wyrm monsters\nIf you Synchro Summon another Wyrm monster, while this monster is on the field: You can draw 1 card. If your opponent Special Summons a monster(s) (except during the Damage Step): You can banish 1 of those monster(s), and if you do, inflict 1200 damage to your opponent. When your opponent activates a Spell/Trap Card or effect (Quick Effect): You can banish that card, and if you do, inflict 1200 damage to your opponent. You can only use each effect of "Swordsoul Sinister Sovereign - Qixing Longyuan" once per turn.',
     descriptionTh: '[ซิงโคร Lv.10] (1) เมื่ออัญเชิญสำเร็จ: จั่วการ์ด 1 ใบ (2) [เอฟเฟคความเร็วสูง] มูฟการ์ดบนสนามอีกฝ่าย 1 ใบออกนอกเกม และยิงดาเมจ 1200 LP!',
     effects: [
       {
@@ -542,7 +542,7 @@ export const SWORDSOUL_CARDS = [
       nonTunerMin: 1,
       descriptionTh: 'จูนเนอร์ 1 ใบ + มอนสเตอร์ที่ไม่ใช่จูนเนอร์ 1 ใบขึ้นไป (ผลรวมเลเวล = 8)'
     },
-    description: '1 Tuner + 1+ non-Tuner monsters. When this card is Synchro Summoned: You can target cards on the field, up to the number of different original Attributes of the Wyrm monsters used for the Synchro Summon of this card; shuffle them into the Deck.',
+    description: '1 Tuner + 1+ non-Tuner Wyrm monsters\nWhen this card is Synchro Summoned: You can target cards on the field, up to the number of different original Attributes of the Wyrm monsters used for the Synchro Summon of this card; shuffle them into the Deck. Once per turn: You can target 1 card you control and 1 Level 4 or lower monster in your GY; destroy that card on the field, and if you do, Special Summon that other monster from the GY.',
     descriptionTh: '[ซิงโคร Lv.8] เมื่อถูกอัญเชิญซิงโครสำเร็จ: ดีดการ์ดบนสนามของอีกฝ่ายสูงสุด 2 ใบกลับขึ้นมือ/เด็ค!',
     effects: [
       {

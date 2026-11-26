@@ -33,6 +33,8 @@ import {
   createAiTurnState,
   computeYgoProAiResponse
 } from './YgoProAi.js';
+import { AiPlayer } from '../ai/ai-player.js';
+import { createOcgCardDbAdapter } from '../ai/card-db.js';
 import {
   createLingeringTracker,
   applyPlayerHint,
@@ -193,6 +195,12 @@ export class YGOProEngine {
     this.lastRetryError = false;
     this.lastHintMsgByPlayer = [0, 0];
     this._aiState = createAiTurnState();
+    this.aiPlayer = new AiPlayer({
+      me: this.aiIndex,
+      difficulty: this.aiDifficulty,
+      seed: opts.aiSeed,
+      cardDb: createOcgCardDbAdapter()
+    });
     this._lingeringTracker = createLingeringTracker();
     this._aiChainKeysThisTurn = new Set();
     this._confirmedCards = new Set();
@@ -551,6 +559,7 @@ export class YGOProEngine {
 
   _consumeMessages(msgs) {
     for (const m of msgs) {
+      this.aiPlayer?.onMessage(m);
       switch (m.type) {
         case OcgMessageType.RETRY:
           console.warn('[ygopro-core RETRY] invalid response was sent:', JSON.stringify(this._lastResponse));
@@ -1641,6 +1650,13 @@ export class YGOProEngine {
   }
 
   _computeAiResponse(m, retryAttempt = 0) {
+    if (this.aiPlayer) {
+      const resp = this.aiPlayer.decideFromEngine(m, this, retryAttempt, {
+        pickFirstAvailablePlaces: (mask, count, player) => this._pickFirstAvailablePlaces(mask, count, player),
+        findAnnounceCardCodes
+      });
+      if (resp) return resp;
+    }
     return computeYgoProAiResponse(m, {
       aiIndex: this.aiIndex,
       difficulty: this.aiDifficulty,

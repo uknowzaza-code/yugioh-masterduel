@@ -47,7 +47,7 @@ export const DARK_MAGICIAN_CARDS = [
     def: 1700,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'Gains 300 ATK for every "Dark Magician" in the GY.',
+    description: 'Gains 300 ATK for every "Dark Magician" or "Magician of Black Chaos" in the GYs.',
     descriptionTh: 'เมื่ออัญเชิญลงสนาม: ได้รับพลังโจมตี +600 ATK ทันทีหากมีจอมเวทมนตร์ดำช่วยเสริมพลัง',
     effects: [
       {
@@ -80,7 +80,7 @@ export const DARK_MAGICIAN_CARDS = [
     def: 100,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'When this card is Normal Summoned: You can add 1 Spell/Trap from your Deck to your hand, that specifically lists "Dark Magician" in its text.',
+    description: 'When this card is Normal Summoned: You can add 1 Spell/Trap from your Deck to your hand, that mentions "Dark Magician". During your opponent\'s turn, if you activate a Spell/Trap Card or effect while this card is in your GY (except during the Damage Step): You can Tribute 1 Spellcaster monster; add this card to your hand. You can only use each effect of "Magician\'s Rod" once per turn.',
     descriptionTh: 'เมื่ออัญเชิญปกติสำเร็จ: ค้นหาการ์ดเวทมนตร์หรือกับดักที่ระบุชื่อ "Dark Magician" 1 ใบจากเด็คขึ้นมือ (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -116,7 +116,7 @@ export const DARK_MAGICIAN_CARDS = [
     def: 0,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician', 'Dark Magician Girl'],
-    description: 'If this card is in your hand: You can send 1 Level 6 or higher Spellcaster monster from your Deck to the GY, then activate 1 of these effects; Special Summon this card, OR send this card to the GY, and if you do, Special Summon 1 "Dark Magician" or 1 "Dark Magician Girl" from your GY.',
+    description: 'You can send up to 2 Spells/Traps from your hand and/or field to the GY; draw that many cards. If this card is in your hand: You can send 1 Level 6 or higher Spellcaster monster from your Deck to the GY, then activate 1 of these effects;\n● Special Summon this card.\n● Send this card to the GY, then, you can Special Summon 1 "Dark Magician" or 1 "Dark Magician Girl" from your GY.\nYou can only use each effect of "Magicians\' Souls" once per turn.',
     descriptionTh: 'ทิ้งการ์ดใบนี้จากมือ และส่งมอนสเตอร์จอมเวท Lv.6 ขึ้นไปจากเด็คลงสุสาน; จากนั้นอัญเชิญพิเศษ "Dark Magician" หรือ "Dark Magician Girl" จากสุสานลงสนามทันที! (ใช้ได้เทิร์นละ 1 ครั้ง)',
     effects: [
       {
@@ -162,7 +162,7 @@ export const DARK_MAGICIAN_CARDS = [
       labelTh: 'อัญเชิญพิเศษ (ทิ้งการ์ดบนมือ 1 ใบ)',
       cost: { discardHandCount: 1 }
     },
-    description: 'You can Special Summon this card (from your hand) by discarding 1 card. If this card is Normal or Special Summoned: You can add 1 "Dark Magician" from your Deck to your hand.',
+    description: 'You can Special Summon this card (from your hand) by discarding 1 card. If this card is Normal or Special Summoned: You can add 1 "Dark Magician" from your Deck to your hand. During damage calculation, if your other DARK Spellcaster monster battles an opponent\'s monster (Quick Effect): You can send this card from your hand or face-up field to the GY; that monster you control gains 2000 ATK/DEF during that damage calculation only.',
     descriptionTh: '(1) อัญเชิญพิเศษจากมือได้โดยทิ้งการ์ดบนมือ 1 ใบ (2) เมื่ออัญเชิญปกติหรือพิเศษสำเร็จ: ค้นหา "Dark Magician" 1 ใบจากเด็คขึ้นมือ!',
     effects: [
       {
@@ -202,7 +202,7 @@ export const DARK_MAGICIAN_CARDS = [
       },
       opt: 'timaeus_ss_opt'
     },
-    description: 'During your Main Phase: You can Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your hand or field as Fusion Material, including a Spellcaster monster.',
+    description: 'You can send 1 Spellcaster monster, or 1 Spell/Trap that mentions "Dark Magician", from your hand or face-up field to the GY; Special Summon this card from your hand. During your Main Phase: You can Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your hand or field as material, including a Spellcaster monster. You can only use each effect of "Timaeus the United Dragon" once per turn.',
     descriptionTh: '(1) อัญเชิญพิเศษจากมือได้หากมีจอมเวทบนสนามหรือสุสาน (2) เทิร์นละครั้งใน Main Phase: สั่งอัญเชิญฟิวชั่นมอนสเตอร์สาย Dark Magician ได้โดยไม่ต้องใช้เวทฟิวชั่น!',
     effects: [
       {
@@ -230,7 +230,7 @@ export const DARK_MAGICIAN_CARDS = [
     subType: SPELL_SUBTYPES.CONTINUOUS,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'When this card is activated: Look at the top 3 cards of your Deck, then you can reveal 1 of them that is "Dark Magician" or a Spell/Trap that mentions "Dark Magician", and add it to your hand. If "Dark Magician" is Normal or Special Summoned to your field: You can target 1 card your opponent controls; banish it.',
+    description: 'When this card is activated: Look at the top 3 cards of your Deck, then you can reveal 1 of them that is "Dark Magician" or a Spell/Trap that mentions "Dark Magician", and add it to your hand, also place the remaining cards on top of your Deck in any order. If "Dark Magician" is Normal or Special Summoned to your field (except during the Damage Step): You can target 1 card your opponent controls; banish it. You can only use each effect of "Dark Magical Circle" once per turn.',
     descriptionTh: '[เวทมนตร์ต่อเนื่อง] (1) เมื่อเปิดใช้งาน: ค้นหาการ์ดสาย "Dark Magician" 1 ใบจากเด็คขึ้นมือ (2) เทิร์นละครั้ง หากเรามี "Dark Magician" บนสนาม: เลือกการ์ดบนสนามของอีกฝ่าย 1 ใบ นำออกนอกเกม (Banish)!',
     effects: [
       {
@@ -278,7 +278,7 @@ export const DARK_MAGICIAN_CARDS = [
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'Place 1 card on top of the Deck (or add to hand) that mentions "Dark Magician". During your Main Phase: You can banish this card from your GY; draw cards equal to the number of "Dark Magician" and "Dark Magician Girl" on the field and in the GYs.',
+    description: 'Place 1 card on top of the Deck from your hand, Deck, or GY, that is "Dark Magician" or mentions "Dark Magician" or "Dark Magician Girl", except "Soul Servant". During your Main Phase: You can banish this card from your GY; draw cards equal to the number of "Palladium" monsters, "Dark Magician", and/or "Dark Magician Girl", with different names, on the field and in the GYs. You can only use this effect of "Soul Servant" once per turn.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] (1) ค้นหาการ์ดสาย "Dark Magician" 1 ใบจากเด็คขึ้นมือ (2) มูฟการ์ดใบนี้จากสุสาน; จั่วการ์ด 1 ใบ!',
     effects: [
       {
@@ -317,7 +317,7 @@ export const DARK_MAGICIAN_CARDS = [
     subType: SPELL_SUBTYPES.QUICK_PLAY,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your hand or field, including "Dark Magician" or "Dark Magician Girl", as Fusion Material.',
+    description: 'Activate 1 of the following effects;\n● Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your hand or field, including "Dark Magician" or "Dark Magician Girl".\n● Ritual Summon 1 Ritual Monster from your hand, by Tributing monsters from your hand or field, including "Dark Magician" or "Dark Magician Girl", whose total Levels equal or exceed the Level of the Ritual Monster.',
     descriptionTh: '[เวทมนตร์ความเร็วสูง] อัญเชิญฟิวชั่นมอนสเตอร์สาย "Dark Magician" จาก Extra Deck โดยใช้วัตถุดิบจากมือหรือบนสนาม!',
     effects: [
       {
@@ -375,7 +375,7 @@ export const DARK_MAGICIAN_CARDS = [
     subType: TRAP_SUBTYPES.CONTINUOUS,
     archetype: 'Dark Magician',
     mentions: ['Dark Magician'],
-    description: 'Every "Dark Magician" in your Monster Zone is unaffected by your opponent\'s card effects. You can activate 1 of these effects: Special Summon 1 "Dark Magician" from your hand or GY; OR Add 1 "Dark Magic Attack" from your Deck to your hand.',
+    description: 'Every "Dark Magician" in your Monster Zone is unaffected by your opponent\'s card effects. If this face-up card leaves the field: Destroy all monsters you control. You can only use the following effect of "Eternal Soul" once per turn. You can activate 1 of these effects;\n● Special Summon 1 "Dark Magician" from your hand or GY.\n● Add 1 "Dark Magic Attack" or "Thousand Knives" from your Deck to your hand.',
     descriptionTh: '[กับดักต่อเนื่อง] เทิร์นละครั้ง: อัญเชิญพิเศษ "Dark Magician" 1 ใบจากมือหรือสุสานลงสนาม!',
     effects: [
       {
@@ -433,7 +433,7 @@ export const DARK_MAGICIAN_CARDS = [
       filter: { race: ['Spellcaster', 'Dragon'], kind: CARD_KINDS.MONSTER },
       descriptionTh: '"Dark Magician" หรือ "Dark Magician Girl" + มอนสเตอร์เผ่าจอมเวท/มังกร 1 ใบ'
     },
-    description: '"Dark Magician" or "Dark Magician Girl" + 1 Spellcaster monster. Once per turn, if a Spell/Trap Card or effect is activated: You can draw 1 card.',
+    description: '"Dark Magician" or "Dark Magician Girl" + 1 Spellcaster monster\nOnce per turn, if a Spell/Trap Card or effect is activated (except during the Damage Step): You can draw 1 card, then if it was a Spell/Trap, you can Set it, and if it was a Trap or Quick-Play Spell, you can activate it this turn. If this card is destroyed: You can Special Summon both 1 "Dark Magician" and 1 "Dark Magician Girl" from your hand, Deck, and/or GY.',
     descriptionTh: '[ฟิวชั่น Lv.8] (1) เมื่อถูกอัญเชิญสำเร็จ: จั่วการ์ด 1 ใบ (2) เทิร์นละครั้งใน Main Phase: จั่วการ์ดเพิ่ม 1 ใบ!',
     effects: [
       {
@@ -478,7 +478,7 @@ export const DARK_MAGICIAN_CARDS = [
       filter: { kind: CARD_KINDS.MONSTER },
       descriptionTh: '"Dark Magician" + มอนสเตอร์เผ่ามังกร/จอมเวท 1 ใบ'
     },
-    description: '"Dark Magician" + 1 Dragon monster. This card\'s name becomes "Dark Magician" while on the field or in the GY. Your opponent cannot target Spells/Traps you control with card effects, also they cannot be destroyed by your opponent\'s card effects.',
+    description: '"Dark Magician" + 1 Dragon monster\nThis card\'s name becomes "Dark Magician" while on the field or in the GY. Your opponent cannot target Spells/Traps you control with card effects, also they cannot be destroyed by your opponent\'s card effects.',
     descriptionTh: '[ฟิวชั่น Lv.8] นับชื่อเป็น "Dark Magician" บนสนาม/สุสาน และเมื่ออัญเชิญสำเร็จสามารถทำลายการ์ดบนสนามอีกฝ่าย 1 ใบ!',
     effects: [
       {
@@ -517,7 +517,7 @@ export const DARK_MAGICIAN_CARDS = [
       count: 2,
       descriptionTh: 'มอนสเตอร์เลเวล 7 จำนวน 2 ใบ'
     },
-    description: '2 Level 7 monsters. Once per turn: You can detach 1 material from this card; Special Summon 1 Spellcaster Normal Monster from your hand or Deck, and banish 1 card your opponent controls.',
+    description: '2 Level 7 monsters\nYou can also Xyz Summon this card by using a Rank 6 Spellcaster Xyz Monster you control as material. (Transfer its materials to this card.) Once per turn: You can detach 1 material from this card; Special Summon 1 Spellcaster Normal Monster from your hand or Deck. When a Spellcaster Normal Monster declares an attack: You can target 1 card your opponent controls; banish it. You can only use this effect of "Ebon Illusion Magician" once per turn.',
     descriptionTh: '[เอ็กシーズ Rank 7] เทิร์นละครั้ง: ถอดโอเวอร์เลย์ยูนิต 1 ใบ; อัญเชิญพิเศษ "Dark Magician" จากเด็คลงสนาม และมูฟการ์ดบนสนามอีกฝ่าย 1 ใบออกนอกเกม!',
     effects: [
       {

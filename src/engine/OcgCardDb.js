@@ -242,8 +242,16 @@ function mapKindAndFrame(typeMask) {
   return { kind: 'MONSTER', frame, subtype: null };
 }
 
+function cleanCdbDescription(rawDesc) {
+  if (!rawDesc) return '';
+  return String(rawDesc)
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{1,2}\*\s*The above text is unofficial and describes the card's functionality in the OCG\.?\s*$/i, '')
+    .trim();
+}
+
 /**
- * ดึงข้อมูลการ์ดสำหรับแสดงผลบนหน้าเว็บ (ใช้ข้อมูล Official English จาก cards.cdb เป็นหลัก)
+ * ดึงข้อมูลการ์ดสำหรับแสดงผลบนหน้าเว็บ (ใช้ข้อมูล Wiki / Official English ล่าสุด)
  * @param {number} code
  */
 export function getUiCardMeta(code) {
@@ -276,13 +284,16 @@ export function getUiCardMeta(code) {
     }
   }
 
+  const cdbDesc = cleanCdbDescription(textRow?.desc || '');
+  const wikiOrLocalDesc = local?.description ? String(local.description).replace(/\r\n/g, '\n').trim() : '';
+
   const meta = {
     id: local?.id || `cdb_${numCode}`,
     passcode: String(numCode),
-    name: textRow?.name || local?.name || `Card #${numCode}`,
-    nameTh: local?.nameTh || textRow?.name || `Card #${numCode}`,
-    description: textRow?.desc || local?.description || '',
-    descriptionTh: local?.descriptionTh || textRow?.desc || '',
+    name: local?.name || textRow?.name || `Card #${numCode}`,
+    nameTh: local?.nameTh || local?.name || textRow?.name || `Card #${numCode}`,
+    description: wikiOrLocalDesc || cdbDesc || '',
+    descriptionTh: local?.descriptionTh || wikiOrLocalDesc || cdbDesc || '',
     kind,
     frame,
     subtype,
