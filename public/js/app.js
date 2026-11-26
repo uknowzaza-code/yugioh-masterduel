@@ -2721,6 +2721,18 @@ function renderDuelScreen(renderOpts = {}) {
       const handFrag = document.createDocumentFragment();
       const handMid = (handCount - 1) / 2;
       const maxFanSpread = Math.min(20, Math.max(0, (handCount - 1) * 3.5));
+      const estCardW = 74;
+      const maxCollapsedW = 390;
+      const maxExpandedW = 760;
+      const collapsedOverlap = handCount <= 5
+        ? 4
+        : Math.max(-52, Math.min(-6, -Math.ceil((handCount * estCardW - maxCollapsedW) / Math.max(1, handCount - 1))));
+      const expandedOverlap = handCount <= 8
+        ? 6
+        : Math.max(-34, Math.min(2, -Math.ceil((handCount * estCardW - maxExpandedW) / Math.max(1, handCount - 1))));
+      handContainer.style.setProperty('--hand-overlap-collapsed', `${collapsedOverlap}px`);
+      handContainer.style.setProperty('--hand-overlap-expanded', `${expandedOverlap}px`);
+      handContainer.dataset.handDense = handCount >= 6 ? '1' : '0';
       me.hand.forEach((card, idx) => {
         const cardActions = legal.handActions?.[card.instanceId] || [];
         const canActivate = cardActions.some(

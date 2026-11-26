@@ -3609,6 +3609,11 @@ body.is-zone-picking #field-pick-banner .chain-bar-header,
     --slot-w: calc(var(--slot-h) * 59 / 86);
   }
 
+  .duel-command-rail {
+    position: relative;
+    z-index: calc(var(--z-hand-dock) + 2);
+  }
+
   .player-bottom-dock {
     height: 86px;
     min-height: 86px;
@@ -3617,13 +3622,22 @@ body.is-zone-picking #field-pick-banner .chain-bar-header,
     align-items: flex-end;
   }
 
+  .player-bottom-dock:has(.self-hand-container:hover),
+  .player-bottom-dock:has(.self-hand-container:focus-within) {
+    z-index: calc(var(--z-hand-dock) + 5);
+  }
+
   .self-hand-container {
+    flex: 0 1 auto;
+    width: fit-content;
+    max-width: calc(100% - 150px);
+    margin: 0 auto;
     overflow: visible;
     align-items: flex-end;
-    gap: 6px;
-    padding: 0 10px 4px;
+    gap: 0;
+    padding: 0 6px 2px;
     transform-origin: bottom center;
-    transform: translate3d(0, -4px, 0) scale(0.84);
+    transform: translate3d(0, 6px, 0) scale(0.82);
     transition: transform var(--dur) var(--ease-out);
   }
 
@@ -3634,7 +3648,11 @@ body.is-zone-picking #field-pick-banner .chain-bar-header,
     height: calc(var(--hand-card-w) * 1.4583);
     transform-origin: 50% 100%;
     transform: translate3d(0, var(--fan-y, 0px), 0) rotate(var(--fan-angle, 0deg));
-    transition: transform var(--dur) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+    transition: transform var(--dur) var(--ease-out), margin-left 180ms var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+
+  .self-hand-container .hand-card-item + .hand-card-item {
+    margin-left: var(--hand-overlap-collapsed, 4px);
   }
 
   .player-bottom-dock.hand-suppressed .self-hand-container,
@@ -3701,17 +3719,22 @@ body.is-zone-picking #field-pick-banner .chain-bar-header,
 }
 
 @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
-  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container,
-  .player-bottom-dock:not(.hand-suppressed):focus-within .self-hand-container {
-    transform: translateY(-14px) scale(1.06);
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:hover,
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:focus-within {
+    transform: translate3d(0, -14px, 0) scale(1.04);
   }
 
-  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container .hand-card-item,
-  .player-bottom-dock:not(.hand-suppressed):focus-within .self-hand-container .hand-card-item {
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:hover .hand-card-item,
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:focus-within .hand-card-item {
     transform: translateY(0) rotate(0deg);
   }
 
-  .player-bottom-dock:not(.hand-suppressed):hover .self-hand-container .hand-card-item:hover {
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:hover .hand-card-item + .hand-card-item,
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:focus-within .hand-card-item + .hand-card-item {
+    margin-left: var(--hand-overlap-expanded, 6px);
+  }
+
+  .player-bottom-dock:not(.hand-suppressed) .self-hand-container:hover .hand-card-item:hover {
     transform: translateY(-14px) scale(1.08) rotate(0deg);
     z-index: var(--z-hand-hover);
     box-shadow: var(--shadow-md);
