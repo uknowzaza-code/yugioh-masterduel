@@ -421,9 +421,16 @@ test('Real YGOProEngine (ocgcore-wasm) runs multi-turn duels across Easy, Normal
     assert.equal(engine.lastRetryError, false);
 
     // Advance human's Turn 1 directly to End Phase so AI executes its full Turn 2
-    if (engine.state.winner === null && engine.pendingMessage?.player === 0) {
-      const res = engine.dispatchAction(0, { type: 'END_TURN' });
-      assert.equal(res.ok, true, `Human END_TURN should succeed in ${difficulty} duel`);
+    let guard = 0;
+    while (guard++ < 15 && engine.state.winner === null && engine.pendingMessage?.player === 0 && engine.state.turnCount === 1) {
+      if (engine.pendingMessage.type === OcgMessageType.SELECT_IDLECMD) {
+        const res = engine.dispatchAction(0, { type: 'END_TURN' });
+        assert.equal(res.ok, true, `Human END_TURN should succeed in ${difficulty} duel`);
+      } else if (engine.pendingMessage.type === OcgMessageType.SELECT_CHAIN) {
+        engine.dispatchAction(0, { type: 'CHAIN_RESPONSE', respond: false });
+      } else {
+        break;
+      }
     }
 
     assert.equal(engine.lastRetryError, false, `AI (${difficulty}) must not trigger RETRY error`);
@@ -858,14 +865,14 @@ test('SELECT_UNSELECT_CARD picks additional beneficial opp targets, SELECT_SUM p
 test('Real YGOProEngine multi-deck (6 preset decks) verification & clean incremental onAiStep snapshots', async () => {
   const core = await getSharedOcgCore();
   const deckIds = [
-    'blue_eyes_meta',
-    'swordsoul_tenyi',
-    'branded_despia',
-    'sky_striker_ace',
+    'mdm_elfnote',
+    'mdm_resonators',
+    'mdm_exosister',
+    'mdm_maliss',
     'mdm_snake_eye_yummy',
     'mdm_labrynth'
   ];
-  const oppDeck = getPresetDeckById('blue_eyes_meta') || PRESET_DECKS[0];
+  const oppDeck = getPresetDeckById('mdm_elfnote') || PRESET_DECKS[0];
   const oppCards = [...expandDeckRecipe(oppDeck.mainDeckRecipe || []), ...expandDeckRecipe(oppDeck.extraDeckRecipe || [])];
 
   for (const deckId of deckIds) {
@@ -921,7 +928,7 @@ test('Real YGOProEngine multi-deck (6 preset decks) verification & clean increme
   }
 
   // Also verify AI going Turn 1 emits clean onAiStep snapshots during constructor
-  const turn1Deck = getPresetDeckById('swordsoul_tenyi');
+  const turn1Deck = getPresetDeckById('mdm_exosister') || PRESET_DECKS[0];
   const turn1Cards = [...expandDeckRecipe(turn1Deck.mainDeckRecipe || []), ...expandDeckRecipe(turn1Deck.extraDeckRecipe || [])];
   const turn1Snaps = [];
   const t1Engine = new YGOProEngine({

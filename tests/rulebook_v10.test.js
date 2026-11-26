@@ -857,6 +857,10 @@ await runTest('9. YGOProEngine (ocgcore-wasm)', 'Starts duel with Turn 1 no-draw
 
   try {
     assert.equal(engine.state.turnCount, 1, 'YGOProEngine must start on Turn 1');
+    for (let guard = 0; guard < 10 && engine.state.phase !== PHASES.MP1 && engine.state.pendingChainPrompt; guard++) {
+      const resp = engine.state.pendingChainPrompt.responderIndex;
+      engine.dispatchAction(resp, { type: 'CHAIN_RESPONSE', respond: false });
+    }
     assert.equal(engine.state.phase, PHASES.MP1, 'YGOProEngine Turn 1 should advance to MP1');
     assert.equal(engine.state.players[0].lp, 8000, 'P0 LP must be 8000');
     assert.equal(engine.state.players[1].lp, 8000, 'P1 LP must be 8000');

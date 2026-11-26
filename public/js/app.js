@@ -505,16 +505,17 @@ function populateAiDeckDropdown() {
   if (previousVal && [...aiSelect.options].some(o => o.value === previousVal)) {
     aiSelect.value = previousVal;
   } else {
-    aiSelect.value = 'swordsoul_tenyi';
+    aiSelect.value = PRESET_DECKS[0]?.id || 'mdm_elfnote';
   }
 }
 
 function resolveOpponentDeckId() {
-  const val = document.getElementById('select-ai-deck')?.value || 'swordsoul_tenyi';
+  const defaultId = PRESET_DECKS[0]?.id || 'mdm_elfnote';
+  const val = document.getElementById('select-ai-deck')?.value || defaultId;
   if (val === '__RANDOM__') {
     const all = getAllDecks();
     const randomDeck = all[Math.floor(Math.random() * all.length)];
-    return randomDeck?.id || 'swordsoul_tenyi';
+    return randomDeck?.id || defaultId;
   }
   return val;
 }
@@ -568,7 +569,7 @@ async function deleteDeckById(deck) {
 
   const remaining = getVisibleDecks();
   if (appState.selectedDeckId === deck.id) {
-    appState.selectedDeckId = remaining[0]?.id || PRESET_DECKS[0]?.id || 'blue_eyes_meta';
+    appState.selectedDeckId = remaining[0]?.id || PRESET_DECKS[0]?.id || 'mdm_elfnote';
   }
   renderDeckSelector();
   populateAiDeckDropdown();
@@ -7071,19 +7072,10 @@ window.addEventListener('DOMContentLoaded', () => {
   fetchNetworkAndCustomCards();
   setupAIStudioEvents();
 
-  // Deck Search & Style Filter Controls (55 Decks)
+  // Deck Search Control (50 MDM Decks)
   document.getElementById('input-deck-search')?.addEventListener('input', (e) => {
     appState.deckSearch = e.target.value || '';
     renderDeckSelector();
-  });
-
-  document.querySelectorAll('.deck-filter-chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('.deck-filter-chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      appState.deckCategory = chip.getAttribute('data-deck-filter') || 'all';
-      renderDeckSelector();
-    });
   });
 
   // Language Toggle Button

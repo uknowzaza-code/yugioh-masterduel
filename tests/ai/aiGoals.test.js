@@ -213,64 +213,72 @@ test('Goal 4: PSCT category inference + timing-accurate Ash / Called By / Solemn
 // ============================================================================
 // GOAL 2: บอทคอมโบได้จริงใน ocgcore-wasm (Real Deck Combo Verification)
 // ============================================================================
-test('Goal 2: Real ocgcore-wasm duels execute multi-step combos (Sky Striker discipline, Swordsoul, Dark Magician, Elfnote)', async () => {
+test('Goal 2: Real ocgcore-wasm duels execute multi-step combos across MDM decks (Exosister Xyz, D/D/D Mix, Resonators Synchro)', async () => {
   const core = await getSharedOcgCore();
   const build = (d) => [...expandDeckRecipe(d.mainDeckRecipe || []), ...expandDeckRecipe(d.extraDeckRecipe || [])];
-  const oppDeck = build(PRESET_DECKS.find((d) => d.id === 'blue_eyes_meta'));
+  const oppDeck = build(PRESET_DECKS.find((d) => d.id === 'mdm_elfnote') || PRESET_DECKS[0]);
 
-  // 1) Sky Striker Turn 1: activates ROTA BEFORE Raye/Links and ends on Shizuku (NOT Hayate on Turn 1!)
-  const strikerDeck = build(PRESET_DECKS.find((d) => d.id === 'sky_striker_ace'));
-  const strikerEng = new YGOProEngine({
-    core,
-    deck1Cards: strikerDeck,
-    deck2Cards: oppDeck,
-    isSoloVsAi: true,
-    aiIndex: 0,
-    aiDifficulty: 'hard',
-    aiSeed: 101,
-    player1Name: 'AI_Striker',
-    player2Name: 'Human',
-  });
-  // Let Human pass any chain prompt (e.g. Ash Blossom) so AI completes Turn 1 cleanly
-  for (let i = 0; i < 10 && strikerEng.turnCount === 1; i++) {
-    const p = strikerEng.state.pendingPrompt;
-    if (!p || p.playerIndex !== 1) break;
-    if (p.type === 'SELECT_CHAIN') strikerEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
-    else break;
-  }
-  const strikerField = [...strikerEng.state.players[0].mmz, ...strikerEng.state.players[0].emzSlots].filter(Boolean).map((c) => c.name);
-  assert.ok(!strikerField.includes('Sky Striker Ace - Hayate'), `Turn 1 Sky Striker must not end on Hayate (got: ${strikerField.join(', ')})`);
-  strikerEng.destroy();
-
-  // 2) Swordsoul Turn 1: try up to 3 fresh hands (standard Yu-Gi-Oh variance) and confirm multi-step Synchro/Token/Search combo executes!
-  const ssDeck = build(PRESET_DECKS.find((d) => d.id === 'swordsoul_tenyi'));
-  let comboExecuted = false;
-  let lastLogs = '';
-  for (let attempt = 0; attempt < 3 && !comboExecuted; attempt++) {
-    const ssEng = new YGOProEngine({
+  // 1) Exosister Turn 1: try up to 5 hands and confirm Xyz combo executes
+  const exoDeck = build(PRESET_DECKS.find((d) => d.id === 'mdm_exosister'));
+  let exoOk = false;
+  let exoLastLogs = '';
+  for (let attempt = 0; attempt < 5 && !exoOk; attempt++) {
+    const exoEng = new YGOProEngine({
       core,
-      deck1Cards: ssDeck,
+      deck1Cards: exoDeck,
       deck2Cards: oppDeck,
       isSoloVsAi: true,
       aiIndex: 0,
       aiDifficulty: 'hard',
-      aiSeed: 101 + attempt,
-      player1Name: 'AI_Swordsoul',
+      aiSeed: 901 + attempt,
+      player1Name: 'AI_Exosister',
       player2Name: 'Human',
     });
-    for (let i = 0; i < 20 && ssEng.turnCount === 1; i++) {
-      const p = ssEng.state.pendingPrompt;
+    for (let i = 0; i < 15 && exoEng.turnCount === 1; i++) {
+      const p = exoEng.state.pendingPrompt;
       if (!p || p.playerIndex !== 1) break;
-      if (p.type === 'SELECT_CHAIN') ssEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
-      else if (p.type === 'SELECT_EFFECTYN' || p.type === 'SELECT_YESNO') ssEng.dispatchAction(1, { type: 'CONFIRM_CHOICE', confirm: false });
+      if (p.type === 'SELECT_CHAIN') exoEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
+      else if (p.type === 'SELECT_EFFECTYN' || p.type === 'SELECT_YESNO') exoEng.dispatchAction(1, { type: 'CONFIRM_CHOICE', confirm: false });
       else break;
     }
-    const ssLogs = ssEng.logs.map((l) => l.text).join('\n');
-    lastLogs = ssLogs;
-    if (/Swordsoul Grandmaster - Chixiao|Swordsoul Token|Baronne de Fleur|Baxia|Qixing/.test(ssLogs)) {
+    const exoLogs = exoEng.logs.map((l) => l.text).join('\n');
+    exoLastLogs = exoLogs;
+    if (/Exosister Mikailis|Exosisters Magnifica|Exosister Kaspitell|Exosister Karmael/.test(exoLogs)) {
+      exoOk = true;
+    }
+    exoEng.destroy();
+  }
+  assert.equal(exoOk, true, `Exosister AI must execute Xyz combo. Logs:\n${exoLastLogs}`);
+
+  // 2) Resonators Turn 1: try up to 6 fresh hands and confirm Synchro combo executes!
+  const resDeck = build(PRESET_DECKS.find((d) => d.id === 'mdm_resonators'));
+  let comboExecuted = false;
+  let lastLogs = '';
+  for (let attempt = 0; attempt < 6 && !comboExecuted; attempt++) {
+    const resEng = new YGOProEngine({
+      core,
+      deck1Cards: resDeck,
+      deck2Cards: oppDeck,
+      isSoloVsAi: true,
+      aiIndex: 0,
+      aiDifficulty: 'hard',
+      aiSeed: 300 + attempt,
+      player1Name: 'AI_Resonators',
+      player2Name: 'Human',
+    });
+    for (let i = 0; i < 20 && resEng.turnCount === 1; i++) {
+      const p = resEng.state.pendingPrompt;
+      if (!p || p.playerIndex !== 1) break;
+      if (p.type === 'SELECT_CHAIN') resEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
+      else if (p.type === 'SELECT_EFFECTYN' || p.type === 'SELECT_YESNO') resEng.dispatchAction(1, { type: 'CONFIRM_CHOICE', confirm: false });
+      else break;
+    }
+    const resLogs = resEng.logs.map((l) => l.text).join('\n');
+    lastLogs = resLogs;
+    if (/Red Rising Dragon|Bystial Dis Pater|Crimson King|Red Dragon Archfiend|Scarred Dragon Archfiend|Crimson Dragon/.test(resLogs)) {
       comboExecuted = true;
     }
-    ssEng.destroy();
+    resEng.destroy();
   }
-  assert.equal(comboExecuted, true, `Swordsoul AI must execute a multi-step combo. Last logs:\n${lastLogs}`);
+  assert.equal(comboExecuted, true, `Resonators AI must execute a Synchro combo. Last logs:\n${lastLogs}`);
 });

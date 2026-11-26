@@ -178,7 +178,18 @@ test('Real YGOProEngine (ocgcore-wasm) tracks Branded Fusion / Maxx C / Droll li
   assert.equal(engine.state.lingeringEffects.some(e => e.code === 94145021), false);
 
   // Advancing to Turn 2 clears Branded Fusion's endOfTurn lock
-  engine.dispatchAction(0, { type: 'END_TURN' });
+  for (let i = 0; i < 10 && engine.state.turnCount === 1; i++) {
+    const p = engine.pendingMessage;
+    if (!p) break;
+    if (p.type === OcgMessageType.SELECT_IDLECMD) {
+      engine.dispatchAction(p.player, { type: 'END_TURN' });
+    } else if (p.type === OcgMessageType.SELECT_CHAIN) {
+      engine.dispatchAction(p.player, { type: 'CHAIN_RESPONSE', respond: false });
+    } else {
+      break;
+    }
+  }
+  assert.ok(engine.state.turnCount >= 2);
   assert.equal(engine.state.lingeringEffects.some(e => e.code === 44362883), false);
 
   engine.destroy();
