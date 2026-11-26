@@ -127,7 +127,20 @@ export const I18N_STRINGS = {
     rpsGoFirst: '⚡ เริ่มเล่นก่อน',
     rpsGoFirstSub: 'คุณได้เริ่ม Turn 1 ทันที',
     rpsGoSecond: '🛡️ ให้ฝ่ายตรงข้ามเริ่มก่อน',
-    rpsGoSecondSub: 'ฝ่ายตรงข้ามเริ่ม Turn 1 (คุณเริ่ม Turn 2)'
+    rpsGoSecondSub: 'ฝ่ายตรงข้ามเริ่ม Turn 1 (คุณเริ่ม Turn 2)',
+    effectChoiceTitle: 'เลือกเอฟเฟคที่ต้องการใช้?',
+    effectChoiceOk: 'ตกลง',
+    effectChoiceCancel: 'ยกเลิก',
+    effectChoiceViewBoard: 'ดูสนาม',
+    effectChoiceShowPrompt: 'แสดงตัวเลือก',
+    effectChoiceTabLabel: 'เอฟเฟคที่ {n} จาก {total}',
+    lingeringTitle: 'เอฟเฟคที่มีผลอยู่',
+    lingeringAriaLabel: 'ดูเอฟเฟคที่มีผลทั้งเทิร์น ({n} รายการ)',
+    lingeringScopeSelf: 'คุณ',
+    lingeringScopeOpp: 'คู่ต่อสู้',
+    lingeringScopeBoth: 'ทั้งคู่',
+    lingeringClose: 'ปิด',
+    lingeringAnnounce: 'มีเอฟเฟคทำงานใหม่: {name}'
   },
   en: {
     subtitle: '55 Master Duel Meta Decks • Authentic Chain System • Cross-Device Multiplayer',
@@ -253,7 +266,20 @@ export const I18N_STRINGS = {
     rpsGoFirst: '⚡ Go First',
     rpsGoFirstSub: 'You start Turn 1',
     rpsGoSecond: '🛡️ Go Second',
-    rpsGoSecondSub: 'Opponent starts Turn 1'
+    rpsGoSecondSub: 'Opponent starts Turn 1',
+    effectChoiceTitle: 'Use which effect?',
+    effectChoiceOk: 'OK',
+    effectChoiceCancel: 'Cancel',
+    effectChoiceViewBoard: 'View Board',
+    effectChoiceShowPrompt: 'Show Prompt',
+    effectChoiceTabLabel: 'Effect {n} of {total}',
+    lingeringTitle: 'Active Effects',
+    lingeringAriaLabel: 'View active lingering effects ({n})',
+    lingeringScopeSelf: 'You',
+    lingeringScopeOpp: 'Opp',
+    lingeringScopeBoth: 'Both',
+    lingeringClose: 'Close',
+    lingeringAnnounce: 'Lingering effect active: {name}'
   }
 };
 

@@ -72,6 +72,12 @@ import {
   pickRandomRpsMove,
   chooseAiTurnOrder
 } from '/src/engine/RpsSession.js';
+import {
+  openEffectChoiceModal as openMasterDuelEffectChoiceModal,
+  closeEffectChoiceModal,
+  refreshEffectChoiceModalLabels
+} from '/js/effectChoiceModal.js';
+import { mountLingeringHud } from '/js/lingeringHud.js';
 
 // ==================== WEB AUDIO SYNTHESIZER (SFX) ====================
 class DuelSoundFX {
@@ -172,7 +178,8 @@ const appState = {
   lastAutoInspectedEventKey: null,
   knownCardsById: new Map(),
   knownCardsByCode: new Map(),
-  knownCardsByName: new Map()
+  knownCardsByName: new Map(),
+  lingeringHud: null
 };
 
 if (typeof document !== 'undefined' && document.documentElement) {
@@ -2465,6 +2472,20 @@ function computeCardRenderSig(card, isSelf, legal, chainLinkMap, oppTargetsSig, 
   ].join('~');
 }
 
+function ensureLingeringHud() {
+  if (!appState.lingeringHud) {
+    const mountEl = document.getElementById('lingering-hud-mount');
+    if (mountEl) {
+      appState.lingeringHud = mountLingeringHud(mountEl, {
+        t,
+        getLang: () => appState.lang,
+        getCardArtUrl
+      });
+    }
+  }
+  return appState.lingeringHud;
+}
+
 function renderDuelScreen(renderOpts = {}) {
   const state = appState.currentState;
   if (!state) return;
@@ -2765,7 +2786,10 @@ function renderDuelScreen(renderOpts = {}) {
   });
 
   if (state.winner !== null) {
+    closeEffectChoiceModal();
+  appState.lingeringHud?.update([], 0);
     const surrenderDlg = document.getElementById('dialog-surrender-confirm');
+  ensureLingeringHud()?.update(state.winner !== null ? [] : (state.lingeringEffects || []), myIdx);
     if (surrenderDlg?.open) surrenderDlg.close();
     const isWin = state.winner === myIdx;
     const badgeEl = document.getElementById('result-badge-icon');
@@ -3235,6 +3259,8 @@ async function translateTextWithGoogle(text) {
 }
 
 function closeOcgPromptDialogIfOpen() {
+  closeEffectChoiceModal();
+  appState.lingeringHud?.update([], 0);
   const dlg = document.getElementById('dialog-zone-browser');
   if (dlg?.open && dlg.dataset.ocgPrompt === '1') {
     dlg.dataset.ocgPrompt = '';
@@ -4325,6 +4351,8 @@ let activeZonePickMandatory = false;
 
 function clearZonePickMode(force = false) {
   if (!force && activeZonePickMandatory) return;
+  closeEffectChoiceModal();
+  appState.lingeringHud?.update([], 0);
   if (activeZonePickCleanup) {
     activeZonePickCleanup();
     activeZonePickCleanup = null;
@@ -4465,27 +4493,34 @@ function enterOcgYesNoBanner(prompt) {
   }));
 }
 
-function enterOcgOptionBanner(prompt) {
+function getEffectChoiceLabels() {
   const lang = appState.lang;
+  return {
+    title: t(lang, 'effectChoiceTitle'),
+    ok: t(lang, 'effectChoiceOk'),
+    cancel: t(lang, 'effectChoiceCancel'),
+    viewBoard: t(lang, 'effectChoiceViewBoard'),
+    showPrompt: t(lang, 'effectChoiceShowPrompt'),
+    tabLabel: t(lang, 'effectChoiceTabLabel')
+  };
+}
+
+function enterOcgOptionBanner(prompt) {
   const opts = prompt.options || [];
   if (opts.length === 0) return false;
 
-  const btns = opts.map((opt) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'inline-prompt-btn primary';
-    btn.textContent = (lang === 'th' ? (opt.labelTh || opt.label) : (opt.labelEn || opt.label)) || `Option ${opt.index + 1}`;
-    btn.onclick = () => sendOcgPromptResponse({ type: 4, index: opt.index });
-    return btn;
+  return openMasterDuelEffectChoiceModal({
+    options: opts,
+    canCancel: Boolean(prompt.canCancel),
+    getLabels: getEffectChoiceLabels,
+    getOptionText: (opt) => {
+      const lang = appState.lang;
+      return (lang === 'th' ? (opt.labelTh || opt.label) : (opt.labelEn || opt.label)) || `Option ${opt.index + 1}`;
+    },
+    onConfirm: (opt) => {
+      sendOcgPromptResponse({ type: 4, index: opt.index });
+    }
   });
-
-  return Boolean(openInlinePickBanner({
-    icon: 'activate',
-    message: lang === 'en' ? 'Choose an option to apply:' : 'เลือกเอฟเฟกต์/ตัวเลือกที่ต้องการ:',
-    actionButtons: btns,
-    mandatory: true,
-    mode: 'ocg-option'
-  }));
 }
 
 function enterOcgPositionBanner(prompt) {
@@ -6745,6 +6780,8 @@ function applyI18n() {
 
   syncMobileFieldZoomUI(currentMobileZoomScale);
   updateAiDifficultyUI();
+  refreshEffectChoiceModalLabels(getEffectChoiceLabels);
+  appState.lingeringHud?.refreshLanguage();
 
   populateAiDeckDropdown();
   renderDeckSelector();
@@ -6862,6 +6899,8 @@ function setupSurrenderControls() {
 
 function leaveCurrentDuel() {
   clearTimeout(appState.aiTimer);
+  closeEffectChoiceModal();
+  appState.lingeringHud?.update([], 0);
   cancelStateSyncPlayback({ clearDuelId: true });
   clearDuelVfxLayer();
   if (appState.gameMode === 'MULTIPLAYER') {

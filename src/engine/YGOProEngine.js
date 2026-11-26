@@ -11,6 +11,7 @@ import createCore, {
   OcgLocation,
   OcgMessageType,
   OcgPhase,
+  OcgPlayerHintType,
   OcgPosition,
   OcgProcessResult,
   OcgQueryFlags,
@@ -32,6 +33,14 @@ import {
   createAiTurnState,
   computeYgoProAiResponse
 } from './YgoProAi.js';
+import {
+  createLingeringTracker,
+  applyPlayerHint,
+  applyCatalogResolution,
+  advancePhase,
+  toSnapshot as toLingeringSnapshot,
+  resetTracker as resetLingeringTracker
+} from './lingeringEffects.js';
 import { getCardById } from '../cards/index.js';
 import { POSITIONS, PHASES } from '../constants/gameConstants.js';
 
@@ -184,6 +193,7 @@ export class YGOProEngine {
     this.lastRetryError = false;
     this.lastHintMsgByPlayer = [0, 0];
     this._aiState = createAiTurnState();
+    this._lingeringTracker = createLingeringTracker();
     this._aiChainKeysThisTurn = new Set();
     this._confirmedCards = new Set();
     this._pendingPreferredPlace = [null, null];
@@ -279,6 +289,7 @@ export class YGOProEngine {
   }
 
   destroy() {
+    resetLingeringTracker(this._lingeringTracker);
     if (!this.destroyed && this.handle) {
       this.core.destroyDuel(this.handle);
       this.destroyed = true;
@@ -549,9 +560,24 @@ export class YGOProEngine {
             this.lastHintMsgByPlayer[m.player] = Number(m.hint || 0);
           }
           break;
+        case OcgMessageType.PLAYER_HINT:
+          applyPlayerHint(this._lingeringTracker, {
+            player: m.player,
+            hintType: m.player_hint ?? OcgPlayerHintType.DESC_ADD,
+            desc: m.description,
+            turn: this.turnCount || 1,
+            resolveDesc: resolveOcgDescription,
+            getCardMeta: getUiCardMeta
+          });
+          break;
         case OcgMessageType.NEW_TURN:
           this.turnCount++;
           this.turnPlayerIndex = m.player;
+          advancePhase(this._lingeringTracker, {
+            turn: this.turnCount,
+            phase: PHASES.DP,
+            turnPlayer: this.turnPlayerIndex
+          });
           this._aiState = createAiTurnState();
           this._aiChainKeysThisTurn.clear();
           this._aiActionCount = 0;
@@ -569,6 +595,11 @@ export class YGOProEngine {
         case OcgMessageType.NEW_PHASE:
           this.phase = mapOcgPhaseToUi(m.phase);
           this.lastHintMsgByPlayer = [0, 0];
+          advancePhase(this._lingeringTracker, {
+            turn: this.turnCount || 1,
+            phase: this.phase,
+            turnPlayer: this.turnPlayerIndex
+          });
           this.log(`Phase changed to ${this.phase}`);
           break;
         case OcgMessageType.DRAW: {
@@ -723,9 +754,25 @@ export class YGOProEngine {
           this.log(`⛓️ [Chain Link ${chainLink}] ${this.playerNames[m.controller]} activated ${meta?.name || m.code}.`, meta);
           break;
         }
+        case OcgMessageType.CHAIN_NEGATED:
+        case OcgMessageType.CHAIN_DISABLED: {
+          const linkIdx = Number(m.chain_size || 0) - 1;
+          if (linkIdx >= 0 && this.chainStack[linkIdx]) {
+            this.chainStack[linkIdx].negated = true;
+          }
+          break;
+        }
         case OcgMessageType.CHAIN_SOLVED:
           if (this.chainStack.length > 0) {
-            this.chainStack.pop();
+            const solved = this.chainStack.pop();
+            if (solved && !solved.negated) {
+              applyCatalogResolution(this._lingeringTracker, {
+                code: Number(solved.card?.passcode || 0),
+                player: solved.playerIndex,
+                turn: this.turnCount || 1,
+                getCardMeta: getUiCardMeta
+              });
+            }
           }
           break;
         case OcgMessageType.CHAIN_END:
@@ -1058,6 +1105,7 @@ export class YGOProEngine {
       logs: this.logs,
       pendingChainPrompt: this._buildPendingChainPrompt(),
       pendingOcgPrompt: this._buildPendingOcgPrompt(),
+      lingeringEffects: toLingeringSnapshot(this._lingeringTracker),
       aiDifficulty: this.aiDifficulty,
       isYgoProCore: true
     };
@@ -1442,6 +1490,7 @@ export class YGOProEngine {
       }
       this.chainStack = [];
       this.pendingMessage = null;
+      resetLingeringTracker(this._lingeringTracker);
       this.winner = winnerIdx;
       this.winReason = 'surrender';
       this.winReasonTh = `${loserName} ขอยอมแพ้ (Surrender)`;

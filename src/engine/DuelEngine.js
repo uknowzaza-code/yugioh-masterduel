@@ -23,6 +23,12 @@ import {
   ACTION_TYPES
 } from '../constants/gameConstants.js';
 import { CARD_REGISTRY, getCardById, getPresetDeckById, expandDeckRecipe } from '../cards/index.js';
+import {
+  createLingeringTracker,
+  advancePhase as advanceLingeringPhase,
+  toSnapshot as toLingeringSnapshot,
+  resetTracker as resetLingeringTracker
+} from './lingeringEffects.js';
 import { matchesCardFilter } from '../cards/schema.js';
 import { SummonManager } from './SummonManager.js';
 import { EffectResolver } from './EffectResolver.js';
@@ -81,6 +87,7 @@ export class DuelEngine {
     const p1 = this.createPlayerState(1, config.p1Name || 'ผู้เล่น 2', p1DeckDef);
     const firstPlayerIndex = config.firstPlayerIndex === 1 ? 1 : 0;
 
+    this._lingeringTracker = createLingeringTracker();
     this.state = {
       duelId: config.duelId || `duel_${Date.now()}`,
       turnCount: 1,
@@ -91,6 +98,7 @@ export class DuelEngine {
       pendingChainPrompt: null, // { responderIndex, triggerDescriptionTh, respondableCards: [...] }
       drollLockActive: false,
       macroCosmosTurnsRemaining: 0,
+      lingeringEffects: [],
       winner: null,
       winReasonTh: null,
       logs: [],
@@ -1580,6 +1588,8 @@ export class DuelEngine {
       this.state.chainStack = [];
       this.state.winner = 1 - playerIndex;
       this.state.winReason = 'surrender';
+      resetLingeringTracker(this._lingeringTracker);
+      this.state.lingeringEffects = [];
       this.state.winReasonTh = `${this.state.players[playerIndex].name} ขอยอมแพ้ (Surrender)`;
       this.log(`🏳️ ${this.state.winReasonTh}`);
       return { ok: true };
@@ -2443,6 +2453,12 @@ export class DuelEngine {
     const nextPlayer = this.state.players[nextPlayerIdx];
     this.state.turnCount++;
     this.state.turnPlayer = nextPlayerIdx;
+    advanceLingeringPhase(this._lingeringTracker, {
+      turn: this.state.turnCount,
+      phase: PHASES.DP,
+      turnPlayer: nextPlayerIdx
+    });
+    this.state.lingeringEffects = toLingeringSnapshot(this._lingeringTracker);
 
     this.state.phase = PHASES.DP;
     this.log(`🔄 เทิร์นที่ ${this.state.turnCount}: เทิร์นของ ${nextPlayer.name} — Draw Phase!`);
