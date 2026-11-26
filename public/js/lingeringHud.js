@@ -13,30 +13,30 @@ function createBeaconSvg() {
   svg.setAttribute('aria-hidden', 'true');
   svg.classList.add('lh-beacon-svg');
 
-  // Blue perspective trapezoid base
+  // Blue/Gold perspective trapezoid base
   const baseOuter = document.createElementNS(ns, 'polygon');
   baseOuter.setAttribute('points', '13,31 35,31 40,40 8,40');
-  baseOuter.setAttribute('fill', '#1d4ed8');
-  baseOuter.setAttribute('stroke', '#38bdf8');
+  baseOuter.setAttribute('fill', '#b48312');
+  baseOuter.setAttribute('stroke', '#ffd96b');
   baseOuter.setAttribute('stroke-width', '2');
   baseOuter.setAttribute('stroke-linejoin', 'round');
 
   const baseInner = document.createElementNS(ns, 'polygon');
   baseInner.setAttribute('points', '16,33 32,33 34,37 14,37');
-  baseInner.setAttribute('fill', '#040a18');
+  baseInner.setAttribute('fill', '#070b14');
 
   // Outer broadcast arcs
   const arcL2 = document.createElementNS(ns, 'path');
   arcL2.setAttribute('d', 'M12,12 A14,14 0 0,0 12,28');
   arcL2.setAttribute('fill', 'none');
-  arcL2.setAttribute('stroke', '#22d3ee');
+  arcL2.setAttribute('stroke', '#f5c542');
   arcL2.setAttribute('stroke-width', '2.5');
   arcL2.setAttribute('stroke-linecap', 'round');
 
   const arcR2 = document.createElementNS(ns, 'path');
   arcR2.setAttribute('d', 'M36,12 A14,14 0 0,1 36,28');
   arcR2.setAttribute('fill', 'none');
-  arcR2.setAttribute('stroke', '#22d3ee');
+  arcR2.setAttribute('stroke', '#f5c542');
   arcR2.setAttribute('stroke-width', '2.5');
   arcR2.setAttribute('stroke-linecap', 'round');
 
@@ -44,27 +44,27 @@ function createBeaconSvg() {
   const arcL1 = document.createElementNS(ns, 'path');
   arcL1.setAttribute('d', 'M17,15 A9,9 0 0,0 17,25');
   arcL1.setAttribute('fill', 'none');
-  arcL1.setAttribute('stroke', '#38bdf8');
+  arcL1.setAttribute('stroke', '#ffd96b');
   arcL1.setAttribute('stroke-width', '2.5');
   arcL1.setAttribute('stroke-linecap', 'round');
 
   const arcR1 = document.createElementNS(ns, 'path');
   arcR1.setAttribute('d', 'M31,15 A9,9 0 0,1 31,25');
   arcR1.setAttribute('fill', 'none');
-  arcR1.setAttribute('stroke', '#38bdf8');
+  arcR1.setAttribute('stroke', '#ffd96b');
   arcR1.setAttribute('stroke-width', '2.5');
   arcR1.setAttribute('stroke-linecap', 'round');
 
   // Exclamation stem & dot
   const stem = document.createElementNS(ns, 'polygon');
   stem.setAttribute('points', '21.5,9 26.5,9 25.4,24 22.6,24');
-  stem.setAttribute('fill', '#38bdf8');
+  stem.setAttribute('fill', '#ffd96b');
 
   const dot = document.createElementNS(ns, 'circle');
   dot.setAttribute('cx', '24');
   dot.setAttribute('cy', '29');
   dot.setAttribute('r', '2.4');
-  dot.setAttribute('fill', '#38bdf8');
+  dot.setAttribute('fill', '#ffd96b');
 
   svg.append(baseOuter, baseInner, arcL2, arcR2, arcL1, arcR1, stem, dot);
   return svg;

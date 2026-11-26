@@ -6761,10 +6761,16 @@ dialog.rps-dialog::backdrop {
 }
 
 /* ==================== MASTER DUEL LINGERING EFFECTS BEACON (.lh-*) ==================== */
+.self-deck-col {
+  position: relative;
+}
+
 .lingering-hud-mount {
   position: absolute;
-  right: calc(var(--side-w, 92px) + 18px);
-  bottom: 14px;
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  bottom: auto;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -6808,7 +6814,7 @@ dialog.rps-dialog::backdrop {
 }
 
 .lh-beacon-btn:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid var(--gold-accent);
   outline-offset: 2px;
   border-radius: 10px;
 }
@@ -6820,22 +6826,22 @@ dialog.rps-dialog::backdrop {
   width: 48px;
   height: 18px;
   border-radius: 3px;
-  border: 1px solid rgba(56, 189, 248, 0.38);
+  border: 1px solid rgba(245, 197, 66, 0.72);
   background:
     repeating-linear-gradient(
       180deg,
-      rgba(15, 29, 46, 0.94) 0px,
-      rgba(15, 29, 46, 0.94) 2px,
-      rgba(8, 17, 30, 0.98) 2px,
-      rgba(8, 17, 30, 0.98) 4px
+      rgba(16, 28, 52, 0.95) 0px,
+      rgba(16, 28, 52, 0.95) 2px,
+      rgba(7, 13, 26, 0.98) 2px,
+      rgba(7, 13, 26, 0.98) 4px
     );
-  color: #ffffff;
+  color: var(--gold-bright);
   font-family: var(--font-display);
   font-size: 0.85rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
 }
 
 .lh-beacon-orb {
@@ -6846,17 +6852,17 @@ dialog.rps-dialog::backdrop {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  padding: 2px;
-  background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 52%, #8b5cf6 100%);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.45), 0 4px 10px rgba(0, 0, 0, 0.65);
+  padding: 2.5px;
+  background: linear-gradient(135deg, #ffd96b 0%, #f5c542 52%, #c99a1e 100%);
+  box-shadow: 0 0 12px rgba(245, 197, 66, 0.35), 0 4px 10px rgba(0, 0, 0, 0.68);
 }
 
 .lh-beacon-orb::before {
   content: '';
   position: absolute;
-  inset: 2px;
+  inset: 2.5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 45%, #0c233a 0%, #050b16 78%);
+  background: radial-gradient(circle at 32% 28%, #0369a1 0%, #172d66 52%, #091228 100%);
 }
 
 .lh-beacon-svg {
@@ -6876,7 +6882,7 @@ dialog.rps-dialog::backdrop {
   display: flex;
   flex-direction: column;
   background-color: rgba(11, 19, 34, 0.96);
-  border: 1px solid rgba(56, 189, 248, 0.45);
+  border: 1px solid rgba(245, 197, 66, 0.45);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.72);
   color: var(--text-main);
@@ -6890,7 +6896,7 @@ dialog.rps-dialog::backdrop {
   gap: 10px;
   padding: 10px 14px;
   background-color: rgba(16, 28, 48, 0.96);
-  border-bottom: 1px solid rgba(56, 189, 248, 0.28);
+  border-bottom: 1px solid rgba(245, 197, 66, 0.28);
 }
 
 .lh-pop-title-wrap {
@@ -6904,7 +6910,7 @@ dialog.rps-dialog::backdrop {
   font-family: var(--font-display);
   font-size: 0.96rem;
   font-weight: 700;
-  color: #e0f2fe;
+  color: var(--gold-bright);
 }
 
 .lh-pop-count {
@@ -7079,11 +7085,16 @@ dialog.rps-dialog::backdrop {
 }
 
 @media (max-width: 768px) {
+  .self-deck-col {
+    position: static;
+  }
+
   .lingering-hud-mount {
     left: 6px;
     top: 41%;
     right: auto;
     bottom: auto;
+    transform: none;
   }
 
   .lh-count-bar {
