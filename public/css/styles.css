@@ -6842,6 +6842,27 @@ dialog.rps-dialog::backdrop {
   border-radius: 10px;
 }
 
+.lh-beacon-btn.is-empty {
+  opacity: 0.48;
+  filter: grayscale(0.45);
+}
+
+.lh-beacon-btn.is-empty:hover {
+  opacity: 0.85;
+}
+
+.lh-beacon-btn.is-empty .lh-beacon-orb {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.lh-empty-msg {
+  margin: 0;
+  padding: 14px 8px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .lh-count-bar {
   display: flex;
   align-items: center;

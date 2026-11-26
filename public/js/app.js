@@ -2797,11 +2797,12 @@ function renderDuelScreen(renderOpts = {}) {
     btn.disabled = isEnded;
   });
 
+  ensureLingeringHud()?.update(state.winner !== null ? [] : (state.lingeringEffects || []), myIdx);
+
   if (state.winner !== null) {
     closeEffectChoiceModal();
-  appState.lingeringHud?.update([], 0);
+    appState.lingeringHud?.hide?.();
     const surrenderDlg = document.getElementById('dialog-surrender-confirm');
-  ensureLingeringHud()?.update(state.winner !== null ? [] : (state.lingeringEffects || []), myIdx);
     if (surrenderDlg?.open) surrenderDlg.close();
     const isWin = state.winner === myIdx;
     const badgeEl = document.getElementById('result-badge-icon');
@@ -3272,7 +3273,6 @@ async function translateTextWithGoogle(text) {
 
 function closeOcgPromptDialogIfOpen() {
   closeEffectChoiceModal();
-  appState.lingeringHud?.update([], 0);
   const dlg = document.getElementById('dialog-zone-browser');
   if (dlg?.open && dlg.dataset.ocgPrompt === '1') {
     dlg.dataset.ocgPrompt = '';
@@ -4364,7 +4364,6 @@ let activeZonePickMandatory = false;
 function clearZonePickMode(force = false) {
   if (!force && activeZonePickMandatory) return;
   closeEffectChoiceModal();
-  appState.lingeringHud?.update([], 0);
   if (activeZonePickCleanup) {
     activeZonePickCleanup();
     activeZonePickCleanup = null;
@@ -6912,7 +6911,7 @@ function setupSurrenderControls() {
 function leaveCurrentDuel() {
   clearTimeout(appState.aiTimer);
   closeEffectChoiceModal();
-  appState.lingeringHud?.update([], 0);
+  appState.lingeringHud?.hide?.();
   cancelStateSyncPlayback({ clearDuelId: true });
   clearDuelVfxLayer();
   if (appState.gameMode === 'MULTIPLAYER') {

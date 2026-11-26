@@ -191,6 +191,16 @@ export function mountLingeringHud(mountEl, { t, getLang, getCardArtUrl } = {}) {
     closeBtn.setAttribute('aria-label', getLabel('lingeringClose', lang === 'th' ? 'ปิด' : 'Close'));
 
     listEl.innerHTML = '';
+    if (currentEffects.length === 0) {
+      const emptyLi = document.createElement('li');
+      emptyLi.className = 'lh-empty-msg';
+      emptyLi.textContent = getLabel(
+        'lingeringEmpty',
+        lang === 'th' ? 'ยังไม่มีเอฟเฟคทั้งเทิร์นหรือข้อจำกัดที่ทำงานอยู่' : 'No active lingering effects or turn restrictions.'
+      );
+      listEl.appendChild(emptyLi);
+      return;
+    }
     for (const eff of currentEffects) {
       const li = document.createElement('li');
       li.className = `lh-item lh-cat-${eff.category || 'restriction'}`;
@@ -264,14 +274,10 @@ export function mountLingeringHud(mountEl, { t, getLang, getCardArtUrl } = {}) {
 
   const renderBeacon = () => {
     const count = currentEffects.length;
-    if (count === 0) {
-      beaconBtn.classList.add('hidden');
-      closePopover({ restoreFocus: false });
-      return;
-    }
     const lang = typeof getLang === 'function' ? getLang() : 'en';
     countBar.textContent = String(count);
     beaconBtn.classList.remove('hidden');
+    beaconBtn.classList.toggle('is-empty', count === 0);
     const ariaTemplate = getLabel(
       'lingeringAriaLabel',
       lang === 'th' ? 'ดูเอฟเฟคที่มีผลทั้งเทิร์น ({n} รายการ)' : 'View active lingering effects ({n})'
@@ -286,7 +292,6 @@ export function mountLingeringHud(mountEl, { t, getLang, getCardArtUrl } = {}) {
 
   beaconBtn.addEventListener('click', (ev) => {
     ev.stopPropagation();
-    if (currentEffects.length === 0) return;
     isOpen = !isOpen;
     if (isOpen) {
       renderPopover();
@@ -336,7 +341,15 @@ export function mountLingeringHud(mountEl, { t, getLang, getCardArtUrl } = {}) {
       renderBeacon();
     },
     refreshLanguage() {
-      renderBeacon();
+      if (!beaconBtn.classList.contains('hidden')) {
+        renderBeacon();
+      }
+    },
+    hide() {
+      currentEffects = [];
+      lastSeenIds.clear();
+      beaconBtn.classList.add('hidden');
+      closePopover({ restoreFocus: false });
     },
     destroy() {
       controller.abort();

@@ -140,6 +140,7 @@ export const I18N_STRINGS = {
     lingeringScopeOpp: 'คู่ต่อสู้',
     lingeringScopeBoth: 'ทั้งคู่',
     lingeringClose: 'ปิด',
+    lingeringEmpty: 'ยังไม่มีเอฟเฟคทั้งเทิร์นหรือข้อจำกัดที่ทำงานอยู่',
     lingeringAnnounce: 'มีเอฟเฟคทำงานใหม่: {name}'
   },
   en: {
@@ -279,6 +280,7 @@ export const I18N_STRINGS = {
     lingeringScopeOpp: 'Opp',
     lingeringScopeBoth: 'Both',
     lingeringClose: 'Close',
+    lingeringEmpty: 'No active lingering effects or turn restrictions.',
     lingeringAnnounce: 'Lingering effect active: {name}'
   }
 };
