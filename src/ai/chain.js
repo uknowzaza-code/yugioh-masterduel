@@ -137,8 +137,15 @@ export function decideChain(brain, msg, view) {
     if (isPureDisruption && topLinkKey && brain.negatedChainLinks.has(topLinkKey)) return;
 
     // อนุญาตให้ Trigger Combo ของเราเอง (เช่น Chixiao + Mo Ye, Albion, Despian Tragedy) เชนต่อจาก CL ของเราเองได้
+    // แต่ห้ามเด็ดขาดที่จะเชน Omni-Negate (เช่น Baronne, Apollousa, Savage) หรือ Hand Trap ใส่ CL ของตัวเอง!
     if (topIsMine) {
-      if (info.roles.has('handtrap') || (info.roles.has('negate') && !info.roles.has('searcher') && !info.roles.has('extender'))) {
+      if (
+        info.roles.has('handtrap') ||
+        opt.code === CODE_BARONNE_DE_FLEUR ||
+        opt.code === CODE_SOLEMN_JUDGMENT ||
+        (info.category & CATEGORY.NEGATE) !== 0 ||
+        (info.roles.has('negate') && !info.roles.has('searcher'))
+      ) {
         return;
       }
       const isComboTrigger =

@@ -43,11 +43,21 @@ function shouldSkipActivation(card, info, view, kb) {
     if (activeField && activeField.code === card.code) return true;
   }
 
-  // หลีกเลี่ยงการเปิด Negate/Removal จากมือถ้าฝั่งตรงข้ามไม่มีเป้าหมาย
-  if (info.roles.has('negate') && !info.roles.has('searcher') && !info.roles.has('starter') && !info.roles.has('extender')) {
+  // หลีกเลี่ยงการเปิด Negate/Removal จากมือหรือสนาม (เช่น Baronne pop, Afterburners) ถ้าฝั่งตรงข้ามไม่มีเป้าหมายเลย
+  if (
+    (info.roles.has('negate') || info.roles.has('removal')) &&
+    !info.roles.has('searcher') &&
+    !info.roles.has('starter') &&
+    !info.roles.has('extender')
+  ) {
     if (view.isMyTurn && view.chain.length === 0 && oppMonsters.length === 0 && oppSt.length === 0) {
       return true;
     }
+  }
+
+  // Baronne de Fleur (84815190): เอฟเฟกต์ Main Phase คือทำลาย 1 ใบในสนาม — ห้ามเปิดถ้าฝั่งตรงข้ามไม่มีการ์ดบนสนาม (กันทำลายตัวเอง!)
+  if (card.code === 84815190 && (card.location & LOC.MZONE) && oppMonsters.length === 0 && oppSt.length === 0) {
+    return true;
   }
 
   return false;
@@ -71,6 +81,7 @@ function hasProfitableAttack(view, kb, profile) {
 function scoreActivate(card, info, strategy) {
   let score = 550;
   const isSpell = (card.type & TYPE.SPELL) !== 0;
+  const isHandExtender = (card.location & LOC.HAND) !== 0 && info.roles.has('extender');
   if (strategy === 'combo') {
     // เปิด Spell ค้นหา/จั่ว/Starter (ROTA, Emergence, Engage, Pot, Branded Fusion) ก่อน Normal Summon เสมอ!
     if (isSpell && (info.roles.has('searcher') || info.roles.has('starter'))) score += 1100;
@@ -79,7 +90,8 @@ function scoreActivate(card, info, strategy) {
       if (info.roles.has('starter')) score += 480;
     }
     if (info.roles.has('boardwipe')) score += 450;
-    if (info.roles.has('extender')) score += 340;
+    if (isHandExtender) score += 520;
+    else if (info.roles.has('extender')) score += 360;
     if (info.roles.has('removal')) score += 280;
     if (info.roles.has('engine')) score += 240;
     if (info.roles.has('boss')) score += 180;
@@ -88,7 +100,8 @@ function scoreActivate(card, info, strategy) {
     if (isSpell && (info.roles.has('searcher') || info.roles.has('starter'))) score += 900;
     else if (info.roles.has('searcher') || info.roles.has('starter')) score += 380;
     if (info.roles.has('boardwipe')) score += 320;
-    if (info.roles.has('extender')) score += 220;
+    if (isHandExtender) score += 420;
+    else if (info.roles.has('extender')) score += 240;
     if (info.roles.has('removal')) score += 180;
     if (isSpell) score += 120;
   } else {
@@ -103,14 +116,20 @@ function scoreNormalSummon(card, info, strategy, view) {
     return -100;
   }
   let score = 400 + Math.min(card.atk, 3000) * 0.1;
+  // ลดคะแนน Tribute Summon (Lv 5+) เพื่อไม่ให้สังเวยมอนสเตอร์ที่เตรียมไว้ทำ Synchro/Link/Xyz ทิ้งเปล่า
+  if (strategy !== 'simple' && card.level >= 5) {
+    score -= 400;
+  }
   if (strategy === 'combo') {
     if (info.roles.has('starter')) score += 360;
     if (info.roles.has('searcher')) score += 300;
     if (info.roles.has('extender')) score += 180;
     if (card.type & TYPE.EFFECT) score += 90;
+    if (card.type & TYPE.TUNER) score += 120;
   } else if (strategy === 'systematic') {
     if (info.roles.has('starter') || info.roles.has('searcher')) score += 220;
     if (card.type & TYPE.EFFECT) score += 60;
+    if (card.type & TYPE.TUNER) score += 80;
   }
   // ใน Main 2 ไม่จำเป็นต้องรีบ Normal Summon มอนสเตอร์ธรรมดาพลังต่ำ
   if (view.phase === 'main2' && !(card.type & TYPE.EFFECT) && card.atk < 1500) {
@@ -150,27 +169,33 @@ function scoreSpecialSummon(card, info, strategy, kb, view, msg) {
     }
   }
 
-  let score = 520 + Math.min(ownCardValue(card, kb), 4000) * 0.08;
+  let score = 580 + Math.min(ownCardValue(card, kb), 4000) * 0.08;
+  const isSynchroOrXyz = (card.type & (TYPE.SYNCHRO | TYPE.XYZ | TYPE.FUSION)) !== 0;
   if (strategy === 'combo') {
-    if (info.roles.has('boss')) score += 320;
+    if (isSynchroOrXyz) score += 480;
+    if (info.roles.has('boss')) score += 360;
     if (info.roles.has('extender')) score += 260;
-    if (info.roles.has('negate')) score += 250;
-    if (card.type & EXTRA_DECK_TYPES) score += 180;
+    if (info.roles.has('negate')) score += 280;
+    if (card.type & EXTRA_DECK_TYPES) score += 220;
     if (card.code === CARD_SKY_STRIKER_HAYATE && msg?.to_bp && view.phase === 'main1' && view.turn > 1) score += 300;
     if (card.code === CARD_SKY_STRIKER_SHIZUKU && (!msg?.to_bp || view.phase === 'main2')) score += 300;
   } else if (strategy === 'systematic') {
-    if (card.type & EXTRA_DECK_TYPES) score += 160;
-    if (info.roles.has('boss')) score += 180;
+    if (isSynchroOrXyz) score += 360;
+    if (card.type & EXTRA_DECK_TYPES) score += 200;
+    if (info.roles.has('boss')) score += 220;
+  } else if (isSynchroOrXyz) {
+    score += 220;
   }
   return score;
 }
 
 function scoreSetMonster(card, info, strategy, view) {
+  // อย่าหมอบ Hand Trap ลงสนาม (เช่น Ash Blossom / Ghost Ogre 0/1800) เก็บไว้ขัดบนมือ!
+  if (info.roles.has('handtrap')) return -100;
   if (strategy === 'simple') return 120;
   const oppMaxAtk = Math.max(0, ...view.opp.mzone.filter((c) => c && isFaceUp(c)).map((c) => c.atk));
   const shouldWall = (card.def > card.atk && card.atk < 1500) || (view.turn === 1 && card.def >= 1800 && card.atk <= 1000) || (oppMaxAtk > card.atk && card.def >= oppMaxAtk);
   if (!shouldWall) return -100;
-  if (info.roles.has('handtrap') && card.def < 1800) return -100;
   return 240 + Math.min(card.def, 2500) * 0.05;
 }
 
