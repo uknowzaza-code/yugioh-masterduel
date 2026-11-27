@@ -235,7 +235,7 @@ test('Goal 2: Real ocgcore-wasm duels execute multi-step combos across MDM decks
       player2Name: 'Human',
     });
     for (let i = 0; i < 15 && exoEng.turnCount === 1; i++) {
-      const p = exoEng.state.pendingPrompt;
+      const p = exoEng.state.pendingChainPrompt || exoEng.state.pendingOcgPrompt;
       if (!p || p.playerIndex !== 1) break;
       if (p.type === 'SELECT_CHAIN') exoEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
       else if (p.type === 'SELECT_EFFECTYN' || p.type === 'SELECT_YESNO') exoEng.dispatchAction(1, { type: 'CONFIRM_CHOICE', confirm: false });
@@ -267,7 +267,7 @@ test('Goal 2: Real ocgcore-wasm duels execute multi-step combos across MDM decks
       player2Name: 'Human',
     });
     for (let i = 0; i < 20 && resEng.turnCount === 1; i++) {
-      const p = resEng.state.pendingPrompt;
+      const p = resEng.state.pendingChainPrompt || resEng.state.pendingOcgPrompt;
       if (!p || p.playerIndex !== 1) break;
       if (p.type === 'SELECT_CHAIN') resEng.dispatchAction(1, { type: 'CHAIN_RESPONSE', respond: false });
       else if (p.type === 'SELECT_EFFECTYN' || p.type === 'SELECT_YESNO') resEng.dispatchAction(1, { type: 'CONFIRM_CHOICE', confirm: false });

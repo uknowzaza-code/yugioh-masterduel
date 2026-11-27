@@ -1,4 +1,5 @@
-import { ownCardValue } from './evaluate.js';
+import { TYPE } from './constants.js';
+import { ownCardValue, threatScore } from './evaluate.js';
 
 function unpackValues(amount) {
   const n = Number(amount ?? 0);
@@ -13,6 +14,14 @@ function addSets(baseSet, vals) {
     for (const v of vals) next.add(s + v);
   }
   return next;
+}
+
+function sumMaterialScore(ref, card, strategy, kb) {
+  const isToken = (card.type & TYPE.TOKEN) !== 0;
+  if (isToken) return -10000;
+  if (strategy === 'min-atk') return card.atk;
+  if (strategy === 'min-value') return ownCardValue(card, kb);
+  return 0;
 }
 
 /**
@@ -38,18 +47,33 @@ export function decideSelectSum(brain, msg, view) {
   const cardVals = selects.map((c) => unpackValues(c.amount));
   const strategy = brain.profile.sumStrategy;
 
-  // จัดลำดับใบที่ค่าน้อยที่สุดขึ้นก่อน เพื่อให้ชุดที่เลือกประหยัดทรัพยากรที่สุด
-  const order = selects.map((_, i) => i);
-  if (strategy === 'min-value') {
-    const costs = selects.map((ref) => ownCardValue(view.find(ref, brain.kb), brain.kb));
-    order.sort((a, b) => costs[a] - costs[b]);
-  } else if (strategy === 'min-atk') {
-    const atks = selects.map((ref) => view.find(ref, brain.kb).atk);
-    order.sort((a, b) => atks[a] - atks[b]);
-  }
+  // จัดลำดับ: มอนสเตอร์ฝั่งตรงข้าม (ถ้าใช้ได้) -> Token -> ใบที่ค่าน้อยที่สุด
+  const items = selects.map((ref, i) => {
+    const card = view.find(ref, brain.kb);
+    const isOpp = ref.controller !== view.me;
+    return {
+      index: i,
+      isOpp,
+      threat: isOpp ? threatScore(card, brain.kb) : 0,
+      cost: isOpp ? 0 : sumMaterialScore(ref, card, strategy, brain.kb),
+    };
+  });
+  const order = items
+    .sort((a, b) => {
+      if (a.isOpp !== b.isOpp) return a.isOpp ? -1 : 1;
+      if (a.isOpp) return b.threat - a.threat;
+      return a.cost - b.cost;
+    })
+    .map((x) => x.index);
 
-  const minPicks = selectMax ? (musts.length > 0 ? 0 : 1) : Math.max(musts.length > 0 ? 0 : 1, Number(msg.min ?? 0));
+  const minPicks = Math.max(musts.length > 0 ? 0 : 1, Number(msg.min ?? 0));
   const maxPicks = msg.max && msg.max > 0 ? Math.min(selects.length, Number(msg.max)) : selects.length;
+
+  const n = order.length;
+  const suffixMax = new Array(n + 1).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    suffixMax[i] = suffixMax[i + 1] + Math.max(...cardVals[order[i]]);
+  }
 
   const sumsOf = (indices) => {
     let s = mustSums;
@@ -57,9 +81,9 @@ export function decideSelectSum(brain, msg, view) {
     return s;
   };
 
-  const isValid = (indices) => {
+  const isValid = (indices, precomputedSums = null) => {
     if (indices.length + musts.length === 0) return false;
-    const sums = sumsOf(indices);
+    const sums = precomputedSums ?? sumsOf(indices);
     if (selectMax === 0) return sums.has(target);
     let hasGe = false;
     for (const v of sums) {
@@ -73,14 +97,9 @@ export function decideSelectSum(brain, msg, view) {
     for (let k = 0; k < indices.length; k++) {
       const sub = indices.filter((_, i) => i !== k);
       const subSums = sumsOf(sub);
-      let subGe = false;
       for (const v of subSums) {
-        if (v >= target) {
-          subGe = true;
-          break;
-        }
+        if (v >= target) return false;
       }
-      if (subGe) return false;
     }
     return true;
   };
@@ -90,20 +109,33 @@ export function decideSelectSum(brain, msg, view) {
   let steps = 0;
   const MAX_STEPS = 8000;
 
-  function dfs(pos) {
+  function dfs(pos, curSums) {
     if (bestSolution || ++steps > MAX_STEPS) return;
-    if (chosen.length >= minPicks && isValid(chosen)) {
+    if (chosen.length >= minPicks && isValid(chosen, curSums)) {
       bestSolution = [...chosen];
       return;
     }
-    if (chosen.length >= maxPicks || pos >= order.length) return;
-    chosen.push(order[pos]);
-    dfs(pos + 1);
+    if (chosen.length >= maxPicks || pos >= n) return;
+    if (chosen.length + (n - pos) < minPicks) return;
+
+    let minCur = Infinity;
+    let maxCur = -Infinity;
+    for (const v of curSums) {
+      if (v < minCur) minCur = v;
+      if (v > maxCur) maxCur = v;
+    }
+    if (maxCur + suffixMax[pos] < target) return;
+    if (selectMax === 0 && minCur > target) return;
+    if (selectMax === 1 && minCur >= target && chosen.length >= minPicks) return;
+
+    const idx = order[pos];
+    chosen.push(idx);
+    dfs(pos + 1, addSets(curSums, cardVals[idx]));
     chosen.pop();
-    if (!bestSolution) dfs(pos + 1);
+    if (!bestSolution) dfs(pos + 1, curSums);
   }
 
-  dfs(0);
+  dfs(0, mustSums);
 
   return {
     type: 'SELECT_SUM',

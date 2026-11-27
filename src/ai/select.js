@@ -1,4 +1,4 @@
-import { LOC, POS, HINTMSG, SYSTEM_STRING } from './constants.js';
+import { LOC, POS, TYPE, HINTMSG, SYSTEM_STRING } from './constants.js';
 import { isFaceUp } from './board.js';
 import { ownCardValue, threatScore } from './evaluate.js';
 import { decideAttackTarget } from './battle.js';
@@ -17,16 +17,20 @@ const GAIN_HINTS = new Set([
   HINTMSG.ATOHAND, HINTMSG.SUMMON, HINTMSG.SPSUMMON, HINTMSG.SET, HINTMSG.EQUIP,
 ]);
 
+const MULTI_PICK_HINTS = new Set([
+  HINTMSG.SPSUMMON, HINTMSG.ATOHAND, HINTMSG.FMATERIAL, HINTMSG.SMATERIAL, HINTMSG.LMATERIAL,
+]);
+
 function classifySelection(hintMsg, selects, me) {
   if (hintMsg === HINTMSG.ATTACKTARGET) return 'attack-target';
   const hasOpp = selects.some((s) => s.controller !== me);
   const hasOwn = selects.some((s) => s.controller === me);
-  const allFromDeck = selects.length > 0 && selects.every((s) => (s.location & LOC.DECK) !== 0);
+  const allFromDeckOrExtra = selects.length > 0 && selects.every((s) => (s.location & (LOC.DECK | LOC.EXTRA)) !== 0);
 
-  if (hintMsg === HINTMSG.TOGRAVE) {
-    // Foolish Burial (ส่งจากเด็คลงสุสาน) = เลือกใบที่มีค่าที่สุด; จากมือ/สนาม = จ่ายคอสต์เลือกใบค่าน้อยสุด
-    if (allFromDeck) return 'gain';
-    if (hasOpp && !hasOwn) return 'hostile';
+  if (hintMsg === HINTMSG.TOGRAVE || hintMsg === HINTMSG.FMATERIAL || hintMsg === HINTMSG.SMATERIAL) {
+    // Foolish Burial / Branded Fusion (ส่งจากเด็ค/เอ็กซ์ตร้าลงสุสาน) = เลือกใบที่มีค่าที่สุด; จากมือ/สนาม = จ่ายคอสต์
+    if (allFromDeckOrExtra) return 'gain';
+    if (hintMsg === HINTMSG.TOGRAVE && hasOpp && !hasOwn) return 'hostile';
     return 'cost';
   }
   if (hintMsg === HINTMSG.REMOVE) {
@@ -66,6 +70,10 @@ function rankSelectIndices(brain, selects, mode, view) {
       // ถ้าเลือกสังเวย/ส่งการ์ดฝั่งตรงข้ามได้ (เช่น Kaiju / Super Poly / Monarchs Stormforth) เอาของฝั่งตรงข้ามก่อน!
       if (a.isOpp !== b.isOpp) return a.isOpp ? -1 : 1;
       if (a.isOpp) return threatScore(b.card, kb) - threatScore(a.card, kb);
+      // เลือก Token ก่อนการ์ดจริงเสมอ
+      const aTok = (a.card.type & TYPE.TOKEN) !== 0;
+      const bTok = (b.card.type & TYPE.TOKEN) !== 0;
+      if (aTok !== bTok) return aTok ? -1 : 1;
       if (profile.costStrategy === 'value') return ownCardValue(a.card, kb) - ownCardValue(b.card, kb);
       return a.card.atk - b.card.atk;
     });
@@ -121,25 +129,80 @@ export function decideSelectTribute(brain, msg, view) {
     sum += Math.max(1, selects[idx].release_param ?? 1);
     if (sum >= min) break;
   }
+
+  // ถ้ามีมอนสเตอร์ Double-Tribute (release_param >= min) ที่คุ้มกว่าการสังเวยหลายใบ ให้เลือกใบนั้นแทน
+  if (picked.length > 1) {
+    const costOf = (idxs) => idxs.reduce((acc, idx) => {
+      const ref = selects[idx];
+      if (ref.controller !== view.me) return acc - 10000; // ของฝั่งตรงข้ามคุ้มมาก
+      return acc + ownCardValue(view.find(ref, brain.kb), brain.kb);
+    }, 0);
+    const singleCandidates = ranked.filter((idx) => Math.max(1, selects[idx].release_param ?? 1) >= min);
+    if (singleCandidates.length > 0) {
+      const bestSingle = singleCandidates[0];
+      if (costOf([bestSingle]) <= costOf(picked)) {
+        picked.splice(0, picked.length, bestSingle);
+      }
+    }
+  }
+
+  // ถ้ายกเลิกได้และไม่มีการ์ดฝั่งตรงข้ามให้สังเวย อย่าสังเวยบอสที่มีค่ามากกว่าตัวที่จะอัญเชิญ
+  if (msg.can_cancel && picked.every((idx) => selects[idx].controller === view.me)) {
+    const tributeCost = picked.reduce((acc, idx) => acc + ownCardValue(view.find(selects[idx], brain.kb), brain.kb), 0);
+    if (msg.code) {
+      const summonVal = ownCardValue(view.find({ code: msg.code, controller: view.me }, brain.kb), brain.kb);
+      if (tributeCost > summonVal) {
+        return { type: 'SELECT_TRIBUTE', indices: null, reason: 'cancel-bad-tribute' };
+      }
+    } else {
+      const sacrificesBoss = picked.some((idx) => {
+        const roles = brain.kb.info(selects[idx].code ?? 0).roles;
+        return roles.has('boss') || roles.has('negate') || roles.has('floodgate');
+      });
+      if (sacrificesBoss) {
+        return { type: 'SELECT_TRIBUTE', indices: null, reason: 'cancel-boss-tribute' };
+      }
+    }
+  }
+
   return { type: 'SELECT_TRIBUTE', indices: picked, reason: 'tribute-lowest' };
 }
 
 export function decideSelectUnselectCard(brain, msg, view, hintMsg = 0) {
   const selectable = msg.selectable ?? [];
   const selected = msg.selected ?? [];
-  if (msg.can_finish && selected.length > 0) {
-    const mode = classifySelection(hintMsg, selectable, view.me);
-    // หยุดเลือกถ้าเป้าหมายที่เหลือเป็นของฝั่งเราในโหมดทำลาย หรือเลือกครบเพียงพอแล้ว
-    const oppRemaining = selectable.filter((s) => s.controller !== view.me);
-    if (mode !== 'hostile' || oppRemaining.length === 0) {
-      return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'finish-unselect' };
-    }
-  }
   if (!selectable.length) {
     return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'empty-unselect' };
   }
+
   const mode = classifySelection(hintMsg, selectable, view.me);
   const ranked = rankSelectIndices(brain, selectable, mode, view);
+
+  if (msg.can_finish && selected.length > 0) {
+    if (selected.length >= 5) {
+      return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'finish-unselect-cap' };
+    }
+    const oppRemaining = selectable.filter((s) => s.controller !== view.me);
+    if (mode === 'hostile') {
+      if (oppRemaining.length === 0) {
+        return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'finish-unselect' };
+      }
+    } else if (MULTI_PICK_HINTS.has(hintMsg)) {
+      // Pendulum Summon / Multi-Add / Material: เลือกต่อจนกว่าจะครบหรือเหลือแต่การ์ดที่ไม่คุ้ม
+      if (mode === 'cost' && selected.length >= 2) {
+        const bestRef = selectable[ranked[0]];
+        const bestIsOpp = bestRef.controller !== view.me;
+        const bestCard = view.find(bestRef, brain.kb);
+        const bestIsFodder = (bestCard.type & TYPE.TOKEN) !== 0 || ownCardValue(bestCard, brain.kb) <= 1200;
+        if (!bestIsOpp && !bestIsFodder) {
+          return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'finish-unselect-material' };
+        }
+      }
+    } else {
+      return { type: 'SELECT_UNSELECT_CARD', index: null, reason: 'finish-unselect' };
+    }
+  }
+
   return { type: 'SELECT_UNSELECT_CARD', index: ranked[0], reason: `pick-unselect-${mode}` };
 }
 
@@ -172,11 +235,38 @@ export function decidePosition(brain, msg, view) {
   return { type: 'SELECT_POSITION', position: POS.FACEDOWN_ATTACK, reason: 'fallback-fd-atk' };
 }
 
+function scoreOption(opt) {
+  if (typeof opt === 'string') {
+    const s = opt.toLowerCase();
+    if (s.includes('special summon')) return 100;
+    if (s.includes('add to hand')) return 90;
+    if (s.includes('ritual') || s.includes('fusion')) return 80;
+    if (s.includes('send to gy')) return -50;
+    if (/^(no|pass|cancel|skip)$/.test(s.trim())) return -100;
+    return 10;
+  }
+  const id = Number(opt);
+  if (id === 2 || id === HINTMSG.SPSUMMON) return 100;
+  if (id === SYSTEM_STRING.TO_HAND || id === HINTMSG.ATOHAND) return 90;
+  if (id === 1057 || id === 1056 || id === HINTMSG.FMATERIAL) return 80;
+  if (id === 1 || id === 0) return 50;
+  if (id === SYSTEM_STRING.TO_GRAVE || id === HINTMSG.TOGRAVE) return -50;
+  if (id === 91 || id === 202) return -100;
+  return 10;
+}
+
 export function decideOption(brain, msg) {
   const options = msg.options ?? [];
   if (!options.length) return { type: 'SELECT_OPTION', index: 0, reason: 'empty' };
-  // โค้ด 573 (Add to Hand) ดีกว่า 574 (Send to GY) ใน utility.lua (aux.ToHandOrElse)
-  const handIdx = options.indexOf(SYSTEM_STRING.TO_HAND);
-  if (handIdx >= 0) return { type: 'SELECT_OPTION', index: handIdx, reason: 'prefer-to-hand' };
-  return { type: 'SELECT_OPTION', index: 0, reason: 'first-option' };
+  let bestIdx = 0;
+  let bestScore = scoreOption(options[0]);
+  for (let i = 1; i < options.length; i++) {
+    const sc = scoreOption(options[i]);
+    if (sc > bestScore) {
+      bestScore = sc;
+      bestIdx = i;
+    }
+  }
+  const reason = bestScore >= 90 ? 'prefer-summon-or-hand' : bestScore >= 80 ? 'prefer-ritual-fusion' : 'best-option';
+  return { type: 'SELECT_OPTION', index: bestIdx, reason };
 }

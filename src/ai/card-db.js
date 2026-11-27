@@ -13,14 +13,31 @@ export function inferCategoryFromText(desc = '') {
   if (/\badd\b[^.;]*\bfrom your deck to your hand\b|\bsearch\b|\bexcavate\b[^.;]*\badd\b/.test(t)) {
     cat |= CATEGORY.SEARCH;
   }
+  if (/\badd\b[^.;]*\bto your hand\b|\breturn\b[^.;]*\bto the hand\b/.test(t)) {
+    cat |= CATEGORY.TOHAND;
+  }
   if (/\bdraw \d+ card|\bdraw cards?\b|\bdraw 1\b|\bdraw 2\b/.test(t)) {
     cat |= CATEGORY.DRAW;
   }
-  if (/\bspecial summon\b|\bfusion summon\b|\britual summon\b|\bsynchro summon\b|\bxyz summon\b|\blink summon\b/.test(t)) {
+  if (
+    /\bspecial summon\b|\bfusion summon\b|\britual summon\b|\bsynchro summon\b|\bxyz summon\b|\blink summon\b|\bpendulum summon\b/.test(t)
+  ) {
     cat |= CATEGORY.SPECIAL_SUMMON;
+  }
+  if (
+    /\b(?:immediately after this effect resolves,?\s*)?(?:normal|tribute) summon\s+(?:1|a|that|this)\b|\badditional normal summon\b|\btribute summon\b/.test(t) &&
+    !/\bcannot be normal summoned\b/.test(t)
+  ) {
+    cat |= CATEGORY.SUMMON;
   }
   if (/\bsend\b[^.;]*\bfrom your deck to the gy\b|\bmill\b/.test(t)) {
     cat |= CATEGORY.DECKDES;
+  }
+  if (/\bsend\b[^.;]*\bto the gy\b/.test(t)) {
+    cat |= CATEGORY.TOGRAVE;
+  }
+  if (/\btribute\b/.test(t)) {
+    cat |= CATEGORY.RELEASE;
   }
   if (/\bdestroy\b/.test(t)) {
     cat |= CATEGORY.DESTROY;
@@ -50,10 +67,22 @@ export function inferCategoryFromText(desc = '') {
     cat |= CATEGORY.DAMAGE;
   }
 
+  const isTributeTrigger = /\b(?:if|when) (?:this card|it) is tributed\b/.test(t);
+  const isGyTrigger = /\b(?:if|when) (?:this card|it) is (?:destroyed and )?sent to the gy\b/.test(t);
+  const isBanishTrigger = /\b(?:if|when) (?:this card|it) is banished\b/.test(t);
+  const isPendulumEffect = /\bpendulum summon\b|\bpendulum zone\b|\bpendulum scale\b/.test(t);
+
   const isFloodgate =
     /\bneither player can special summon\b|\byour opponent cannot special summon\b|\bnegate the effects of all face-up monsters\b|\bneither player can activate\b|\byour opponent cannot activate\b|\bcan only special summon .* once per turn\b|\ball monsters on the field become\b|\bany card sent to the gy is banished instead\b/.test(t);
 
-  return { category: cat, isFloodgate };
+  return {
+    category: cat,
+    isFloodgate,
+    isTributeTrigger,
+    isGyTrigger,
+    isBanishTrigger,
+    isPendulumEffect,
+  };
 }
 
 /**
@@ -82,6 +111,8 @@ export function createOcgCardDbAdapter() {
         atk: Number(raw?.attack ?? ui?.atk ?? 0),
         def: Number(raw?.defense ?? ui?.def ?? 0),
         level: Number(raw?.level ?? ui?.level ?? 0) & 0xff,
+        lscale: Number(raw?.lscale ?? 0),
+        rscale: Number(raw?.rscale ?? 0),
         category: inferred.category,
         isFloodgate: inferred.isFloodgate,
         description: desc,

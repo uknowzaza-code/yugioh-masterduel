@@ -1,4 +1,4 @@
-import { LOC, LINK_MARKER } from './constants.js';
+import { LOC, TYPE, LINK_MARKER } from './constants.js';
 import { isFaceUp, isLink } from './board.js';
 
 /** แปลง field_mask (bit = 0 คือช่องว่างที่เลือกได้) เป็นรายการ { player, location, sequence, bit } */
@@ -62,12 +62,45 @@ function linkedMainMonsterZones(view) {
 
 const CENTER_ORDER = [2, 1, 3, 0, 4];
 
-function scorePlace(p, strategy, view, linkInfo) {
+function emzOpenMmzScore(seq, view, linkMarkers = 0) {
+  const targets = seq === 5
+    ? [
+        [LINK_MARKER.BOTTOM_LEFT, 0],
+        [LINK_MARKER.BOTTOM, 1],
+        [LINK_MARKER.BOTTOM_RIGHT, 2],
+      ]
+    : [
+        [LINK_MARKER.BOTTOM_LEFT, 2],
+        [LINK_MARKER.BOTTOM, 3],
+        [LINK_MARKER.BOTTOM_RIGHT, 4],
+      ];
+  const hasBottomInfo = (linkMarkers & (LINK_MARKER.BOTTOM_LEFT | LINK_MARKER.BOTTOM | LINK_MARKER.BOTTOM_RIGHT)) !== 0;
+  let openCount = 0;
+  for (const [marker, mmz] of targets) {
+    if (hasBottomInfo && !(linkMarkers & marker)) continue;
+    if (!view.self.mzone[mmz]) openCount++;
+  }
+  return openCount;
+}
+
+function scorePlace(p, strategy, view, linkInfo, hasPendulum, linkMarkers) {
   if (strategy === 'first') return -p.bit;
 
   let score = 0;
   const centerRank = CENTER_ORDER.indexOf(p.sequence);
   if (centerRank >= 0) score += (5 - centerRank) * 10;
+
+  if (p.player === view.me && p.location === LOC.SZONE && p.sequence < 5) {
+    // ถ้ามี Pendulum ในมือ/Extra หลีกเลี่ยงช่อง Pendulum Zone (0 และ 4) เพื่อไม่ให้ขวาง Scale
+    if (hasPendulum && (p.sequence === 0 || p.sequence === 4)) {
+      score -= 120;
+    }
+  }
+
+  if (p.player === view.me && p.location === LOC.MZONE && (p.sequence === 5 || p.sequence === 6)) {
+    // เลือก EMZ ที่ลูกศรล่างชี้ไปยัง MMZ ที่ว่างมากที่สุด (สำคัญสำหรับ Pendulum / Link climbing)
+    score += emzOpenMmzScore(p.sequence, view, linkMarkers) * 25;
+  }
 
   if (strategy === 'center') {
     if (p.sequence === 5) score += 25;
@@ -107,8 +140,16 @@ export function decidePlace(brain, msg, view) {
 
   const strategy = brain.profile.placeStrategy;
   const linkInfo = strategy === 'tactical' ? linkedMainMonsterZones(view) : { pointedByMe: new Set(), pointedByOpp: new Set() };
+  const hasPendulum =
+    view.self.hand.some((c) => c && (c.type & TYPE.PENDULUM)) ||
+    view.self.extra.some((c) => c && (c.type & TYPE.PENDULUM));
+  const linkMarkers = msg.linkMarkers ?? (msg.code ? brain.kb.stats(msg.code).linkMarkers : 0);
 
-  const ranked = [...available].sort((a, b) => scorePlace(b, strategy, view, linkInfo) - scorePlace(a, strategy, view, linkInfo));
+  const ranked = [...available].sort(
+    (a, b) =>
+      scorePlace(b, strategy, view, linkInfo, hasPendulum, linkMarkers) -
+      scorePlace(a, strategy, view, linkInfo, hasPendulum, linkMarkers)
+  );
   return {
     type: msg.type ?? 'SELECT_PLACE',
     places: ranked.slice(0, count).map(({ player, location, sequence }) => ({ player, location, sequence })),

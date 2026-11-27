@@ -148,13 +148,27 @@ export function decideChain(brain, msg, view) {
       ) {
         return;
       }
+      const isGyOrBanishTrigger = (opt.location & (LOC.GRAVE | LOC.REMOVED)) !== 0;
       const isComboTrigger =
         info.roles.has('searcher') ||
         info.roles.has('starter') ||
         info.roles.has('extender') ||
-        (info.category & (CATEGORY.SEARCH | CATEGORY.DRAW | CATEGORY.SPECIAL_SUMMON | CATEGORY.TOKEN));
+        isGyOrBanishTrigger ||
+        (info.category &
+          (CATEGORY.SEARCH |
+            CATEGORY.DRAW |
+            CATEGORY.SPECIAL_SUMMON |
+            CATEGORY.TOKEN |
+            CATEGORY.TOHAND |
+            CATEGORY.TOGRAVE |
+            CATEGORY.DECKDES |
+            CATEGORY.SUMMON));
       if (!isComboTrigger) return;
-      const score = 70;
+      let score = 70;
+      if (info.roles.has('searcher') || info.roles.has('starter') || (info.category & (CATEGORY.SEARCH | CATEGORY.SPECIAL_SUMMON))) {
+        score += 10;
+      }
+      if (isGyOrBanishTrigger) score += 5;
       if (score > bestScore) {
         bestScore = score;
         bestIdx = idx;
@@ -181,18 +195,30 @@ export function decideChain(brain, msg, view) {
     }
 
     // การ์ดที่ไม่ใช่ disruption (เช่น Trigger/Quick effect ฝั่งเรา)
+    const isGyOrBanishTrigger = !topLink && (opt.location & (LOC.GRAVE | LOC.REMOVED)) !== 0 && !info.avoidOptional;
     const beneficial =
       info.roles.has('searcher') ||
       info.roles.has('extender') ||
       info.roles.has('starter') ||
       info.roles.has('removal') ||
-      (info.category & (CATEGORY.SEARCH | CATEGORY.DRAW | CATEGORY.SPECIAL_SUMMON | CATEGORY.DESTROY | CATEGORY.REMOVE));
+      isGyOrBanishTrigger ||
+      (info.category &
+        (CATEGORY.SEARCH |
+          CATEGORY.DRAW |
+          CATEGORY.SPECIAL_SUMMON |
+          CATEGORY.DESTROY |
+          CATEGORY.REMOVE |
+          CATEGORY.TOHAND |
+          CATEGORY.TOGRAVE |
+          CATEGORY.DECKDES |
+          CATEGORY.TOKEN |
+          CATEGORY.SUMMON));
 
     if (beneficial) {
       if (info.roles.has('removal') && !info.roles.has('searcher') && !info.roles.has('extender') && !view.opp.mzone.some(Boolean) && !view.opp.szone.some(Boolean)) {
         return;
       }
-      const score = 50 + match.specificity * 10;
+      const score = 50 + match.specificity * 10 + ((info.category & (CATEGORY.SEARCH | CATEGORY.SPECIAL_SUMMON)) ? 8 : 0);
       if (score > bestScore) {
         bestScore = score;
         bestIdx = idx;

@@ -34,7 +34,7 @@ export const PROFILES = Object.freeze({
     idleJitter: 0,
     setSpellTrapChance: 1,
     maxSetsPerTurn: 3,
-    maxActionsPerTurn: 14,
+    maxActionsPerTurn: 16,
     chainStrategy: 'threshold',
     chainActivateChance: 1,
     chainDangerThreshold: 40,
@@ -55,7 +55,7 @@ export const PROFILES = Object.freeze({
     idleJitter: 0,
     setSpellTrapChance: 1,
     maxSetsPerTurn: 5,
-    maxActionsPerTurn: 28,
+    maxActionsPerTurn: 32,
     chainStrategy: 'conserve',    // ถือ Hand Trap ไว้ใช้กับเอฟเฟกต์อันตรายจริง และเลือกใบที่ตรงที่สุด
     chainActivateChance: 1,
     chainDangerThreshold: 70,
